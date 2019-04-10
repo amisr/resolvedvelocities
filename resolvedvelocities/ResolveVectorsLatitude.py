@@ -79,7 +79,7 @@ class vvelsLat:
     
     def __init__(self,inifiles,sec):
     
-        self.DefaultIni = '/home/asreimer/projects/AMISR/development/source_code/fitting_software/amisr-src/src/ISfit/AMISR_fitter_py/config/config_vvelsLat-default.ini'
+        # self.DefaultIni = '/home/asreimer/projects/AMISR/development/source_code/fitting_software/amisr-src/src/ISfit/AMISR_fitter_py/config/config_vvelsLat-default.ini'
 
         print inifiles
         print sec
@@ -104,10 +104,10 @@ class vvelsLat:
         # setup ConfigParser object
         config=ConfigParser.ConfigParser()
         
-        # read default ini file
-        fn = config.read(self.DefaultIni)
-        if len(fn)!=1 or fn[0]!=self.DefaultIni:
-            raise IOError, 'Unable to read default ini file %s' % self.DefaultIni
+        # # read default ini file
+        # fn = config.read(self.DefaultIni)
+        # if len(fn)!=1 or fn[0]!=self.DefaultIni:
+        #     raise IOError, 'Unable to read default ini file %s' % self.DefaultIni
 
         # read supplied ini file
         config.read(inifile.split(','))
@@ -119,23 +119,42 @@ class vvelsLat:
         self.config=config
 
         # set processing parameters
-        self.minAlt=eval(ioutils.ini_tool(config,sec,'minalt',required=0,defaultParm=config.get('DefaultParameters','minalt')))
-        self.maxAlt=eval(ioutils.ini_tool(config,sec,'maxalt',required=0,defaultParm=config.get('DefaultParameters','maxalt')))
-        self.ppp=eval(ioutils.ini_tool(config,sec,'ppp',required=0,defaultParm=config.get('DefaultParameters','ppp')))
-        self.covar=eval(ioutils.ini_tool(config,sec,'covar',required=0,defaultParm=config.get('DefaultParameters','covar')))
-        self.zoomWhole=eval(ioutils.ini_tool(config,sec,'zoomwhole',required=0,defaultParm=config.get('DefaultParameters','zoomwhole')))
-        self.chirp=eval(ioutils.ini_tool(config,sec,'chirp',required=0,defaultParm=config.get('DefaultParameters','chirp')))
-        self.neMin=eval(ioutils.ini_tool(config,sec,'nemin',required=0,defaultParm=config.get('DefaultParameters','nemin')))
-        self.byGeo=eval(ioutils.ini_tool(config,sec,'bygeo',required=0,defaultParm=config.get('DefaultParameters','bygeo')))
-        self.Time2Integrate=eval(ioutils.ini_tool(config,sec,'time2integrate',required=1,defaultParm=config.get('DefaultParameters','time2integrate')))
-        self.plats=eval(ioutils.ini_tool(config,sec,'plats',required=1,defaultParm=config.get('DefaultParameters','plats')))
-        self.CorrectVap=eval(ioutils.ini_tool(config,sec,'correctvap',required=0,defaultParm=config.get('DefaultParameters','correctvap')))
-        self.upBcode=eval(ioutils.ini_tool(config,sec,'upbcode',required=0,defaultParm=config.get('DefaultParameters','upbcode')))
-        self.beams2use=eval(ioutils.ini_tool(config,sec,'beams2use',required=0,defaultParm=list()))
+        # self.minAlt=eval(ioutils.ini_tool(config,sec,'minalt',required=1,defaultParm=config.get('DefaultParameters','minalt')))
+        # self.maxAlt=eval(ioutils.ini_tool(config,sec,'maxalt',required=1,defaultParm=config.get('DefaultParameters','maxalt')))
+        # self.ppp=eval(ioutils.ini_tool(config,sec,'ppp',required=1,defaultParm=config.get('DefaultParameters','ppp')))
+        # self.covar=eval(ioutils.ini_tool(config,sec,'covar',required=1,defaultParm=config.get('DefaultParameters','covar')))
+        # self.zoomWhole=eval(ioutils.ini_tool(config,sec,'zoomwhole',required=1,defaultParm=config.get('DefaultParameters','zoomwhole')))
+        # self.chirp=eval(ioutils.ini_tool(config,sec,'chirp',required=1,defaultParm=config.get('DefaultParameters','chirp')))
+        # self.neMin=eval(ioutils.ini_tool(config,sec,'nemin',required=1,defaultParm=config.get('DefaultParameters','nemin')))
+        # self.byGeo=eval(ioutils.ini_tool(config,sec,'bygeo',required=1,defaultParm=config.get('DefaultParameters','bygeo')))
+        # self.Time2Integrate=eval(ioutils.ini_tool(config,sec,'time2integrate',required=1,defaultParm=config.get('DefaultParameters','time2integrate')))
+        # self.plats=eval(ioutils.ini_tool(config,sec,'plats',required=1,defaultParm=config.get('DefaultParameters','plats')))
+        # self.CorrectVap=eval(ioutils.ini_tool(config,sec,'correctvap',required=1,defaultParm=config.get('DefaultParameters','correctvap')))
+        # self.upBcode=eval(ioutils.ini_tool(config,sec,'upbcode',required=1,defaultParm=config.get('DefaultParameters','upbcode')))
+        # self.beams2use=eval(ioutils.ini_tool(config,sec,'beams2use',required=1,defaultParm=list()))
+        # # set plotting parameters
+        # self.makeplot=eval(ioutils.ini_tool(config,sec,'makeplot',required=1,defaultParm=config.get('DefaultParameters','makeplot')))
+        # self.clim=eval(ioutils.ini_tool(config,sec,'clim',required=1,defaultParm=config.get('DefaultParameters','clim')))
+        # self.sc=eval(ioutils.ini_tool(config,sec,'sc',required=1,defaultParm=config.get('DefaultParameters','sc')))
+
+        self.minAlt=eval(ioutils.ini_tool(config,sec,'minalt',required=1))
+        self.maxAlt=eval(ioutils.ini_tool(config,sec,'maxalt',required=1))
+        self.ppp=eval(ioutils.ini_tool(config,sec,'ppp',required=1))
+        self.covar=eval(ioutils.ini_tool(config,sec,'covar',required=1))
+        self.zoomWhole=eval(ioutils.ini_tool(config,sec,'zoomwhole',required=1))
+        self.chirp=eval(ioutils.ini_tool(config,sec,'chirp',required=1))
+        self.neMin=eval(ioutils.ini_tool(config,sec,'nemin',required=1))
+        self.byGeo=eval(ioutils.ini_tool(config,sec,'bygeo',required=1))
+        self.Time2Integrate=eval(ioutils.ini_tool(config,sec,'time2integrate',required=1))
+        self.plats=eval(ioutils.ini_tool(config,sec,'plats',required=1))
+        self.CorrectVap=eval(ioutils.ini_tool(config,sec,'correctvap',required=1))
+        self.upBcode=eval(ioutils.ini_tool(config,sec,'upbcode',required=1))
+        self.beams2use=eval(ioutils.ini_tool(config,sec,'beams2use',required=1))
         # set plotting parameters
-        self.makeplot=eval(ioutils.ini_tool(config,sec,'makeplot',required=0,defaultParm=config.get('DefaultParameters','makeplot')))
-        self.clim=eval(ioutils.ini_tool(config,sec,'clim',required=0,defaultParm=config.get('DefaultParameters','clim')))
-        self.sc=eval(ioutils.ini_tool(config,sec,'sc',required=0,defaultParm=config.get('DefaultParameters','sc')))
+        self.makeplot=eval(ioutils.ini_tool(config,sec,'makeplot',required=1))
+        self.clim=eval(ioutils.ini_tool(config,sec,'clim',required=1))
+        self.sc=eval(ioutils.ini_tool(config,sec,'sc',required=1))
+
         
         # get filenames
         self.saveout=1
