@@ -16,6 +16,7 @@ import ioutils
 from ioclass import OutputFileClass
 
 import numpy as np
+from apexpy import Apex
 
 
 class vvelsLatFile(OutputFileClass):
@@ -494,27 +495,77 @@ class vvelsLat:
             IupB=np.where(BeamCodes[:,0]==upBcode)[0]
             InotUpB=np.where(BeamCodes[:,0]!=upBcode)[0]
 
+
+
+        # geographic k vectors and locations from hdf5 file
+        kn=dat1['/Geomag']['kn'][bm_inds,:]
+        ke=dat1['/Geomag']['ke'][bm_inds,:]
+        kz=dat1['/Geomag']['kz'][bm_inds,:]
+        glat=dat1['/Geomag']['Latitude'][bm_inds,:]
+        glon=dat1['/Geomag']['Longitude'][bm_inds,:]
+        alt=dat1['/Geomag']['Altitude'][bm_inds,:]
+
+        # find array shape and where nans will be removed
+        arr_shape = glat.shape
+        removed_nans = np.argwhere(np.isnan(glat.ravel())).flatten()
+
+        # remove nans and flatten array
+        glat = glat[np.isfinite(glat)]
+        glon = glon[np.isfinite(glon)]
+        alt = alt[np.isfinite(alt)]
+
+        # intialize apex coordinates
+        A = Apex(date=2019)     # date should be set by some information in data file
+
+        # find magnetic latitude and longitude
+        plat, plong = A.geo2apex(glat,glon,alt)
+
+        # kvec in geodetic coordinates [e n u]
+        kvec = np.array([ke[np.isfinite(ke)], kn[np.isfinite(kn)], kz[np.isfinite(kz)]])
+        # apex basis vectors in geodetic coordinates [e n u]
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = A.basevectors_apex(glat,glon,alt)
+        # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
+        ke1 = np.einsum('ij,ij->j',kvec,d1)
+        ke2 = np.einsum('ij,ij->j',kvec,d2)
+        ke3 = np.einsum('ij,ij->j',kvec,d3)
+
+        # convert to magnetic NEU (approximately)
+        kpe = ke1
+        kpn = -ke2
+        kpar = -ke3
+
+        # reintroduce NANs and reshape the array
+        # find indices where nans should be inserted in new arrays
+        replace_nans = np.array([r-i for i,r in enumerate(removed_nans)])
+
+        plat = np.insert(plat,replace_nans,np.nan).reshape(arr_shape)
+        plong = np.insert(plong,replace_nans,np.nan).reshape(arr_shape)
+
+        kpe = np.insert(kpe,replace_nans,np.nan).reshape(arr_shape)
+        kpn = np.insert(kpn,replace_nans,np.nan).reshape(arr_shape)
+        kpar = np.insert(kpar,replace_nans,np.nan).reshape(arr_shape)
+
         # geomag
-        if self.byGeo>0: # geographic
-            kpn=dat1['/Geomag']['kn'][bm_inds,:]
-            kpe=dat1['/Geomag']['ke'][bm_inds,:]
-            kpar=dat1['/Geomag']['kz'][bm_inds,:]
-            if self.byGeo==2:
-                plat=dat1['/Geomag']['Latitude'][bm_inds,:]
-                plong=dat1['/Geomag']['Longitude'][bm_inds,:]
-            else:
-                plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
-                plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
-        else: # geomagnetic
-            kpn=dat1['/Geomag']['kpn'][bm_inds,:]
-            kpe=dat1['/Geomag']['kpe'][bm_inds,:]
-            kpar=dat1['/Geomag']['kpar'][bm_inds,:]
-            try:
-                plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
-                plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
-            except:
-                plat=dat1['/Geomag']['plat']    #???
-                plong=dat1['/Geomag']['plong']  #???
+        # if self.byGeo>0: # geographic
+        #     kpn=dat1['/Geomag']['kn'][bm_inds,:]
+        #     kpe=dat1['/Geomag']['ke'][bm_inds,:]
+        #     kpar=dat1['/Geomag']['kz'][bm_inds,:]
+        #     if self.byGeo==2:
+        #         plat=dat1['/Geomag']['Latitude'][bm_inds,:]
+        #         plong=dat1['/Geomag']['Longitude'][bm_inds,:]
+        #     else:
+        #         plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
+        #         plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
+        # else: # geomagnetic
+        #     kpn=dat1['/Geomag']['kpn'][bm_inds,:]
+        #     kpe=dat1['/Geomag']['kpe'][bm_inds,:]
+        #     kpar=dat1['/Geomag']['kpar'][bm_inds,:]
+        #     try:
+        #         plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
+        #         plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
+        #     except:
+        #         plat=dat1['/Geomag']['plat']    #???
+        #         plong=dat1['/Geomag']['plong']  #???
         Bn=dat1['/Geomag']['Bx'][bm_inds,:]
         Be=dat1['/Geomag']['By'][bm_inds,:]
         Bz=dat1['/Geomag']['Bz'][bm_inds,:]
