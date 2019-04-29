@@ -518,7 +518,7 @@ class vvelsLat:
         A = Apex(date=2019)     # date should be set by some information in data file
 
         # find magnetic latitude and longitude
-        plat, plong = A.geo2apex(glat,glon,alt)
+        plat, plong = A.geo2apex(glat,glon,alt/1000.)
 
         # kvec in geodetic coordinates [e n u]
         kvec = np.array([ke[np.isfinite(ke)], kn[np.isfinite(kn)], kz[np.isfinite(kz)]])
@@ -695,7 +695,6 @@ class vvelsLat:
                 # compute vectors
                 (plat_out1,Vest,dVest,vVestAll,Nmeas,vchi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,kin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covar,p=self.ppp)
 
-                # print Vest.shape, dVest.shape, vVestAll.shape
 
                 # DON'T NEED
                 (plat_out1,Eest,dEest,vEestAll,Nmeas1,echi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,ekin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covarE,p=self.ppp)
@@ -785,7 +784,18 @@ class vvelsLat:
                 if (timeout[-1,-1]-timeout[0,0])/3600.0>36.0:
                     self.createPlots_byTime(ofname,binByDay=1)
                 else:
-                    self.createPlots(ofname)                
+                    self.createPlots(ofname)
+
+            self.create_new_output('test_vvels.h5',vvels1,varvvels1)        
         
+        return
+
+    def create_new_output(self,filename,vel,vel_cov):
+        import tables
+
+        with tables.open_file(filename,mode='w') as file:
+            file.create_array('/','vVels',vel)
+            file.create_array('/','covVels',vel_cov)
+
         return
         
