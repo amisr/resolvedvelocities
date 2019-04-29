@@ -529,11 +529,6 @@ class vvelsLat:
         ke2 = np.einsum('ij,ij->j',kvec,d2)
         ke3 = np.einsum('ij,ij->j',kvec,d3)
 
-        # convert to magnetic NEU (approximately)
-        kpe = ke1
-        kpn = -ke2
-        kpar = -ke3
-
         # reintroduce NANs and reshape the array
         # find indices where nans should be inserted in new arrays
         replace_nans = np.array([r-i for i,r in enumerate(removed_nans)])
@@ -541,9 +536,16 @@ class vvelsLat:
         plat = np.insert(plat,replace_nans,np.nan).reshape(arr_shape)
         plong = np.insert(plong,replace_nans,np.nan).reshape(arr_shape)
 
-        kpe = np.insert(kpe,replace_nans,np.nan).reshape(arr_shape)
-        kpn = np.insert(kpn,replace_nans,np.nan).reshape(arr_shape)
-        kpar = np.insert(kpar,replace_nans,np.nan).reshape(arr_shape)
+        ke1 = np.insert(ke1,replace_nans,np.nan).reshape(arr_shape)
+        ke2 = np.insert(ke2,replace_nans,np.nan).reshape(arr_shape)
+        ke3 = np.insert(ke3,replace_nans,np.nan).reshape(arr_shape)
+
+        # DON'T NEED
+        # convert to magnetic NEU (approximately)
+        kpe = ke1
+        kpn = -ke2
+        kpar = -ke3
+
 
         # geomag
         # if self.byGeo>0: # geographic
@@ -667,11 +669,15 @@ class vvelsLat:
 
                 # k vector (this is in mag coords)
                 kin=np.zeros((Nbeams,Nhts,3),dtype=kpn.dtype)
-                kin[:,:,0]=kpn
-                kin[:,:,1]=kpe
-                kin[:,:,2]=kpar
+                # kin[:,:,0]=kpn
+                # kin[:,:,1]=kpe
+                # kin[:,:,2]=kpar
+                kin[:,:,0]=ke1
+                kin[:,:,1]=ke2
+                kin[:,:,2]=ke3
                 kin=np.reshape(np.repeat(kin[np.newaxis,:,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams,3))
 
+                # DON'T NEED
                 ekin=np.zeros((Nbeams,Nhts,3),dtype=kpn.dtype)
                 ekin[:,:,0]=(-Be*kpar-Bz*kpe)/Babs**2.0
                 ekin[:,:,1]=(Bz*kpn+Bn*kpar)/Babs**2.0
@@ -688,6 +694,10 @@ class vvelsLat:
 
                 # compute vectors
                 (plat_out1,Vest,dVest,vVestAll,Nmeas,vchi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,kin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covar,p=self.ppp)
+
+                # print Vest.shape, dVest.shape, vVestAll.shape
+
+                # DON'T NEED
                 (plat_out1,Eest,dEest,vEestAll,Nmeas1,echi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,ekin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covarE,p=self.ppp)
                 Eest[:,-1]*=-1
 
