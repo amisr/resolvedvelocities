@@ -677,12 +677,12 @@ class vvelsLat:
                 kin[:,:,2]=ke3
                 kin=np.reshape(np.repeat(kin[np.newaxis,:,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams,3))
 
-                # DON'T NEED
-                ekin=np.zeros((Nbeams,Nhts,3),dtype=kpn.dtype)
-                ekin[:,:,0]=(-Be*kpar-Bz*kpe)/Babs**2.0
-                ekin[:,:,1]=(Bz*kpn+Bn*kpar)/Babs**2.0
-                ekin[:,:,2]=(Bn*kpe-Be*kpn)/Babs**2.0
-                ekin=np.reshape(np.repeat(ekin[np.newaxis,:,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams,3))
+                # # DON'T NEED
+                # ekin=np.zeros((Nbeams,Nhts,3),dtype=kpn.dtype)
+                # ekin[:,:,0]=(-Be*kpar-Bz*kpe)/Babs**2.0
+                # ekin[:,:,1]=(Bz*kpn+Bn*kpar)/Babs**2.0
+                # ekin[:,:,2]=(Bn*kpe-Be*kpn)/Babs**2.0
+                # ekin=np.reshape(np.repeat(ekin[np.newaxis,:,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams,3))
                 
                 # magnetic field
                 bin=np.reshape(np.repeat(Babs[np.newaxis,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams))
@@ -694,11 +694,27 @@ class vvelsLat:
 
                 # compute vectors
                 (plat_out1,Vest,dVest,vVestAll,Nmeas,vchi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,kin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covar,p=self.ppp)
+                dVest = np.diagonal(vVestAll,axis1=1,axis2=2)
 
+                # rotate velocity to get the elecric field
+                # assume magnetic longitude of site PFISR MLON = 267.4
+                plon_out1 = np.full(plat_out1.shape, 267.4)
 
-                # DON'T NEED
-                (plat_out1,Eest,dEest,vEestAll,Nmeas1,echi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,ekin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covarE,p=self.ppp)
-                Eest[:,-1]*=-1
+                # find Be3 value at each output bin location
+                Be3, __, __, __ = A.bvectors_apex(plat_out1,plon_out1,300.,coords='apex')
+                # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+
+                # form rotation array
+                R_E = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
+                # Calculate contravarient components of electric field (Ed1, Ed2, Ed2)
+                Eest = np.einsum('ijk,ik->ij',R_E,Vest)
+                # Calculate electric field covariance matrix (SigE = R_E*SigV*R_E.T)
+                vEestAll = np.einsum('ijk,ikl,iml->ijm',R_E,vVestAll,R_E)
+                dEest = np.diagonal(vEestAll,axis1=1,axis2=2)
+
+                # # DON'T NEED
+                # (plat_out1,Eest,dEest,vEestAll,Nmeas1,echi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,ekin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covarE,p=self.ppp)
+                # Eest[:,-1]*=-1
 
                 timeout.append([time1[Irecs[0],0],time1[Irecs[-1],1]])
                 dtimeout.append([dtime1[Irecs[0],0],dtime1[Irecs[-1],1]])
@@ -786,16 +802,18 @@ class vvelsLat:
                 else:
                     self.createPlots(ofname)
 
-            self.create_new_output('test_vvels.h5',vvels1,varvvels1)        
+            self.create_new_output('test_vvels.h5',vvels1,varvvels1,evec1,varevec1)        
         
         return
 
-    def create_new_output(self,filename,vel,vel_cov):
+    def create_new_output(self,filename,vel,vel_cov,E,E_cov):
         import tables
 
         with tables.open_file(filename,mode='w') as file:
             file.create_array('/','vVels',vel)
             file.create_array('/','covVels',vel_cov)
+            file.create_array('/','eField',E)
+            file.create_array('/','coveField',E_cov)
 
         return
         
