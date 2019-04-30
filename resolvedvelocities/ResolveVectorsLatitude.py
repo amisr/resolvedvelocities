@@ -211,6 +211,8 @@ class vvelsLat:
             'VelocityOffsetCorrection': self.chirp,\
         }
 
+        self.Output = {}
+
         try: self.Params['PulseLength']=dat['/ProcessingParams']['PulseLength']
         except: self.Params['PulseLength']=0.0
         try: self.Params['BaudLength']=dat['/ProcessingParams']['BaudLength']
@@ -790,6 +792,13 @@ class vvelsLat:
             self.VectorVels['varEest'] = varevec1
             self.VectorVels['Emag'] = Emag; self.VectorVels['errEmag'] = dEmag
             self.VectorVels['Edir'] = Edir; self.VectorVels['errEdir'] = dEdir
+
+            self.Output['Velocity'] = vvels1
+            self.Output['ElectricField'] = evec1
+            self.Output['SigV'] = varvvels1
+            self.Output['SigE'] = varevec1
+            self.Output['MLAT'] = plat_out1
+            self.Output['MLON'] = plon_out1
             
             ### Output file
             if self.saveout:
@@ -810,10 +819,13 @@ class vvelsLat:
         import tables
 
         with tables.open_file(filename,mode='w') as file:
-            file.create_array('/','vVels',vel)
-            file.create_array('/','covVels',vel_cov)
-            file.create_array('/','eField',E)
-            file.create_array('/','coveField',E_cov)
+            file.create_array('/','UnixTime',self.Time['UnixTime'])
+            file.create_array('/','MagneticLatitude',self.Output['MLAT'])
+            file.create_array('/','MagneticLongitude',self.Output['MLON'])
+            file.create_array('/','Velocity',self.Output['Velocity'])
+            file.create_array('/','SigmaV',self.Output['SigV'])
+            file.create_array('/','ElectricField',self.Output['ElectricField'])
+            file.create_array('/','SigmaE',self.Output['SigE'])
 
         return
         
