@@ -10,6 +10,7 @@ def main():
     vvels = rv.ResolveVectors()
     vvels.read_data()
     vvels.filter_data()
+    vvels.transform()
 
 if __name__ == '__main__':
     main()
