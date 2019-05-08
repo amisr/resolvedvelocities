@@ -8,6 +8,8 @@ import ResolveVectors as rv
 
 def main():
     vvels = rv.ResolveVectors()
+    vvels.read_data()
+    vvels.filter_data()
 
 if __name__ == '__main__':
     main()
