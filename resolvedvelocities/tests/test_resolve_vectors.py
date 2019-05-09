@@ -11,6 +11,8 @@ def main():
     vvels.read_data()
     vvels.filter_data()
     vvels.transform()
+    vvels.bin_data()
+    vvels.get_integration_periods()
 
 if __name__ == '__main__':
     main()

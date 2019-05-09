@@ -109,7 +109,38 @@ class ResolveVectors(object):
         # divide data into an arbitrary number of bins
         # bins defined in some way by initial config file
         # each bin has a specified MLAT/MLON
-        pass
+
+        bin_edge_mlat = np.arange(65.0,69.0,0.5)
+        self.data_bins = []
+        for i in range(len(bin_edge_mlat)-1):
+            center_mlat = (bin_edge_mlat[i]+bin_edge_mlat[i+1])/2.
+            center_mlon = np.nanmean(self.mlon)
+            idx = np.argwhere((self.mlat>=bin_edge_mlat[i]) & (self.mlat<bin_edge_mlat[i+1]))
+            self.data_bins.append({'mlat':center_mlat,'mlon':center_mlon,'idx':idx.flatten()})
+
+
+    # times: this is the the /Time/UnixTime array converted to datetime objects, so shape (num_recs,2)
+    # integration_time:  this is the amount of seconds to integrate
+    def get_integration_periods(self):
+        self.integration_periods = []
+        idx = []
+        start_time = None
+        num_times = len(self.time)
+        for i,time_pair in enumerate(self.time):
+            temp_start_time, temp_end_time = time_pair
+            if start_time is None:
+                start_time = temp_start_time
+            time_diff = temp_end_time - start_time
+            idx.append(i)
+
+            if (time_diff >= self.integration_time) or (i == num_times -1):
+                self.integration_periods.append({'start':start_time, 'end':temp_end_time, 'idx':np.array(idx)})
+                idx = []
+                start_time = None
+                continue
+
+
+
 
     def compute_vectors(self):
         # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
