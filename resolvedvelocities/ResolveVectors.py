@@ -14,9 +14,20 @@ class ResolveVectors(object):
         config.read('config.ini')
 
         self.datafile = config.get('DEFAULT', 'DATAFILE')
-        self.chirp = float(config.get('DEFAULT', 'CHIRP'))
-        self.neMin = float(config.get('DEFAULT', 'NEMIN'))
-        self.integration_time = float(config.get('DEFAULT', 'INTTIME'))
+        self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
+        self.neMin = eval(config.get('DEFAULT', 'NEMIN'))
+        self.integration_time = eval(config.get('DEFAULT', 'INTTIME'))
+        self.covar = eval(config.get('DEFAULT', 'COVAR'))
+        self.ppp = eval(config.get('DEFAULT', 'PPP'))
+        self.minalt = eval(config.get('DEFAULT', 'MINALT'))
+        self.maxalt = eval(config.get('DEFAULT', 'MAXALT'))
+        self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
+
+        # self.covar=[1000.*1000.,1000.*1000.,5.*5.]
+        # self.minalt = 150.
+        # self.maxalt = 400.
+        # self.ppp = [200.0,0.5,2000.0,100.0]
+        # self.minnumpoints = 1
 
         # list of beam codes to use
 
@@ -63,6 +74,19 @@ class ResolveVectors(object):
         self.vlos[I] = np.nan
         self.dvlos[I] = np.nan
 
+        # discard data outside of altitude range
+        I = np.where(((self.alt < self.minalt*1000.) | (self.alt > self.maxalt*1000.)))
+        self.vlos[I] = np.nan
+        self.dvlos[I] = np.nan
+
+        # discard data with "unexceptable" error
+        #   - not sure about these conditions - they come from original vvels code but eliminate a lot of data points
+        fracerrs = np.absolute(self.dvlos)/(np.absolute(self.vlos)+self.ppp[0])
+        abserrs  = np.absolute(self.dvlos)
+        I = np.where(((fracerrs > self.ppp[1]) & (abserrs > self.ppp[3])))
+        self.vlos[I] = np.nan
+        self.dvlos[I] = np.nan
+
 
 
     def transform(self):
@@ -79,15 +103,15 @@ class ResolveVectors(object):
 
         # intialize apex coordinates
         # time0 = dt.datetime.utcfromtimestamp(self.time[0,0])
-        A = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
 
         # find magnetic latitude and longitude
-        mlat, mlon = A.geo2apex(glat, glon, galt/1000.)
+        mlat, mlon = self.Apex.geo2apex(glat, glon, galt/1000.)
 
         # kvec in geodetic coordinates [e n u]
         kvec = np.array([keg, kng, kzg])
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = A.basevectors_apex(glat, glon, galt/1000.)
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt/1000.)
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
         ke1 = np.einsum('ij,ij->j',kvec,d1)
         ke2 = np.einsum('ij,ij->j',kvec,d2)
@@ -144,7 +168,81 @@ class ResolveVectors(object):
 
     def compute_vectors(self):
         # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-        pass
+        
+        Velocity = []
+        VelocityCovariance = []
+
+        # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
+        # loop over integration periods
+        for ip in self.integration_periods:
+            V_at_time = []
+            SigV_at_time = []
+            # loop over spatial bins
+            for b in self.data_bins:
+
+                # pull out the line of slight measurements for the time period and bins
+                vlos = self.vlos[ip['idx'],b['idx'][:,np.newaxis]].flatten()
+                dvlos = self.dvlos[ip['idx'],b['idx'][:,np.newaxis]].flatten()
+                # pull out the k vectors for the bins and duplicate so they match the number of time measurements
+                ke1 = np.repeat(self.ke1[b['idx']],len(ip['idx']))
+                ke2 = np.repeat(self.ke2[b['idx']],len(ip['idx']))
+                ke3 = np.repeat(self.ke3[b['idx']],len(ip['idx']))
+
+                # remove nan data points
+                finite = np.isfinite(vlos)
+                vlos = vlos[finite]
+                dvlos = dvlos[finite]
+                ke1 = ke1[finite]
+                ke2 = ke2[finite]
+                ke3 = ke3[finite]
+
+
+                A = np.array([ke1, ke2, ke3]).T
+                SigmaE = np.diagflat(dvlos)
+                SigmaV = np.diagflat(self.covar)
+
+                try:
+                    I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)   # calculate I = (A*SigV*A.T + SigE)^-1
+                    V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)      # calculate velocity estimate (Heinselman 2008 eqn 12)
+                    SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))       # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
+
+                except np.linalg.LinAlgError:
+                    V = np.full(3,np.nan)
+                    SigV = np.full((3,3),np.nan)
+
+                # if there are too few points for a valid reconstruction, set output to NAN
+                if sum(finite) < self.minnumpoints:
+                    V = np.full(3,np.nan)
+                    SigV = np.full((3,3),np.nan)
+
+
+                V_at_time.append(V)
+                SigV_at_time.append(SigmaV)
+
+            Velocity.append(V_at_time)
+            VelocityCovariance.append(SigV_at_time)
+
+        self.Velocity = np.array(Velocity)
+        self.VelocityCovariance = np.array(VelocityCovariance)
+
+
+        # calculate electric field
+        bin_mlat = [b['mlat'] for b in self.data_bins]
+        bin_mlon = [b['mlon'] for b in self.data_bins]
+
+        # find Be3 value at each output bin location
+        Be3, __, __, __ = self.Apex.bvectors_apex(bin_mlat,bin_mlon,300.,coords='apex')
+        # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+
+        # form rotation array
+        R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
+        # Calculate contravarient components of electric field (Ed1, Ed2, Ed3)
+        self.ElectricField = np.einsum('ijk,...ik->...ij',R,self.Velocity)
+        # Calculate electric field covariance matrix (SigE = R*SigV*R.T)
+        self.ElectricFieldCovariance = np.einsum('ijk,...ikl,iml->...ijm',R,self.VelocityCovariance,R)
+
+        # print self.Velocity.shape, self.ElectricField.shape
+
 
     def compute_geodetic_output(self):
         # map velocity and electric field to get an array at different altitudes

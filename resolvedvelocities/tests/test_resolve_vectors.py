@@ -13,6 +13,7 @@ def main():
     vvels.transform()
     vvels.bin_data()
     vvels.get_integration_periods()
+    vvels.compute_vectors()
 
 if __name__ == '__main__':
     main()
