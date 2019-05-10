@@ -23,12 +23,6 @@ class ResolveVectors(object):
         self.maxalt = eval(config.get('DEFAULT', 'MAXALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
 
-        # self.covar=[1000.*1000.,1000.*1000.,5.*5.]
-        # self.minalt = 150.
-        # self.maxalt = 400.
-        # self.ppp = [200.0,0.5,2000.0,100.0]
-        # self.minnumpoints = 1
-
         # list of beam codes to use
 
     def read_data(self):
@@ -198,7 +192,7 @@ class ResolveVectors(object):
 
 
                 A = np.array([ke1, ke2, ke3]).T
-                SigmaE = np.diagflat(dvlos)
+                SigmaE = np.diagflat(dvlos**2)
                 SigmaV = np.diagflat(self.covar)
 
                 try:
@@ -249,5 +243,41 @@ class ResolveVectors(object):
         pass
 
     def save_output(self):
+
+        out_time = [[t['start'],t['end']] for t in self.integration_periods]
+        out_mlat = [b['mlat'] for b in self.data_bins]
+        out_mlon = [b['mlon'] for b in self.data_bins]
+
         # save output file
-        pass
+        filename = 'test_vvels.h5'
+
+        with tables.open_file(filename,mode='w') as file:
+            file.create_array('/','UnixTime',out_time)
+            # [('TITLE','Unix Time'),('Size','Nrecords x 2 (Start and end of integration)'),('Unit','Seconds')
+            file.set_node_attr('/UnixTime', 'TITLE', 'Unix Time')
+            file.set_node_attr('/UnixTime', 'Size', 'Nrecords x 2 (start and end of integration)')
+            file.set_node_attr('/UnixTime', 'Units', 's')
+            file.create_group('/', 'Magnetic')
+            file.create_group('/', 'Geographic')
+            file.create_array('/Magnetic', 'MagneticLatitude', out_mlat)
+            file.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
+            file.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
+            file.create_array('/Magnetic','MagneticLongitude',out_mlon)
+            file.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
+            file.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
+            file.create_array('/Magnetic', 'Velocity', self.Velocity)
+            file.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plama Drift Velocity')
+            file.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
+            file.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
+            file.create_array('/Magnetic','SigmaV', self.VelocityCovariance)
+            file.set_node_attr('/Magnetic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
+            file.set_node_attr('/Magnetic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
+            file.set_node_attr('/Magnetic/SigmaV', 'Units', 'm/s')
+            file.create_array('/Magnetic','ElectricField',self.ElectricField)
+            file.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
+            file.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
+            file.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
+            file.create_array('/Magnetic','SigmaE',self.ElectricFieldCovariance)
+            file.set_node_attr('/Magnetic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
+            file.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
+            file.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
