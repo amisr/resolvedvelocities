@@ -86,8 +86,7 @@ class ResolveVectors(object):
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
-        # find where nans occur in input position arrays and remove them
-        removed_nans = np.argwhere(np.isnan(self.alt)).flatten()
+        # remove nans from input position arrays (apexpy can't handle input nans)
         glat = self.lat[np.isfinite(self.lat)]
         glon = self.lon[np.isfinite(self.lon)]
         galt = self.alt[np.isfinite(self.alt)]
@@ -96,30 +95,23 @@ class ResolveVectors(object):
         kzg = self.kz[np.isfinite(self.kz)]
 
         # intialize apex coordinates
-        # time0 = dt.datetime.utcfromtimestamp(self.time[0,0])
         self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
 
         # find magnetic latitude and longitude
         mlat, mlon = self.Apex.geo2apex(glat, glon, galt/1000.)
 
         # kvec in geodetic coordinates [e n u]
-        kvec = np.array([keg, kng, kzg])
+        kvec = np.array([keg, kng, kzg]).T
         # apex basis vectors in geodetic coordinates [e n u]
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt/1000.)
+        d = np.array([d1,d2,d3]).T
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
-        ke1 = np.einsum('ij,ij->j',kvec,d1)
-        ke2 = np.einsum('ij,ij->j',kvec,d2)
-        ke3 = np.einsum('ij,ij->j',kvec,d3)
+        A = np.einsum('ij,ijk->ik', kvec, d)
 
-        # reintroduce NANs
-        # find indices where nans should be inserted in new arrays
-        replace_nans = np.array([r-i for i,r in enumerate(removed_nans)])
+        self.mlat = mlat
+        self.mlon = mlon
+        self.A = A
 
-        self.mlat = np.insert(mlat,replace_nans,np.nan)
-        self.mlon = np.insert(mlon,replace_nans,np.nan)
-        self.ke1 = np.insert(ke1,replace_nans,np.nan)
-        self.ke2 = np.insert(ke2,replace_nans,np.nan)
-        self.ke3 = np.insert(ke3,replace_nans,np.nan)
 
 
 
@@ -169,8 +161,8 @@ class ResolveVectors(object):
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
         for ip in self.integration_periods:
-            V_at_time = []
-            SigV_at_time = []
+            Vel = []
+            SigmaV = []
             # loop over spatial bins
             for b in self.data_bins:
 
@@ -178,43 +170,17 @@ class ResolveVectors(object):
                 vlos = self.vlos[ip['idx'],b['idx'][:,np.newaxis]].flatten()
                 dvlos = self.dvlos[ip['idx'],b['idx'][:,np.newaxis]].flatten()
                 # pull out the k vectors for the bins and duplicate so they match the number of time measurements
-                ke1 = np.repeat(self.ke1[b['idx']],len(ip['idx']))
-                ke2 = np.repeat(self.ke2[b['idx']],len(ip['idx']))
-                ke3 = np.repeat(self.ke3[b['idx']],len(ip['idx']))
+                A = np.repeat(self.A[b['idx']], len(ip['idx']), axis=0)
 
-                # remove nan data points
-                finite = np.isfinite(vlos)
-                vlos = vlos[finite]
-                dvlos = dvlos[finite]
-                ke1 = ke1[finite]
-                ke2 = ke2[finite]
-                ke3 = ke3[finite]
+                # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
+                V, SigV = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
 
+                # append vector and coviarience matrix
+                Vel.append(V)
+                SigmaV.append(SigV)
 
-                A = np.array([ke1, ke2, ke3]).T
-                SigmaE = np.diagflat(dvlos**2)
-                SigmaV = np.diagflat(self.covar)
-
-                try:
-                    I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)   # calculate I = (A*SigV*A.T + SigE)^-1
-                    V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)      # calculate velocity estimate (Heinselman 2008 eqn 12)
-                    SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))       # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
-
-                except np.linalg.LinAlgError:
-                    V = np.full(3,np.nan)
-                    SigV = np.full((3,3),np.nan)
-
-                # if there are too few points for a valid reconstruction, set output to NAN
-                if sum(finite) < self.minnumpoints:
-                    V = np.full(3,np.nan)
-                    SigV = np.full((3,3),np.nan)
-
-
-                V_at_time.append(V)
-                SigV_at_time.append(SigmaV)
-
-            Velocity.append(V_at_time)
-            VelocityCovariance.append(SigV_at_time)
+            Velocity.append(Vel)
+            VelocityCovariance.append(SigmaV)
 
         self.Velocity = np.array(Velocity)
         self.VelocityCovariance = np.array(VelocityCovariance)
@@ -235,7 +201,6 @@ class ResolveVectors(object):
         # Calculate electric field covariance matrix (SigE = R*SigV*R.T)
         self.ElectricFieldCovariance = np.einsum('ijk,...ikl,iml->...ijm',R,self.VelocityCovariance,R)
 
-        # print self.Velocity.shape, self.ElectricField.shape
 
 
     def compute_geodetic_output(self):
@@ -253,7 +218,6 @@ class ResolveVectors(object):
 
         with tables.open_file(filename,mode='w') as file:
             file.create_array('/','UnixTime',out_time)
-            # [('TITLE','Unix Time'),('Size','Nrecords x 2 (Start and end of integration)'),('Unit','Seconds')
             file.set_node_attr('/UnixTime', 'TITLE', 'Unix Time')
             file.set_node_attr('/UnixTime', 'Size', 'Nrecords x 2 (start and end of integration)')
             file.set_node_attr('/UnixTime', 'Units', 's')
@@ -281,3 +245,32 @@ class ResolveVectors(object):
             file.set_node_attr('/Magnetic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
             file.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
             file.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
+
+
+def vvels(vlos, dvlos, A, cov, minnumpoints=1):
+    # implimentation of Heinselman and Nicolls 2008 vector velocity algorithm
+
+    # remove nan data points
+    finite = np.isfinite(vlos)
+    vlos = vlos[finite]
+    dvlos = dvlos[finite]
+    A = A[finite]
+
+    SigmaE = np.diagflat(dvlos**2)
+    SigmaV = np.diagflat(cov)
+
+    try:
+        I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)   # calculate I = (A*SigV*A.T + SigE)^-1
+        V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)      # calculate velocity estimate (Heinselman 2008 eqn 12)
+        SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))       # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
+
+    except np.linalg.LinAlgError:
+        V = np.full(3,np.nan)
+        SigV = np.full((3,3),np.nan)
+
+    # if there are too few points for a valid reconstruction, set output to NAN
+    if sum(finite) < minnumpoints:
+        V = np.full(3,np.nan)
+        SigV = np.full((3,3),np.nan)
+
+    return V, SigV
