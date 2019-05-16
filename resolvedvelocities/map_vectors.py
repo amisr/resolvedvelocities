@@ -1,7 +1,65 @@
 # map_vectors.py
 
+import ResolveVectors as rv
+import numpy as np
 from apexpy import Apex
 import tables
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import cartopy.crs as ccrs
+from matplotlib.colors import Normalize
+
+import coord_convert as cc
+
+def plot_raw():
+    vvels = rv.ResolveVectors()
+    vvels.read_data()
+    vvels.filter_data()
+
+    idx = 20
+
+    lat = vvels.lat[np.isfinite(vvels.vlos[idx])]
+    lon = vvels.lon[np.isfinite(vvels.vlos[idx])]
+    alt = vvels.alt[np.isfinite(vvels.vlos[idx])]/1000.
+    ke = vvels.ke[np.isfinite(vvels.vlos[idx])]
+    kn = vvels.kn[np.isfinite(vvels.vlos[idx])]
+    kz = vvels.kz[np.isfinite(vvels.vlos[idx])]
+    vlos = vvels.vlos[idx][np.isfinite(vvels.vlos[idx])]
+
+    x, y, z = cc.geodetic_to_cartesian(lat, lon, alt)
+    vx, vy, vz = cc.vector_geodetic_to_cartesian(kn*vlos, ke*vlos, kz*vlos, lat, lon, alt)
+
+
+    # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
+    norm = Normalize(vmin=-500.,vmax=500.)
+    c = norm(vlos)
+    c = np.concatenate((c, np.repeat(c, 2)))
+    c = plt.cm.bwr(c)
+
+    scale = 100.
+
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111,projection='3d')
+    ax.scatter(x, y, z)
+    ax.quiver(x, y, z, vx*scale, vy*scale, vz*scale, color=c)
+
+    # fig = plt.figure(figsize=(15,10))
+    # ax1 = fig.add_subplot(121)
+    # ax2 = fig.add_subplot(122,projection=ccrs.LambertConformal())
+    # # ax2 = fig.add_subplot(111,projection=ccrs.PlateCarree())
+    # ax2.gridlines()
+
+    # ax1.scatter(vvels.lon, vvels.lat)
+    # ax1.quiver(vvels.lon, vvels.lat, vvels.ke, vvels.kn, width=0.003)
+
+    # ax2.scatter(vvels.lon, vvels.lat, transform=ccrs.PlateCarree())
+    # ax2.quiver(vvels.lon, vvels.lat, vvels.ke, vvels.kn, width=0.003, transform=ccrs.PlateCarree())
+
+    plt.show()
+
+# check ke, kn, kz
+# in ECEF, bin location minus radar location
+# kvec for every bin in beam should be the same
 
 def read_vvels_file(filename):
     
