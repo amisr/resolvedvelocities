@@ -13,11 +13,14 @@ import coord_convert as cc
 
 def plot_raw():
     vvels = rv.ResolveVectors()
+
+    # get input data
     vvels.read_data()
     vvels.filter_data()
 
     idx = 20
 
+    # form arrays of only finite values (quiver plotting doesn't handle NANs well)
     lat = vvels.lat[np.isfinite(vvels.vlos[idx])]
     lon = vvels.lon[np.isfinite(vvels.vlos[idx])]
     alt = vvels.alt[np.isfinite(vvels.vlos[idx])]/1000.
@@ -28,6 +31,24 @@ def plot_raw():
 
     x, y, z = cc.geodetic_to_cartesian(lat, lon, alt)
     vx, vy, vz = cc.vector_geodetic_to_cartesian(kn*vlos, ke*vlos, kz*vlos, lat, lon, alt)
+
+    # calculate vector velocities
+    vvels.transform()
+    vvels.bin_data()
+    vvels.get_integration_periods()
+    vvels.compute_vectors()
+    vvels.compute_geodetic_output()
+
+    # form arrays of only finite values
+    lato = vvels.gdlat[np.isfinite(vvels.Velocity_gd[idx,:,0])]
+    lono = vvels.gdlon[np.isfinite(vvels.Velocity_gd[idx,:,0])]
+    alto = vvels.gdalt[np.isfinite(vvels.Velocity_gd[idx,:,0])]
+    vv = vvels.Velocity_gd[idx,:,:]
+    vv = vv[np.isfinite(vv[:,0]),:]
+
+    xo, yo, zo = cc.geodetic_to_cartesian(lato, lono, alto)
+    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,0],vv[:,1],vv[:,2], lato, lono, alto)
+
 
 
     # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
@@ -43,6 +64,8 @@ def plot_raw():
     ax.scatter(x, y, z)
     ax.quiver(x, y, z, vx*scale, vy*scale, vz*scale, color=c)
 
+    ax.scatter(xo, yo, zo)
+    ax.quiver(xo, yo, zo, vxo*scale, vyo*scale, vzo*scale)
     # fig = plt.figure(figsize=(15,10))
     # ax1 = fig.add_subplot(121)
     # ax2 = fig.add_subplot(122,projection=ccrs.LambertConformal())

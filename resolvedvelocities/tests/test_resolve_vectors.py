@@ -14,6 +14,7 @@ def main():
     vvels.bin_data()
     vvels.get_integration_periods()
     vvels.compute_vectors()
+    vvels.compute_geodetic_output()
     vvels.save_output()
 
 if __name__ == '__main__':
