@@ -6,6 +6,9 @@ import datetime as dt
 import configparser
 from apexpy import Apex
 
+# TODO:
+# - Make output bin coordinates independent arrays
+# - Use consistent notation for input/output parameters
 
 class ResolveVectors(object):
     def __init__(self):
@@ -120,7 +123,7 @@ class ResolveVectors(object):
         # bins defined in some way by initial config file
         # each bin has a specified MLAT/MLON
 
-        bin_edge_mlat = np.arange(65.0,69.0,0.5)
+        bin_edge_mlat = np.arange(65.0,67.0,0.25)
         self.data_bins = []
         for i in range(len(bin_edge_mlat)-1):
             center_mlat = (bin_edge_mlat[i]+bin_edge_mlat[i+1])/2.
@@ -191,7 +194,7 @@ class ResolveVectors(object):
         bin_mlon = [b['mlon'] for b in self.data_bins]
 
         # find Be3 value at each output bin location
-        Be3, __, __, __ = self.Apex.bvectors_apex(bin_mlat,bin_mlon,300.,coords='apex')
+        Be3, __, __, __ = self.Apex.bvectors_apex(bin_mlat,bin_mlon,200.,coords='apex')
         # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
@@ -205,7 +208,30 @@ class ResolveVectors(object):
 
     def compute_geodetic_output(self):
         # map velocity and electric field to get an array at different altitudes
-        pass
+
+        alt = 200.  # for now, just calculate vectors at a set altitude
+
+        # get bin locations in magnetic corodinates
+        bin_mlat = np.array([b['mlat'] for b in self.data_bins])
+        bin_mlon = np.array([b['mlon'] for b in self.data_bins])
+
+        # calculate bin locations in geodetic coordinates
+        gdlat, gdlon, err = self.Apex.apex2geo(bin_mlat, bin_mlon, alt)
+        self.gdlat = gdlat
+        self.gdlon = gdlon
+        self.gdalt = np.full(gdlat.shape, alt)
+
+        # apex basis vectors in geodetic coordinates [e n u]
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(bin_mlat, bin_mlon, alt, coords='apex')
+
+        e = np.array([e1,e2,e3]).T
+        self.Velocity_gd = np.einsum('ijk,...ik->...ij',e,self.Velocity)
+        self.VelocityCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',e,self.VelocityCovariance,e)
+
+        d = np.array([d1,d2,d3]).T
+        self.ElectricField_gd = np.einsum('ijk,...ik->...ij',d,self.ElectricField)
+        self.ElectricFieldCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',d,self.ElectricFieldCovariance,d)
+
 
     def save_output(self):
 
