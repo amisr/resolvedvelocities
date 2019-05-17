@@ -43,17 +43,19 @@ def plot_raw():
     lono = vvels.gdlon
     alto = vvels.gdalt
     vv = vvels.Velocity_gd[idx,:,:]
-    fout = np.isfinite(vv[:,0])
+    vmag = vvels.Vgd_mag[idx]
+    # fout = np.isfinite(vv[:,0])
+    fout = np.isfinite(vmag)
 
     xo, yo, zo = cc.geodetic_to_cartesian(lato, lono, alto)
     vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,0],vv[:,1],vv[:,2], lato, lono, alto)
 
 
-    # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
-    norm = Normalize(vmin=-500.,vmax=500.)
-    c = norm(vlos[np.isfinite(vlos)])
-    c = np.concatenate((c, np.repeat(c, 2)))
-    c = plt.cm.bwr(c)
+    # # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
+    # norm = Normalize(vmin=-500.,vmax=500.)
+    # c = norm(vlos[np.isfinite(vlos)])
+    # c = np.concatenate((c, np.repeat(c, 2)))
+    # c = plt.cm.bwr(c)
 
     scale = 100.
 
@@ -67,10 +69,22 @@ def plot_raw():
         ax.scatter(x[b['idx']], y[b['idx']], z[b['idx']], color=color)
 
     # plot input los vectors
+    # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
+    norm = Normalize(vmin=-500.,vmax=500.)
+    c = norm(vlos[np.isfinite(vlos)])
+    c = np.concatenate((c, np.repeat(c, 2)))
+    c = plt.cm.bwr(c)
+
     ax.quiver(x[fin], y[fin], z[fin], vx[fin]*scale, vy[fin]*scale, vz[fin]*scale, color=c)
 
     # plot output resolved vectors
-    ax.quiver(xo[fout], yo[fout], zo[fout], vxo[fout]*scale, vyo[fout]*scale, vzo[fout]*scale)
+    # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
+    norm = Normalize(vmin=0.,vmax=1000.)
+    c = norm(vmag[np.isfinite(vmag)])
+    c = np.concatenate((c, np.repeat(c, 2)))
+    c = plt.cm.Greys(c)
+
+    ax.quiver(xo[fout], yo[fout], zo[fout], vxo[fout]*scale, vyo[fout]*scale, vzo[fout]*scale, color=c)
 
     # fig = plt.figure(figsize=(15,10))
     # ax1 = fig.add_subplot(121)

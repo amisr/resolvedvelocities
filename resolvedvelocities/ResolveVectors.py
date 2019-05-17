@@ -232,6 +232,10 @@ class ResolveVectors(object):
         self.ElectricField_gd = np.einsum('ijk,...ik->...ij',d,self.ElectricField)
         self.ElectricFieldCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',d,self.ElectricFieldCovariance,d)
 
+        # calculate vector magnitude
+        self.Vgd_mag = np.linalg.norm(self.Velocity_gd,axis=-1)
+        self.Egd_mag = np.linalg.norm(self.ElectricField_gd,axis=-1)
+
 
     def save_output(self):
 
