@@ -18,16 +18,16 @@ def plot_raw():
     vvels.read_data()
     vvels.filter_data()
 
-    idx = 20
+    idx = 40
 
-    # form arrays of only finite values (quiver plotting doesn't handle NANs well)
-    lat = vvels.lat[np.isfinite(vvels.vlos[idx])]
-    lon = vvels.lon[np.isfinite(vvels.vlos[idx])]
-    alt = vvels.alt[np.isfinite(vvels.vlos[idx])]/1000.
-    ke = vvels.ke[np.isfinite(vvels.vlos[idx])]
-    kn = vvels.kn[np.isfinite(vvels.vlos[idx])]
-    kz = vvels.kz[np.isfinite(vvels.vlos[idx])]
-    vlos = vvels.vlos[idx][np.isfinite(vvels.vlos[idx])]
+    lat = vvels.lat
+    lon = vvels.lon
+    alt = vvels.alt/1000.
+    ke = vvels.ke
+    kn = vvels.kn
+    kz = vvels.kz
+    vlos = vvels.vlos[idx]
+    fin = np.isfinite(vlos)
 
     x, y, z = cc.geodetic_to_cartesian(lat, lon, alt)
     vx, vy, vz = cc.vector_geodetic_to_cartesian(kn*vlos, ke*vlos, kz*vlos, lat, lon, alt)
@@ -39,21 +39,19 @@ def plot_raw():
     vvels.compute_vectors()
     vvels.compute_geodetic_output()
 
-    # form arrays of only finite values
-    lato = vvels.gdlat[np.isfinite(vvels.Velocity_gd[idx,:,0])]
-    lono = vvels.gdlon[np.isfinite(vvels.Velocity_gd[idx,:,0])]
-    alto = vvels.gdalt[np.isfinite(vvels.Velocity_gd[idx,:,0])]
+    lato = vvels.gdlat
+    lono = vvels.gdlon
+    alto = vvels.gdalt
     vv = vvels.Velocity_gd[idx,:,:]
-    vv = vv[np.isfinite(vv[:,0]),:]
+    fout = np.isfinite(vv[:,0])
 
     xo, yo, zo = cc.geodetic_to_cartesian(lato, lono, alto)
     vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,0],vv[:,1],vv[:,2], lato, lono, alto)
 
 
-
     # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
     norm = Normalize(vmin=-500.,vmax=500.)
-    c = norm(vlos)
+    c = norm(vlos[np.isfinite(vlos)])
     c = np.concatenate((c, np.repeat(c, 2)))
     c = plt.cm.bwr(c)
 
@@ -61,11 +59,19 @@ def plot_raw():
 
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111,projection='3d')
-    ax.scatter(x, y, z)
-    ax.quiver(x, y, z, vx*scale, vy*scale, vz*scale, color=c)
 
-    ax.scatter(xo, yo, zo)
-    ax.quiver(xo, yo, zo, vxo*scale, vyo*scale, vzo*scale)
+    # plot input and output points color coded with bin
+    for i,b in enumerate(vvels.data_bins):
+        color = next(ax._get_lines.prop_cycler)['color']
+        ax.scatter(xo[i], yo[i], zo[i], color=color)
+        ax.scatter(x[b['idx']], y[b['idx']], z[b['idx']], color=color)
+
+    # plot input los vectors
+    ax.quiver(x[fin], y[fin], z[fin], vx[fin]*scale, vy[fin]*scale, vz[fin]*scale, color=c)
+
+    # plot output resolved vectors
+    ax.quiver(xo[fout], yo[fout], zo[fout], vxo[fout]*scale, vyo[fout]*scale, vzo[fout]*scale)
+
     # fig = plt.figure(figsize=(15,10))
     # ax1 = fig.add_subplot(121)
     # ax2 = fig.add_subplot(122,projection=ccrs.LambertConformal())
