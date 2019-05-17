@@ -100,9 +100,45 @@ def plot_raw():
 
     plt.show()
 
-# check ke, kn, kz
-# in ECEF, bin location minus radar location
-# kvec for every bin in beam should be the same
+
+def plot_mag():
+
+    vvels = rv.ResolveVectors()
+
+    idx = 40
+
+    # get input data
+    vvels.read_data()
+    vvels.filter_data()
+    vvels.transform()
+    vvels.bin_data()
+    vvels.get_integration_periods()
+    vvels.compute_vectors()
+
+    A = vvels.A
+    vv = vvels.Velocity[idx]
+
+    mlon_out = np.array([b['mlon'] for b in vvels.data_bins])
+    mlat_out = np.array([b['mlat'] for b in vvels.data_bins])
+
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111)
+
+    scale = 0.001
+
+    # ax.scatter(vvels.mlon, vvels.mlat)
+    # plot input and output points color coded with bin
+    for i,b in enumerate(vvels.data_bins):
+        color = next(ax._get_lines.prop_cycler)['color']
+        ax.scatter(b['mlon'], b['mlat'], color=color)
+        ax.scatter(vvels.mlon[b['idx']], vvels.mlat[b['idx']], color=color)
+
+    ax.quiver(vvels.mlon, vvels.mlat, A[:,0]*scale, A[:,1]*scale)
+
+    ax.quiver(mlon_out, mlat_out, vv[:,0]*scale, vv[:,1]*scale)
+
+
+    plt.show()
 
 def read_vvels_file(filename):
     

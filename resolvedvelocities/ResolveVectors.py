@@ -123,7 +123,7 @@ class ResolveVectors(object):
         # bins defined in some way by initial config file
         # each bin has a specified MLAT/MLON
 
-        bin_edge_mlat = np.arange(65.0,67.0,0.25)
+        bin_edge_mlat = np.arange(64.0,68.0,0.25)
         self.data_bins = []
         for i in range(len(bin_edge_mlat)-1):
             center_mlat = (bin_edge_mlat[i]+bin_edge_mlat[i+1])/2.
