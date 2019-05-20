@@ -63,10 +63,10 @@ def plot_raw():
     ax = fig.add_subplot(111,projection='3d')
 
     # plot input and output points color coded with bin
-    for i,b in enumerate(vvels.data_bins):
+    for i,bidx in enumerate(vvels.bin_idx):
         color = next(ax._get_lines.prop_cycler)['color']
         ax.scatter(xo[i], yo[i], zo[i], color=color)
-        ax.scatter(x[b['idx']], y[b['idx']], z[b['idx']], color=color)
+        ax.scatter(x[bidx], y[bidx], z[bidx], color=color)
 
     # plot input los vectors
     # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
@@ -118,24 +118,21 @@ def plot_mag():
     A = vvels.A
     vv = vvels.Velocity[idx]
 
-    mlon_out = np.array([b['mlon'] for b in vvels.data_bins])
-    mlat_out = np.array([b['mlat'] for b in vvels.data_bins])
 
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111)
 
     scale = 0.001
 
-    # ax.scatter(vvels.mlon, vvels.mlat)
     # plot input and output points color coded with bin
-    for i,b in enumerate(vvels.data_bins):
+    for mlat,mlon,bidx in zip(vvels.bin_mlat, vvels.bin_mlon, vvels.bin_idx):
         color = next(ax._get_lines.prop_cycler)['color']
-        ax.scatter(b['mlon'], b['mlat'], color=color)
-        ax.scatter(vvels.mlon[b['idx']], vvels.mlat[b['idx']], color=color)
+        ax.scatter(mlon, mlat, color=color)
+        ax.scatter(vvels.mlon[bidx], vvels.mlat[bidx], color=color)
 
     ax.quiver(vvels.mlon, vvels.mlat, A[:,0]*scale, A[:,1]*scale)
 
-    ax.quiver(mlon_out, mlat_out, vv[:,0]*scale, vv[:,1]*scale)
+    ax.quiver(vvels.bin_mlon, vvels.bin_mlat, vv[:,0]*scale, vv[:,1]*scale)
 
 
     plt.show()

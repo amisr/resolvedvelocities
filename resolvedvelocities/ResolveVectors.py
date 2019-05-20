@@ -124,12 +124,10 @@ class ResolveVectors(object):
         # each bin has a specified MLAT/MLON
 
         bin_edge_mlat = np.arange(64.0,68.0,0.25)
-        self.data_bins = []
-        for i in range(len(bin_edge_mlat)-1):
-            center_mlat = (bin_edge_mlat[i]+bin_edge_mlat[i+1])/2.
-            center_mlon = np.nanmean(self.mlon)
-            idx = np.argwhere((self.mlat>=bin_edge_mlat[i]) & (self.mlat<bin_edge_mlat[i+1]))
-            self.data_bins.append({'mlat':center_mlat,'mlon':center_mlon,'idx':idx.flatten()})
+        self.bin_mlat = (bin_edge_mlat[:-1]+bin_edge_mlat[1:])/2.
+        self.bin_mlon = np.full(self.bin_mlat.shape, np.nanmean(self.mlon))
+        self.bin_idx = [np.argwhere((self.mlat>=bin_edge_mlat[i]) & (self.mlat<bin_edge_mlat[i+1])).flatten() for i in range(len(bin_edge_mlat)-1)]
+
 
 
     # times: this is the the /Time/UnixTime array converted to datetime objects, so shape (num_recs,2)
@@ -167,13 +165,13 @@ class ResolveVectors(object):
             Vel = []
             SigmaV = []
             # loop over spatial bins
-            for b in self.data_bins:
+            for bidx in self.bin_idx:
 
                 # pull out the line of slight measurements for the time period and bins
-                vlos = self.vlos[ip['idx'],b['idx'][:,np.newaxis]].flatten()
-                dvlos = self.dvlos[ip['idx'],b['idx'][:,np.newaxis]].flatten()
+                vlos = self.vlos[ip['idx'],bidx[:,np.newaxis]].flatten()
+                dvlos = self.dvlos[ip['idx'],bidx[:,np.newaxis]].flatten()
                 # pull out the k vectors for the bins and duplicate so they match the number of time measurements
-                A = np.repeat(self.A[b['idx']], len(ip['idx']), axis=0)
+                A = np.repeat(self.A[bidx], len(ip['idx']), axis=0)
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
                 V, SigV = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
@@ -190,11 +188,8 @@ class ResolveVectors(object):
 
 
         # calculate electric field
-        bin_mlat = [b['mlat'] for b in self.data_bins]
-        bin_mlon = [b['mlon'] for b in self.data_bins]
-
         # find Be3 value at each output bin location
-        Be3, __, __, __ = self.Apex.bvectors_apex(bin_mlat,bin_mlon,200.,coords='apex')
+        Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,200.,coords='apex')
         # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
@@ -211,18 +206,14 @@ class ResolveVectors(object):
 
         alt = 200.  # for now, just calculate vectors at a set altitude
 
-        # get bin locations in magnetic corodinates
-        bin_mlat = np.array([b['mlat'] for b in self.data_bins])
-        bin_mlon = np.array([b['mlon'] for b in self.data_bins])
-
         # calculate bin locations in geodetic coordinates
-        gdlat, gdlon, err = self.Apex.apex2geo(bin_mlat, bin_mlon, alt)
+        gdlat, gdlon, err = self.Apex.apex2geo(self.bin_mlat, self.bin_mlon, alt)
         self.gdlat = gdlat
         self.gdlon = gdlon
         self.gdalt = np.full(gdlat.shape, alt)
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(bin_mlat, bin_mlon, alt, coords='apex')
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(self.bin_mlat, self.bin_mlon, alt, coords='apex')
 
         e = np.array([e1,e2,e3]).T
         self.Velocity_gd = np.einsum('ijk,...ik->...ij',e,self.Velocity)
@@ -240,8 +231,6 @@ class ResolveVectors(object):
     def save_output(self):
 
         out_time = [[t['start'],t['end']] for t in self.integration_periods]
-        out_mlat = [b['mlat'] for b in self.data_bins]
-        out_mlon = [b['mlon'] for b in self.data_bins]
 
         # save output file
         filename = 'test_vvels.h5'
@@ -253,10 +242,10 @@ class ResolveVectors(object):
             file.set_node_attr('/UnixTime', 'Units', 's')
             file.create_group('/', 'Magnetic')
             file.create_group('/', 'Geographic')
-            file.create_array('/Magnetic', 'MagneticLatitude', out_mlat)
+            file.create_array('/Magnetic', 'MagneticLatitude', self.bin_mlat)
             file.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
             file.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
-            file.create_array('/Magnetic','MagneticLongitude',out_mlon)
+            file.create_array('/Magnetic','MagneticLongitude', self.bin_mlon)
             file.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
             file.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
             file.create_array('/Magnetic', 'Velocity', self.Velocity)
