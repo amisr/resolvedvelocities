@@ -7,19 +7,18 @@ import configparser
 from apexpy import Apex
 
 # TODO:
-# - Make output bin coordinates independent arrays
 # - Use consistent notation for input/output parameters
 
 class ResolveVectors(object):
     def __init__(self):
         # read config file
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(allow_no_values=True)
         config.read('config.ini')
 
         self.datafile = config.get('DEFAULT', 'DATAFILE')
         self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
         self.neMin = eval(config.get('DEFAULT', 'NEMIN'))
-        self.integration_time = eval(config.get('DEFAULT', 'INTTIME'))
+        self.integration_time = config.getfloat('DEFAULT', 'INTTIME', fallback=None)
         self.covar = eval(config.get('DEFAULT', 'COVAR'))
         self.ppp = eval(config.get('DEFAULT', 'PPP'))
         self.minalt = eval(config.get('DEFAULT', 'MINALT'))
@@ -130,27 +129,36 @@ class ResolveVectors(object):
 
 
 
-    # times: this is the the /Time/UnixTime array converted to datetime objects, so shape (num_recs,2)
-    # integration_time:  this is the amount of seconds to integrate
     def get_integration_periods(self):
-        self.integration_periods = []
-        idx = []
-        start_time = None
-        num_times = len(self.time)
-        for i,time_pair in enumerate(self.time):
-            temp_start_time, temp_end_time = time_pair
-            if start_time is None:
-                start_time = temp_start_time
-            time_diff = temp_end_time - start_time
-            idx.append(i)
 
-            if (time_diff >= self.integration_time) or (i == num_times -1):
-                self.integration_periods.append({'start':start_time, 'end':temp_end_time, 'idx':np.array(idx)})
-                idx = []
-                start_time = None
-                continue
+        if not self.integration_time:
+            # if no integration time specified, use original time periods of input files
+            self.int_period = self.time
+            self.int_idx = range(len(self.time))
 
+        else:
+            # if an integration time is given, calculate new time periods
+            self.int_period = []
+            self.int_idx = []
 
+            idx = []
+            start_time = None
+            num_times = len(self.time)
+            for i,time_pair in enumerate(self.time):
+                temp_start_time, temp_end_time = time_pair
+                if start_time is None:
+                    start_time = temp_start_time
+                time_diff = temp_end_time - start_time
+                idx.append(i)
+
+                if (time_diff >= self.integration_time) or (i == num_times -1):
+                    self.int_period.append([start_time, temp_end_time])
+                    self.int_idx.append(np.array(idx))
+                    idx = []
+                    start_time = None
+                    continue
+
+            self.int_period = np.array(self.int_period)
 
 
     def compute_vectors(self):
@@ -161,17 +169,23 @@ class ResolveVectors(object):
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
-        for ip in self.integration_periods:
+        for tidx in self.int_idx:
             Vel = []
             SigmaV = []
             # loop over spatial bins
             for bidx in self.bin_idx:
 
                 # pull out the line of slight measurements for the time period and bins
-                vlos = self.vlos[ip['idx'],bidx[:,np.newaxis]].flatten()
-                dvlos = self.dvlos[ip['idx'],bidx[:,np.newaxis]].flatten()
+                vlos = self.vlos[tidx,bidx[:,np.newaxis]].flatten()
+                dvlos = self.dvlos[tidx,bidx[:,np.newaxis]].flatten()
                 # pull out the k vectors for the bins and duplicate so they match the number of time measurements
-                A = np.repeat(self.A[bidx], len(ip['idx']), axis=0)
+                if self.integration_time:
+                    A = np.repeat(self.A[bidx], len(tidx), axis=0)
+                else:
+                    # if no post integraiton, k vectors do not need to be duplicated
+                    A = self.A[bidx]
+
+                # print len(tidx), self.A[bidx].shape, A.shape
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
                 V, SigV = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
@@ -230,13 +244,13 @@ class ResolveVectors(object):
 
     def save_output(self):
 
-        out_time = [[t['start'],t['end']] for t in self.integration_periods]
+        # out_time = [[t['start'],t['end']] for t in self.integration_periods]
 
         # save output file
         filename = 'test_vvels.h5'
 
         with tables.open_file(filename,mode='w') as file:
-            file.create_array('/','UnixTime',out_time)
+            file.create_array('/','UnixTime', self.int_period)
             file.set_node_attr('/UnixTime', 'TITLE', 'Unix Time')
             file.set_node_attr('/UnixTime', 'Size', 'Nrecords x 2 (start and end of integration)')
             file.set_node_attr('/UnixTime', 'Units', 's')

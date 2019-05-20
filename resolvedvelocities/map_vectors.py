@@ -17,6 +17,9 @@ def plot_raw():
     # get input data
     vvels.read_data()
     vvels.filter_data()
+    vvels.transform()
+    vvels.bin_data()
+    vvels.get_integration_periods()
 
     idx = 40
 
@@ -26,16 +29,18 @@ def plot_raw():
     ke = vvels.ke
     kn = vvels.kn
     kz = vvels.kz
-    vlos = vvels.vlos[idx]
-    fin = np.isfinite(vlos)
+    if vvels.integration_time:
+        # if post integration specified, get vlos for all times in integration period
+        vlos = vvels.vlos[vvels.int_idx[idx]]
+    else:
+        # if no post integration, just get vlos for single index
+        vlos = vvels.vlos[idx][None,:]
+
 
     x, y, z = cc.geodetic_to_cartesian(lat, lon, alt)
-    vx, vy, vz = cc.vector_geodetic_to_cartesian(kn*vlos, ke*vlos, kz*vlos, lat, lon, alt)
+
 
     # calculate vector velocities
-    vvels.transform()
-    vvels.bin_data()
-    vvels.get_integration_periods()
     vvels.compute_vectors()
     vvels.compute_geodetic_output()
 
@@ -44,18 +49,12 @@ def plot_raw():
     alto = vvels.gdalt
     vv = vvels.Velocity_gd[idx,:,:]
     vmag = vvels.Vgd_mag[idx]
-    # fout = np.isfinite(vv[:,0])
+
     fout = np.isfinite(vmag)
 
     xo, yo, zo = cc.geodetic_to_cartesian(lato, lono, alto)
     vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,0],vv[:,1],vv[:,2], lato, lono, alto)
 
-
-    # # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
-    # norm = Normalize(vmin=-500.,vmax=500.)
-    # c = norm(vlos[np.isfinite(vlos)])
-    # c = np.concatenate((c, np.repeat(c, 2)))
-    # c = plt.cm.bwr(c)
 
     scale = 100.
 
@@ -68,23 +67,14 @@ def plot_raw():
         ax.scatter(xo[i], yo[i], zo[i], color=color)
         ax.scatter(x[bidx], y[bidx], z[bidx], color=color)
 
-    # plot input los vectors
-    # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
-    norm = Normalize(vmin=-500.,vmax=500.)
-    c = norm(vlos[np.isfinite(vlos)])
-    c = np.concatenate((c, np.repeat(c, 2)))
-    c = plt.cm.bwr(c)
-
-    ax.quiver(x[fin], y[fin], z[fin], vx[fin]*scale, vy[fin]*scale, vz[fin]*scale, color=c)
+    # plot input los vectors - loop over differnt post integration records
+    for v in vlos:
+        fin = np.isfinite(v)
+        vx, vy, vz = cc.vector_geodetic_to_cartesian(kn*v, ke*v, kz*v, lat, lon, alt)
+        ax.quiver(x[fin], y[fin], z[fin], vx[fin]*scale, vy[fin]*scale, vz[fin]*scale, color=quiver_color(v[fin],-500.,500.,'bwr'))
 
     # plot output resolved vectors
-    # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
-    norm = Normalize(vmin=0.,vmax=1000.)
-    c = norm(vmag[np.isfinite(vmag)])
-    c = np.concatenate((c, np.repeat(c, 2)))
-    c = plt.cm.Greys(c)
-
-    ax.quiver(xo[fout], yo[fout], zo[fout], vxo[fout]*scale, vyo[fout]*scale, vzo[fout]*scale, color=c)
+    ax.quiver(xo[fout], yo[fout], zo[fout], vxo[fout]*scale, vyo[fout]*scale, vzo[fout]*scale, color=quiver_color(vmag[fout],0.,1000.,'Greys'))
 
     # fig = plt.figure(figsize=(15,10))
     # ax1 = fig.add_subplot(121)
@@ -99,6 +89,14 @@ def plot_raw():
     # ax2.quiver(vvels.lon, vvels.lat, vvels.ke, vvels.kn, width=0.003, transform=ccrs.PlateCarree())
 
     plt.show()
+
+def quiver_color(v,vmin,vmax,cmap):
+    # get quiver colors (nessisary because 3D quiver routine does wierd stuff with arrow heads)
+    norm = Normalize(vmin=vmin,vmax=vmax)
+    c = norm(v)
+    c = np.concatenate((c, np.repeat(c, 2)))
+    c = getattr(plt.cm,cmap)(c)
+    return c    
 
 
 def plot_mag():
