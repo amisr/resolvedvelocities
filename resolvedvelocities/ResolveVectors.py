@@ -24,8 +24,7 @@ class ResolveVectors(object):
         self.minalt = eval(config.get('DEFAULT', 'MINALT'))
         self.maxalt = eval(config.get('DEFAULT', 'MAXALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
-
-        self.upB_beamcode = 64157
+        self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
 
         # list of beam codes to use
 
@@ -61,13 +60,12 @@ class ResolveVectors(object):
             self.ne = file.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # get up-B beam velocities for ion outflow correction
-            print self.BeamCodes
-            upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
-            upB_alt = file.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
-            upB_vlos = file.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
-            upB_dvlos = file.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
-            print upB_idx, upB_alt.shape, upB_vlos.shape, upB_dvlos.shape
-            self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
+            if self.upB_beamcode:
+                upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
+                upB_alt = file.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
+                upB_vlos = file.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                upB_dvlos = file.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
 
 
 
@@ -112,8 +110,8 @@ class ResolveVectors(object):
 
         # find magnetic latitude and longitude
         mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
-        mlat = np.insert(mlat,replace_nans,np.nan)
-        mlon = np.insert(mlon,replace_nans,np.nan)
+        self.mlat = np.insert(mlat,replace_nans,np.nan)
+        self.mlon = np.insert(mlon,replace_nans,np.nan)
 
         # apex basis vectors in geodetic coordinates [e n u]
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
@@ -126,22 +124,27 @@ class ResolveVectors(object):
         kvec = np.array([self.ke, self.kn, self.kz]).T
 
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
-        A = np.einsum('ij,ijk->ik', kvec, d)
+        self.A = np.einsum('ij,ijk->ik', kvec, d)
 
-        self.mlat = mlat
-        self.mlon = mlon
-        self.A = A
+        # calculate scaling factor D, used for ion outflow correction (Richmond, 1995 eqn. 3.15)
+        d1_cross_d2 = np.cross(d1.T,d2.T).T
+        self.D = np.sqrt(np.sum(d1_cross_d2**2,axis=0))
+
 
 
     def ion_outflow_correction(self):
-        print self.upB['alt'], self.alt
-        print self.upB['vlos'].shape
-        upB_alt = self.upB['alt']
 
-        for t in range(len(self.time)):
-            upB_vlos = self.upB['vlos'][t]
-            vion = np.interp(self.alt,upB_alt,upB_vlos)
-            print vion.shape, self.vlos[t].shape, self.A.shape
+        if self.upB_beamcode:
+            # correct the los velocities for the entire array at each time
+            for t in range(len(self.time)):
+                # interpolate velocities from up B beam to all other measurements 
+                vion, dvion = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
+                # LoS velocity correction to remove ion outflow
+                self.vlos[t] = self.vlos[t] + self.D*self.A[:,2]*vion
+                # corrected error in new LoS velocities
+                self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.D**2*self.A[:,2]**2*dvion**2)
+
+
 
     def bin_data(self):
         # divide data into an arbitrary number of bins
@@ -333,3 +336,23 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
         SigV = np.full((3,3),np.nan)
 
     return V, SigV
+
+
+def lin_interp(x, xp, fp, dfp):
+    # Piecewise linear interpolation routine that returns interpolated values and their errors
+
+    # find the indicies of xp that bound each value in x
+    # Note: where x is out of range of xp, -1 is used as a place holder
+    #   This provides a valid "dummy" index for the array calculations and can be used to identify values to nan in final output
+    i = np.array([np.argwhere((xi>=xp[:-1]) & (xi<xp[1:])).flatten()[0] if ((xi>=np.nanmin(xp)) & (xi<np.nanmax(xp))) else -1 for xi in x])
+    # calculate X
+    X = (x-xp[i])/(xp[i+1]-xp[i])
+    # calculate interpolated values
+    f = fp[i] + (fp[i+1]-fp[i])*X
+    # calculate interpolation error
+    df = np.sqrt((1-X)**2*dfp[i]**2 + X**2*dfp[i+1]**2)
+    # replace out-of-range values with NaN
+    f[i<0] = np.nan
+    df[i<0] = np.nan
+
+    return f, df
