@@ -25,6 +25,7 @@ class ResolveVectors(object):
         self.maxalt = eval(config.get('DEFAULT', 'MAXALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
         self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
+        self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
 
         # list of beam codes to use
 
@@ -52,12 +53,16 @@ class ResolveVectors(object):
 
             # line of sight velocity and error
             self.vlos = file.get_node('/FittedParams/Fits')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
-            # vlos1 = np.swapaxes(vlos1,0,1)
             self.dvlos = file.get_node('/FittedParams/Errors')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
-            # dvlos1 = np.swapaxes(dvlos1,0,1)
 
-            # density (for filtering)
+            # density (for filtering and ion upflow)
             self.ne = file.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+
+            # temperature (for ion upflow)
+            self.Te = file.get_node('/FittedParams/Fits')[:,bm_idx,:,5,1].reshape((len(self.time[:,0]),len(self.alt)))
+            Ts = file.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,1]
+            frac = file.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,0]
+            self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
 
             # get up-B beam velocities for ion outflow correction
             if self.upB_beamcode:
@@ -132,17 +137,22 @@ class ResolveVectors(object):
 
 
 
-    def ion_outflow_correction(self):
+    def ion_upflow_correction(self):
 
-        if self.upB_beamcode:
-            # correct the los velocities for the entire array at each time
-            for t in range(len(self.time)):
+        # correct the los velocities for the entire array at each time
+        for t in range(len(self.time)):
+            if self.ionup == 'UPB':
                 # interpolate velocities from up B beam to all other measurements 
                 vion, dvion = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
-                # LoS velocity correction to remove ion outflow
-                self.vlos[t] = self.vlos[t] + self.D*self.A[:,2]*vion
-                # corrected error in new LoS velocities
-                self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.D**2*self.A[:,2]**2*dvion**2)
+            elif self.ionup == 'EMP':
+                # use empirical method to find ion upflow
+                # NOTE: NOT DEVELOPED YET!!!
+                vion, dvion = ion_upflow(self.Te, self.Ti, self.ne, self.alt)
+
+            # LoS velocity correction to remove ion upflow
+            self.vlos[t] = self.vlos[t] + self.D*self.A[:,2]*vion
+            # corrected error in new LoS velocities
+            self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.D**2*self.A[:,2]**2*dvion**2)
 
 
 
@@ -356,3 +366,7 @@ def lin_interp(x, xp, fp, dfp):
     df[i<0] = np.nan
 
     return f, df
+
+def ion_upflow(Te,Ti,ne):
+    # calculate ion upflow empirically using the Lu/Zou method (not published yet?)
+    pass

@@ -11,7 +11,7 @@ def main():
     vvels.read_data()
     vvels.filter_data()
     vvels.transform()
-    vvels.ion_outflow_correction()
+    vvels.ion_upflow_correction()
     vvels.bin_data()
     vvels.get_integration_periods()
     vvels.compute_vectors()
