@@ -25,6 +25,8 @@ class ResolveVectors(object):
         self.maxalt = eval(config.get('DEFAULT', 'MAXALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
 
+        self.upB_beamcode = 64157
+
         # list of beam codes to use
 
     def read_data(self):
@@ -58,6 +60,16 @@ class ResolveVectors(object):
             # density (for filtering)
             self.ne = file.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
+            # get up-B beam velocities for ion outflow correction
+            print self.BeamCodes
+            upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
+            upB_alt = file.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
+            upB_vlos = file.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+            upB_dvlos = file.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+            print upB_idx, upB_alt.shape, upB_vlos.shape, upB_dvlos.shape
+            self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
+
+
 
     def filter_data(self):
         # filter and adjust data so it is appropriate for Bayesian reconstruction
@@ -88,25 +100,31 @@ class ResolveVectors(object):
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
-        # remove nans from input position arrays (apexpy can't handle input nans)
+        # find indices where nans will be removed and should be inserted in new arrays
+        replace_nans = np.array([r-i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())])
+
         glat = self.lat[np.isfinite(self.lat)]
         glon = self.lon[np.isfinite(self.lon)]
-        galt = self.alt[np.isfinite(self.alt)]
-        keg = self.ke[np.isfinite(self.ke)]
-        kng = self.kn[np.isfinite(self.kn)]
-        kzg = self.kz[np.isfinite(self.kz)]
+        galt = self.alt[np.isfinite(self.alt)]/1000.
 
         # intialize apex coordinates
         self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
 
         # find magnetic latitude and longitude
-        mlat, mlon = self.Apex.geo2apex(glat, glon, galt/1000.)
+        mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
+        mlat = np.insert(mlat,replace_nans,np.nan)
+        mlon = np.insert(mlon,replace_nans,np.nan)
+
+        # apex basis vectors in geodetic coordinates [e n u]
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
+        d1 = np.insert(d1,replace_nans,np.nan,axis=1)
+        d2 = np.insert(d2,replace_nans,np.nan,axis=1)
+        d3 = np.insert(d3,replace_nans,np.nan,axis=1)
+        d = np.array([d1,d2,d3]).T
 
         # kvec in geodetic coordinates [e n u]
-        kvec = np.array([keg, kng, kzg]).T
-        # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt/1000.)
-        d = np.array([d1,d2,d3]).T
+        kvec = np.array([self.ke, self.kn, self.kz]).T
+
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
         A = np.einsum('ij,ijk->ik', kvec, d)
 
@@ -115,7 +133,15 @@ class ResolveVectors(object):
         self.A = A
 
 
+    def ion_outflow_correction(self):
+        print self.upB['alt'], self.alt
+        print self.upB['vlos'].shape
+        upB_alt = self.upB['alt']
 
+        for t in range(len(self.time)):
+            upB_vlos = self.upB['vlos'][t]
+            vion = np.interp(self.alt,upB_alt,upB_vlos)
+            print vion.shape, self.vlos[t].shape, self.A.shape
 
     def bin_data(self):
         # divide data into an arbitrary number of bins
