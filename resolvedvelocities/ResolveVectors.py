@@ -10,10 +10,13 @@ from apexpy import Apex
 # - Use consistent notation for input/output parameters
 
 class ResolveVectors(object):
-    def __init__(self):
+    def __init__(self, config=None):
+        self.read_config(config)
+
+    def read_config(self, config_file):
         # read config file
         config = configparser.ConfigParser(allow_no_values=True)
-        config.read('config.ini')
+        config.read(config_file)
 
         self.datafile = config.get('DEFAULT', 'DATAFILE')
         self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
