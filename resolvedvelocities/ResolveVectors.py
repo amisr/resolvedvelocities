@@ -276,9 +276,9 @@ class ResolveVectors(object):
         self.ElectricField_gd = np.einsum('ijk,...ik->...ij',d,self.ElectricField)
         self.ElectricFieldCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',d,self.ElectricFieldCovariance,d)
 
-        # calculate vector magnitude
-        self.Vgd_mag = np.linalg.norm(self.Velocity_gd,axis=-1)
-        self.Egd_mag = np.linalg.norm(self.ElectricField_gd,axis=-1)
+        # calculate vector magnitude and direction
+        self.Vgd_mag, self.Vgd_mag_err, self.Vgd_dir, self.Vgd_dir_err = magnitude_direction(self.Velocity_gd, self.VelocityCovariance_gd, -e2.T)
+        self.Egd_mag, self.Egd_mag_err, self.Egd_dir, self.Egd_dir_err = magnitude_direction(self.ElectricField_gd, self.ElectricFieldCovariance_gd, -e2.T)
 
 
     def save_output(self):
@@ -370,3 +370,32 @@ def lin_interp(x, xp, fp, dfp):
 def ion_upflow(Te,Ti,ne):
     # calculate ion upflow empirically using the Lu/Zou method (not published yet?)
     pass
+
+def magnitude_direction(A,Sig,e):
+    # Calculate the magnitude of vector A and the clockwise angle between vectors e and A
+    # Also calculates corresponding errors
+    # A = vector
+    # Sig = covariance matrix for A
+    # e = vector to take the direction relative to
+    # This is all done with somewhat obtuse matrix algebra using einsum to prevent nested for loops
+    # Input vectors are assumed to have orthogonal components
+
+    AA = np.einsum('...i,...i->...', A, A)                  # dot product of A and A
+    ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)      # matrix multipy A*Sig*A
+    ee = np.einsum('...i,...i->...', e, e)                  # dot product of e and e
+    eA = np.einsum('...i,...i->...', e, A)                  # dot product of e and A
+
+    magnitude = np.sqrt(AA)
+    mag_err = np.sqrt(ASA/AA)
+
+    direction = np.arccos(eA/np.sqrt(ee*AA))
+    # resolve pi ambiguity
+    ambiguity = ee*AA-eA**2
+    direction[ambiguity<0] += np.pi
+
+    B = e[None,:]*(AA[:,:,None]-A**2)                       # Bi = ei(A*A-Ai^2)
+    BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)      # matrix multipy B*Sig*B
+    dir_err = np.sqrt(BSB/(AA**2*ambiguity))
+
+    return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
+
