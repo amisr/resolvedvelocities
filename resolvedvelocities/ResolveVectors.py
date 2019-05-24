@@ -388,14 +388,16 @@ def magnitude_direction(A,Sig,e):
     magnitude = np.sqrt(AA)
     mag_err = np.sqrt(ASA/AA)
 
-    direction = np.arccos(eA/np.sqrt(ee*AA))
-    # resolve pi ambiguity
-    ambiguity = ee*AA-eA**2
-    direction[ambiguity<0] += np.pi
+    # find ep, perpendicular to both e and geodetic up
+    ep = np.cross(e,np.array([0,0,1]))
+    epep = np.einsum('...i,...i->...', ep, ep)
+    epA = np.einsum('...i,...i->...', ep, A)
 
-    B = e[None,:]*(AA[:,:,None]-A**2)                       # Bi = ei(A*A-Ai^2)
+    direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
+
+    B = np.einsum('ij,...i->...ij',ep,eA)-np.einsum('ij,...i->...ij',e,epA)     # B = ep(e*A)-e(ep*A) = A x (ep x e)
     BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)      # matrix multipy B*Sig*B
-    dir_err = np.sqrt(BSB/(AA**2*ambiguity))
+    dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
 
