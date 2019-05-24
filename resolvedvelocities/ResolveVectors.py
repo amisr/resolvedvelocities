@@ -29,6 +29,9 @@ class ResolveVectors(object):
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
         self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
         self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
+        self.use_beams = config.get('DEFAULT', 'USE_BEAMS', fallback=None)
+        if self.use_beams:
+            self.use_beams = eval(self.use_beams)
 
         # list of beam codes to use
 
@@ -42,7 +45,11 @@ class ResolveVectors(object):
             # beam codes
             # define which beams to use (default is all)
             self.BeamCodes=file.get_node('/BeamCodes')[:,0]
-            bm_idx = np.arange(0,len(self.BeamCodes))
+            if self.use_beams:
+                bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
+            else:
+                bm_idx = np.arange(0,len(self.BeamCodes))
+            print bm_idx
 
             # geodetic location of each measurement
             self.alt = file.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
@@ -227,8 +234,6 @@ class ResolveVectors(object):
                     # if no post integraiton, k vectors do not need to be duplicated
                     A = self.A[bidx]
 
-                # print len(tidx), self.A[bidx].shape, A.shape
-
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
                 V, SigV = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
 
@@ -285,8 +290,6 @@ class ResolveVectors(object):
 
 
     def save_output(self):
-
-        # out_time = [[t['start'],t['end']] for t in self.integration_periods]
 
         # save output file
         filename = 'test_vvels.h5'

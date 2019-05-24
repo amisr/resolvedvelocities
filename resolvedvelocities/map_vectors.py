@@ -12,7 +12,7 @@ from matplotlib.colors import Normalize
 import coord_convert as cc
 
 def plot_raw():
-    vvels = rv.ResolveVectors()
+    vvels = rv.ResolveVectors(config='config.ini')
 
     # get input data
     vvels.read_data()
