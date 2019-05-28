@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath('../'))
 # import synthetic_data as synth
-from synthetic_data import Field
+from synthetic_data import Field, Radar
 import numpy as np
 
 def main():
@@ -11,6 +11,10 @@ def main():
 
     synth_field = Field(synth_grid[0], synth_grid[1], velocity, 300.)
 
+    az = [14.04,-154.30,-34.69,75.03]
+    el = [90.0, 77.5, 66.09, 65.56]
+    site = [65.13, -147.47, 0.213]
+    radar = Radar(site, az, el, 70.)
 
 if __name__ == '__main__':
     main()

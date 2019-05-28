@@ -54,3 +54,37 @@ class Field(object):
         self.interpVx = interpolate.LinearNDInterpolator(np.array([self.X, self.Y, self.Z]).T, self.Vx)
         self.interpVy = interpolate.LinearNDInterpolator(np.array([self.X, self.Y, self.Z]).T, self.Vy)
         self.interpVz = interpolate.LinearNDInterpolator(np.array([self.X, self.Y, self.Z]).T, self.Vz)
+
+
+class Radar(object):
+    def __init__(self, site, azimuth, elevation, range_step):
+
+        self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(site[0], site[1], site[2])
+        self.bin_locations(azimuth, elevation, range_step)
+
+    def bin_locations(self, az, el, rs):
+        # a lot of this can probably be handled more elegantly with clever broadcasting, but this works for now
+
+        ranges = np.arange(80.,800., rs)
+
+        self.X = []
+        self.Y = []
+        self.Z = []
+        self.kvec = []
+
+        for a, e in zip(az,el):
+            kx = np.cos(e)*np.sin(a)
+            ky = np.cos(e)*np.cos(a)
+            kz = np.sin(e)
+
+            self.X.append(kx*ranges + self.X0)
+            self.Y.append(ky*ranges + self.Y0)
+            self.Z.append(kz*ranges + self.Z0)
+            self.kvec.append(np.tile(np.array([kx, ky, kz]), (len(ranges),1)))
+
+        self.X = np.array(self.X)
+        self.Y = np.array(self.Y)
+        self.Z = np.array(self.Z)
+        self.kvec = np.array(self.kvec)
+
+
