@@ -10,3 +10,4 @@ import map_vectors as mv
 # print VE, E
 mv.plot_raw()
 # mv.plot_mag()
+mv.plot_synth()
