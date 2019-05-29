@@ -86,9 +86,6 @@ class Radar(object):
             ke = np.cos(e*np.pi/180.)*np.sin(a*np.pi/180.)
             kn = np.cos(e*np.pi/180.)*np.cos(a*np.pi/180.)
             ku = np.sin(e*np.pi/180.)
-            # self.ke.append(ke)
-            # self.kn.append(kn)
-            # self.kz.append(kz)
 
             kx, ky, kz = cc.vector_geodetic_to_cartesian(kn, ke, ku, self.site[0], self.site[1], self.site[2])
 
@@ -100,30 +97,16 @@ class Radar(object):
             self.Z.append(Z)
             self.kvec.append(np.tile(np.array([kx, ky, kz]), (len(ranges),1)))
 
-            # kn, ke, ku = cc.vector_cartesian_to_geodetic(kx, ky, kz, X, Y, Z)
-            # self.ke.append(ke)
-            # self.kn.append(kn)
-            # self.kz.append(kz)
-
         self.X = np.array(self.X)
         self.Y = np.array(self.Y)
         self.Z = np.array(self.Z)
         self.kvec = np.array(self.kvec)
-        # self.ke = np.array(self.ke)
-        # self.kn = np.array(self.kn)
-        # self.kz = np.array(self.kz)
-
-        # print self.X.shape, self.kvec.shape
 
 
     def geodetic_locations(self):
 
         self.lat, self.lon, self.alt = cc.cartesian_to_geodetic(self.X, self.Y, self.Z)
         self.kn, self.ke, self.kz = cc.vector_cartesian_to_geodetic(self.kvec[:,:,0], self.kvec[:,:,1], self.kvec[:,:,2], self.X, self.Y, self.Z)
-        # print self.lat.shape, self.kn.shape
-            # self.ke.append(ke)
-            # self.kn.append(kn)
-            # self.kz.append(kz)
 
 
 
@@ -143,14 +126,12 @@ def create_dataset(field, radar):
         Vlos.append(np.einsum('...i,...i->...',radar.kvec, Vvec))
     Vlos = np.array(Vlos)
 
-    print Vvec.shape, radar.kvec.shape, Vlos.shape
-    dVlos = np.full(Vlos.shape, 10.)
+    dVlos = np.full(Vlos.shape, 100.)
 
     # create output hdf5 file
     s = Vlos.shape
     fit_array = np.full((s[0],s[1],s[2],6,4),np.nan)
     fit_array[:,:,:,0,3] = Vlos
-    print fit_array.shape
 
     err_array = np.full((s[0],s[1],s[2],6,4),np.nan)
     err_array[:,:,:,0,3] = dVlos
