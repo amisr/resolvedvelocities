@@ -9,13 +9,12 @@ import tables
 class Field(object):
     def __init__(self, lat, lon, field, alt):
 
-        self.map_velocity_field([lat, lon], field, alt)
-
+        self.map_velocity_field(lat.flatten(), lon.flatten(), field.reshape(-1,field.shape[-1]), alt)
         self.convert_to_ECEF()
         self.create_interpolators()
 
 
-    def map_velocity_field(self, grid, field, alt_in):
+    def map_velocity_field(self, latitude, longitude, field, alt_in):
         # input: apex grid at altitude alt_in
         # geodetic components of velocity on grid
         # output: 3D geodetic latitude, longitude, altitude
@@ -30,18 +29,19 @@ class Field(object):
         lat_out = []
         lon_out = []
         alt_out = []
-        fs = field.shape
+
         for a in altitude:
 
-            full_field = A.map_V_to_height(grid[0].flatten(), grid[1].flatten(), alt_in, a, field.reshape((fs[0]*fs[1],fs[2])).T)
+            full_field = A.map_V_to_height(latitude, longitude, alt_in, a, field.T)
             field_out.append(full_field.T)
 
-            lat, lon, __ = A.apex2geo(grid[0].flatten(),grid[1].flatten(),a)
+            lat, lon, __ = A.apex2geo(latitude,longitude,a)
             lat_out.append(lat)
             lon_out.append(lon)
             alt_out.append(np.full(lat.shape,a))
 
-        self.field = np.array(field_out).reshape((fs[0]*fs[1]*len(altitude),fs[2]))
+        # flatten output
+        self.field = np.array(field_out).reshape(-1,np.array(field_out).shape[-1])
         self.latitude = np.array(lat_out).flatten()
         self.longitude = np.array(lon_out).flatten()
         self.altitude = np.array(alt_out).flatten()
