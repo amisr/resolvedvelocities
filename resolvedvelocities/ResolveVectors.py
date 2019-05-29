@@ -47,7 +47,7 @@ class ResolveVectors(object):
                 bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
             else:
                 bm_idx = np.arange(0,len(self.BeamCodes))
-            print bm_idx
+            # print bm_idx
 
             # geodetic location of each measurement
             self.alt = file.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
@@ -89,14 +89,11 @@ class ResolveVectors(object):
         self.vlos = self.vlos + self.chirp
 
         # discard data with low density
-        print self.ne.shape
         I = np.where((self.ne < self.neMin))
-        print I
         self.vlos[I] = np.nan
         self.dvlos[I] = np.nan
 
         # discard data outside of altitude range
-        print self.alt.shape, self.vlos.shape
         I = np.where(((self.alt < self.minalt*1000.) | (self.alt > self.maxalt*1000.)))
         self.vlos[:,I] = np.nan
         self.dvlos[:,I] = np.nan
@@ -176,7 +173,7 @@ class ResolveVectors(object):
         # bins defined in some way by initial config file
         # each bin has a specified MLAT/MLON
 
-        bin_edge_mlat = np.arange(64.0,68.0,0.25)
+        bin_edge_mlat = np.arange(64.0,68.0,0.5)
         self.bin_mlat = (bin_edge_mlat[:-1]+bin_edge_mlat[1:])/2.
         self.bin_mlon = np.full(self.bin_mlat.shape, np.nanmean(self.mlon))
         self.bin_idx = [np.argwhere((self.mlat>=bin_edge_mlat[i]) & (self.mlat<bin_edge_mlat[i+1])).flatten() for i in range(len(bin_edge_mlat)-1)]
@@ -282,18 +279,11 @@ class ResolveVectors(object):
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(self.bin_mlat, self.bin_mlon, alt, coords='apex')
 
         e = np.array([e1,e2,e3]).T
-        print self.Velocity.shape, self.Velocity[4,6,:]
-        print e.shape, e[6,:,:]
-        V = self.Velocity[4,6,:]
-        e0 = e[6,:,:]
-        print V[0]*e0[0,:], V[1]*e0[1,:], V[2]*e0[2,:]
-        print V[0]*e0[0,:] + V[1]*e0[1,:] + V[2]*e0[2,:]
-        self.Velocity_gd = np.einsum('ijk,...ij->...ik',e,self.Velocity)
+        self.Velocity_gd = np.einsum('ijk,...ik->...ij',e,self.Velocity)
         self.VelocityCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',e,self.VelocityCovariance,e)
-        print self.Velocity_gd[4,6,:]
 
         d = np.array([d1,d2,d3]).T
-        self.ElectricField_gd = np.einsum('ijk,...ij->...ik',d,self.ElectricField)
+        self.ElectricField_gd = np.einsum('ijk,...ik->...ij',d,self.ElectricField)
         self.ElectricFieldCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',d,self.ElectricFieldCovariance,d)
 
         # calculate vector magnitude and direction

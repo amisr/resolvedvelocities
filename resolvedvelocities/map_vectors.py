@@ -55,7 +55,7 @@ def plot_raw():
     fout = np.isfinite(vmag)
 
     xo, yo, zo = cc.geodetic_to_cartesian(lato, lono, alto)
-    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,0],vv[:,1],vv[:,2], lato, lono, alto)
+    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,1],vv[:,0],vv[:,2], lato, lono, alto)
 
 
     scale = 100.
@@ -103,36 +103,43 @@ def quiver_color(v,vmin,vmax,cmap):
 
 def plot_mag():
 
-    vvels = rv.ResolveVectors()
+    vvels = rv.ResolveVectors(config='config.ini')
 
-    idx = 40
+    idx = 4
 
     # get input data
     vvels.read_data()
-    vvels.filter_data()
+    # vvels.filter_data()
     vvels.transform()
     vvels.bin_data()
     vvels.get_integration_periods()
     vvels.compute_vectors()
 
     A = vvels.A
+    vlos = vvels.vlos
     vv = vvels.Velocity[idx]
+
+    alt = np.full(vvels.mlat.shape, 300.)
+    bin_alt = np.full(vvels.bin_mlat.shape, 300.)
 
 
     fig = plt.figure(figsize=(10,10))
-    ax = fig.add_subplot(111)
+    ax = fig.add_subplot(111, projection='3d')
 
+    s1 = 1.
+    s2 = 0.01
     scale = 0.001
 
     # plot input and output points color coded with bin
     for mlat,mlon,bidx in zip(vvels.bin_mlat, vvels.bin_mlon, vvels.bin_idx):
         color = next(ax._get_lines.prop_cycler)['color']
-        ax.scatter(mlon, mlat, color=color)
-        ax.scatter(vvels.mlon[bidx], vvels.mlat[bidx], color=color)
+        ax.scatter(mlon, mlat, 300., color=color)
+        ax.scatter(vvels.mlon[bidx], vvels.mlat[bidx], alt[bidx], color=color)
 
-    ax.quiver(vvels.mlon, vvels.mlat, A[:,0]*scale, A[:,1]*scale)
+    # ax.quiver(vvels.mlon, vvels.mlat, alt, A[:,0]*s1, A[:,1]*s1, A[:,2]*s1)
+    ax.quiver(vvels.mlon, vvels.mlat, alt, A[:,0]*vlos*s2, A[:,1]*vlos*s2, A[:,2]*vlos*s2)
 
-    ax.quiver(vvels.bin_mlon, vvels.bin_mlat, vv[:,0]*scale, vv[:,1]*scale)
+    ax.quiver(vvels.bin_mlon, vvels.bin_mlat, bin_alt, vv[:,0]*scale, vv[:,1]*scale, vv[:,2]*scale)
 
 
     plt.show()
@@ -176,7 +183,7 @@ def plot_synth():
     # vmag = vvels.Vgd_mag[idx]
 
     xo, yo, zo = cc.geodetic_to_cartesian(vvels.bin_glat, vvels.bin_glon, vvels.bin_galt)
-    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,0],vv[:,1],vv[:,2], vvels.bin_glat, vvels.bin_glon, vvels.bin_galt)
+    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,1],vv[:,0],vv[:,2], vvels.bin_glat, vvels.bin_glon, vvels.bin_galt)
 
 
 
@@ -184,8 +191,8 @@ def plot_synth():
     ax = fig.add_subplot(111,projection='3d')
 
     s1=100.
-    # ax.scatter(synth_field.X,synth_field.Y,synth_field.Z, s=0.1)
-    # ax.quiver(synth_field.X,synth_field.Y,synth_field.Z, synth_field.Vx*s1, synth_field.Vy*s1, synth_field.Vz*s1)
+    ax.scatter(synth_field.X,synth_field.Y,synth_field.Z, s=0.1)
+    ax.quiver(synth_field.X,synth_field.Y,synth_field.Z, synth_field.Vx*s1, synth_field.Vy*s1, synth_field.Vz*s1)
 
     s2 = 100000.
     ax.scatter(radar.X, radar.Y, radar.Z)
