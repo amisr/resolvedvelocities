@@ -127,8 +127,8 @@ def plot_mag():
     ax = fig.add_subplot(111, projection='3d')
 
     s1 = 1.
-    s2 = 0.01
-    scale = 0.001
+    s2 = 0.001
+    scale = 0.0001
 
     # plot input and output points color coded with bin
     for mlat,mlon,bidx in zip(vvels.bin_mlat, vvels.bin_mlon, vvels.bin_idx):

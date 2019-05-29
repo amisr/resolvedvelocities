@@ -66,41 +66,26 @@ class Radar(object):
         self.elevation = elevation
         self.range_step = range_step
         self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(site[0], site[1], site[2])
-        self.bin_locations(azimuth, elevation, range_step)
+        self.get_gate_locations(azimuth, elevation, range_step)
         self.geodetic_locations()
 
-    def bin_locations(self, az, el, rs):
-        # a lot of this can probably be handled more elegantly with clever broadcasting, but this works for now
+    def get_gate_locations(self, az, el, rs):
 
         ranges = np.arange(80.,800., rs)*1000.
 
-        self.X = []
-        self.Y = []
-        self.Z = []
-        self.kvec = []
-        self.ke = []
-        self.kn = []
-        self.kz = []
+        az = np.array(az)*np.pi/180.
+        el = np.array(el)*np.pi/180.
+        ke = np.cos(el)*np.sin(az)
+        kn = np.cos(el)*np.cos(az)
+        ku = np.sin(el)
 
-        for a, e in zip(az,el):
-            ke = np.cos(e*np.pi/180.)*np.sin(a*np.pi/180.)
-            kn = np.cos(e*np.pi/180.)*np.cos(a*np.pi/180.)
-            ku = np.sin(e*np.pi/180.)
+        kx, ky, kz = cc.vector_geodetic_to_cartesian(kn, ke, ku, self.site[0], self.site[1], self.site[2])
 
-            kx, ky, kz = cc.vector_geodetic_to_cartesian(kn, ke, ku, self.site[0], self.site[1], self.site[2])
+        self.X = kx[:,None]*ranges + self.X0
+        self.Y = ky[:,None]*ranges + self.Y0
+        self.Z = kz[:,None]*ranges + self.Z0
 
-            X = kx*ranges + self.X0
-            Y = ky*ranges + self.Y0
-            Z = kz*ranges + self.Z0
-            self.X.append(X)
-            self.Y.append(Y)
-            self.Z.append(Z)
-            self.kvec.append(np.tile(np.array([kx, ky, kz]), (len(ranges),1)))
-
-        self.X = np.array(self.X)
-        self.Y = np.array(self.Y)
-        self.Z = np.array(self.Z)
-        self.kvec = np.array(self.kvec)
+        self.kvec = np.array([np.tile(np.array([x,y,z]), (len(ranges),1)) for x, y, z in zip(kx,ky,kz)])
 
 
     def geodetic_locations(self):
