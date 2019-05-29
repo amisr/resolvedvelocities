@@ -89,14 +89,17 @@ class ResolveVectors(object):
         self.vlos = self.vlos + self.chirp
 
         # discard data with low density
+        print self.ne.shape
         I = np.where((self.ne < self.neMin))
+        print I
         self.vlos[I] = np.nan
         self.dvlos[I] = np.nan
 
         # discard data outside of altitude range
+        print self.alt.shape, self.vlos.shape
         I = np.where(((self.alt < self.minalt*1000.) | (self.alt > self.maxalt*1000.)))
-        self.vlos[I] = np.nan
-        self.dvlos[I] = np.nan
+        self.vlos[:,I] = np.nan
+        self.dvlos[:,I] = np.nan
 
         # discard data with "unexceptable" error
         #   - not sure about these conditions - they come from original vvels code but eliminate a lot of data points
@@ -149,7 +152,9 @@ class ResolveVectors(object):
 
         # correct the los velocities for the entire array at each time
         for t in range(len(self.time)):
-            if self.ionup == 'UPB':
+            if not self.ionup:
+                continue
+            elif self.ionup == 'UPB':
                 # interpolate velocities from up B beam to all other measurements 
                 vion, dvion = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
             elif self.ionup == 'EMP':
@@ -293,7 +298,7 @@ class ResolveVectors(object):
         # - add processing paramters
         # - add config file info
         # - add computer/user info
-        
+
         # save output file
         filename = 'test_vvels.h5'
 
