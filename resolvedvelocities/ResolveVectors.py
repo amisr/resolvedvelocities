@@ -138,9 +138,11 @@ class ResolveVectors(object):
 
         # kvec in geodetic coordinates [e n u]
         kvec = np.array([self.ke, self.kn, self.kz]).T
+        # print kvec.shape, kvec
 
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
         self.A = np.einsum('ij,ijk->ik', kvec, d)
+        # print self.A.shape, self.A
 
         # calculate scaling factor D, used for ion outflow correction (Richmond, 1995 eqn. 3.15)
         d1_cross_d2 = np.cross(d1.T,d2.T).T
@@ -280,11 +282,18 @@ class ResolveVectors(object):
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(self.bin_mlat, self.bin_mlon, alt, coords='apex')
 
         e = np.array([e1,e2,e3]).T
-        self.Velocity_gd = np.einsum('ijk,...ik->...ij',e,self.Velocity)
+        print self.Velocity.shape, self.Velocity[4,6,:]
+        print e.shape, e[6,:,:]
+        V = self.Velocity[4,6,:]
+        e0 = e[6,:,:]
+        print V[0]*e0[0,:], V[1]*e0[1,:], V[2]*e0[2,:]
+        print V[0]*e0[0,:] + V[1]*e0[1,:] + V[2]*e0[2,:]
+        self.Velocity_gd = np.einsum('ijk,...ij->...ik',e,self.Velocity)
         self.VelocityCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',e,self.VelocityCovariance,e)
+        print self.Velocity_gd[4,6,:]
 
         d = np.array([d1,d2,d3]).T
-        self.ElectricField_gd = np.einsum('ijk,...ik->...ij',d,self.ElectricField)
+        self.ElectricField_gd = np.einsum('ijk,...ij->...ik',d,self.ElectricField)
         self.ElectricFieldCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',d,self.ElectricFieldCovariance,d)
 
         # calculate vector magnitude and direction
