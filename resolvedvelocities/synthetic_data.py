@@ -4,6 +4,8 @@ from apexpy import Apex
 from scipy import interpolate
 import coord_convert as cc
 import tables
+import sys
+import os
 
 
 class Field(object):
@@ -59,14 +61,19 @@ class Field(object):
 
 
 class Radar(object):
-    def __init__(self, site, azimuth, elevation, range_step):
+    def __init__(self, site, beams=None, azimuth=None, elevation=None, range_step=50.):
 
         self.site = site
-        self.azimuth = azimuth
-        self.elevation = elevation
+        if beams:
+            bc = np.loadtxt(os.path.join(os.path.dirname(__file__), 'bcotable.txt'))
+            idx = np.where(np.in1d(bc[:,0],beams))[0]
+            self.beam_codes = bc[idx,:]
+        elif azimuth:
+            self.beam_codes = np.array([range(len(azimuth)),azimuth,elevation,np.full(len(azimuth),np.nan)]).T
+
         self.range_step = range_step
         self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(site[0], site[1], site[2])
-        self.get_gate_locations(azimuth, elevation, range_step)
+        self.get_gate_locations(self.beam_codes[:,1], self.beam_codes[:,2], range_step)
         self.geodetic_locations()
 
     def get_gate_locations(self, az, el, rs):
@@ -122,7 +129,7 @@ def create_dataset(field, radar):
     err_array[:,:,:,0,3] = dVlos
 
     ne = np.full(Vlos.shape, 1e11)
-    beam_codes = np.array([np.arange(len(radar.elevation)), radar.azimuth, radar.elevation, np.zeros(len(radar.elevation))])
+    # beam_codes = np.array([np.arange(len(radar.elevation)), radar.azimuth, radar.elevation, np.zeros(len(radar.elevation))])
 
 
     filename = 'synthetic_data.h5'
@@ -132,7 +139,7 @@ def create_dataset(field, radar):
         file.create_group('/','Time')
         file.create_group('/','Site')
 
-        file.create_array('/','BeamCodes',beam_codes)
+        file.create_array('/','BeamCodes',radar.beam_codes)
 
         file.create_array('/FittedParams','Fits',fit_array)
         file.create_array('/FittedParams','Errors',err_array)
