@@ -18,12 +18,11 @@ class ResolveVectors(object):
 
         self.datafile = config.get('DEFAULT', 'DATAFILE')
         self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
-        self.neMin = eval(config.get('DEFAULT', 'NEMIN'))
+        self.nelim = eval(config.get('DEFAULT', 'NELIM'))
         self.integration_time = config.getfloat('DEFAULT', 'INTTIME', fallback=None)
         self.covar = eval(config.get('DEFAULT', 'COVAR'))
         self.ppp = eval(config.get('DEFAULT', 'PPP'))
-        self.minalt = eval(config.get('DEFAULT', 'MINALT'))
-        self.maxalt = eval(config.get('DEFAULT', 'MAXALT'))
+        self.altlim = eval(config.get('DEFAULT', 'ALTLIM'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
         self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
         self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
@@ -89,12 +88,12 @@ class ResolveVectors(object):
         self.vlos = self.vlos + self.chirp
 
         # discard data with low density
-        I = np.where((self.ne < self.neMin))
+        I = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
         self.vlos[I] = np.nan
         self.dvlos[I] = np.nan
 
         # discard data outside of altitude range
-        I = np.where(((self.alt < self.minalt*1000.) | (self.alt > self.maxalt*1000.)))
+        I = np.where(((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.)))
         self.vlos[:,I] = np.nan
         self.dvlos[:,I] = np.nan
 
@@ -254,7 +253,8 @@ class ResolveVectors(object):
         # calculate electric field
 
         # find Be3 value at each output bin location
-        Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,200.,coords='apex')
+        # NOTE: Be3 is constant along magnetic field lines, so the altitude chosen here doesn't matter
+        Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
         # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
