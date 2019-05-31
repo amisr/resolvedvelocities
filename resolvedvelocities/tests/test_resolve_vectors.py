@@ -15,7 +15,8 @@ def main():
     vvels.ion_upflow_correction()
     vvels.bin_data()
     vvels.get_integration_periods()
-    vvels.compute_vectors()
+    vvels.compute_vector_velocity()
+    vvels.compute_electric_field()
     vvels.compute_geodetic_output()
     vvels.save_output()
 
