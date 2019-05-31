@@ -223,12 +223,14 @@ class ResolveVectors(object):
         
         Velocity = []
         VelocityCovariance = []
+        ChiSquared = []
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
         for tidx in self.int_idx:
             Vel = []
             SigmaV = []
+            Chi2 = []
             # loop over spatial bins
             for bidx in self.bin_idx:
 
@@ -243,17 +245,20 @@ class ResolveVectors(object):
                     A = self.A[bidx]
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-                V, SigV = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
+                V, SigV, chi2 = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
 
                 # append vector and coviarience matrix
                 Vel.append(V)
                 SigmaV.append(SigV)
+                Chi2.append(chi2)
 
             Velocity.append(Vel)
             VelocityCovariance.append(SigmaV)
+            ChiSquared.append(Chi2)
 
         self.Velocity = np.array(Velocity)
         self.VelocityCovariance = np.array(VelocityCovariance)
+        self.ChiSquared = np.array(ChiSquared)
 
 
     def compute_electric_field(self):
@@ -348,6 +353,10 @@ class ResolveVectors(object):
             file.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
             file.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
 
+            file.create_array('/Magnetic', 'Chi2', self.ChiSquared)
+            file.set_node_attr('/Magnetic/Chi2', 'TITLE', 'Reduced Chi-Squared')
+            file.set_node_attr('/Magnetic/Chi2', 'Size', 'Nrecords x Nbins')
+
             file.create_group('/', 'Geographic')
 
             file.create_array('/Geographic', 'GeographicLatitude', self.bin_glat)
@@ -436,17 +445,19 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
         I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)   # calculate I = (A*SigV*A.T + SigE)^-1
         V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)      # calculate velocity estimate (Heinselman 2008 eqn 12)
         SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))       # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
+        chi2 = np.sum((vlos-np.einsum('...i,i->...',A,V))**2/dvlos**2)/(sum(finite)-3)
 
     except np.linalg.LinAlgError:
         V = np.full(3,np.nan)
         SigV = np.full((3,3),np.nan)
+        chi2 = np.nan
 
-    # if there are too few points for a valid reconstruction, set output to NAN
-    if sum(finite) < minnumpoints:
-        V = np.full(3,np.nan)
-        SigV = np.full((3,3),np.nan)
+    # # if there are too few points for a valid reconstruction, set output to NAN
+    # if sum(finite) < minnumpoints:
+    #     V = np.full(3,np.nan)
+    #     SigV = np.full((3,3),np.nan)
 
-    return V, SigV
+    return V, SigV, chi2
 
 
 def lin_interp(x, xp, fp, dfp):
