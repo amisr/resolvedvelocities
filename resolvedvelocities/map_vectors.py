@@ -10,6 +10,7 @@ import cartopy.crs as ccrs
 from matplotlib.colors import Normalize
 
 import coord_convert as cc
+import synthetic_data as synth
 
 def plot_raw():
     vvels = rv.ResolveVectors(config='config.ini')
@@ -21,7 +22,8 @@ def plot_raw():
     vvels.bin_data()
     vvels.get_integration_periods()
 
-    idx = 40
+    # idx = 40
+    idx = 4
 
     lat = vvels.lat
     lon = vvels.lon
@@ -44,16 +46,16 @@ def plot_raw():
     vvels.compute_vectors()
     vvels.compute_geodetic_output()
 
-    lato = vvels.gdlat
-    lono = vvels.gdlon
-    alto = vvels.gdalt
+    lato = vvels.bin_glat
+    lono = vvels.bin_glon
+    alto = vvels.bin_galt
     vv = vvels.Velocity_gd[idx,:,:]
     vmag = vvels.Vgd_mag[idx]
 
     fout = np.isfinite(vmag)
 
     xo, yo, zo = cc.geodetic_to_cartesian(lato, lono, alto)
-    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,0],vv[:,1],vv[:,2], lato, lono, alto)
+    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,1],vv[:,0],vv[:,2], lato, lono, alto)
 
 
     scale = 100.
@@ -101,39 +103,112 @@ def quiver_color(v,vmin,vmax,cmap):
 
 def plot_mag():
 
-    vvels = rv.ResolveVectors()
+    vvels = rv.ResolveVectors(config='config.ini')
 
-    idx = 40
+    idx = 4
 
     # get input data
     vvels.read_data()
-    vvels.filter_data()
+    # vvels.filter_data()
     vvels.transform()
     vvels.bin_data()
     vvels.get_integration_periods()
     vvels.compute_vectors()
 
     A = vvels.A
+    vlos = vvels.vlos
     vv = vvels.Velocity[idx]
+
+    alt = np.full(vvels.mlat.shape, 300.)
+    bin_alt = np.full(vvels.bin_mlat.shape, 300.)
 
 
     fig = plt.figure(figsize=(10,10))
-    ax = fig.add_subplot(111)
+    ax = fig.add_subplot(111, projection='3d')
 
-    scale = 0.001
+    s1 = 1.
+    s2 = 0.001
+    scale = 0.0001
 
     # plot input and output points color coded with bin
     for mlat,mlon,bidx in zip(vvels.bin_mlat, vvels.bin_mlon, vvels.bin_idx):
         color = next(ax._get_lines.prop_cycler)['color']
-        ax.scatter(mlon, mlat, color=color)
-        ax.scatter(vvels.mlon[bidx], vvels.mlat[bidx], color=color)
+        ax.scatter(mlon, mlat, 300., color=color)
+        ax.scatter(vvels.mlon[bidx], vvels.mlat[bidx], alt[bidx], color=color)
 
-    ax.quiver(vvels.mlon, vvels.mlat, A[:,0]*scale, A[:,1]*scale)
+    # ax.quiver(vvels.mlon, vvels.mlat, alt, A[:,0]*s1, A[:,1]*s1, A[:,2]*s1)
+    ax.quiver(vvels.mlon, vvels.mlat, alt, A[:,0]*vlos*s2, A[:,1]*vlos*s2, A[:,2]*vlos*s2)
 
-    ax.quiver(vvels.bin_mlon, vvels.bin_mlat, vv[:,0]*scale, vv[:,1]*scale)
+    ax.quiver(vvels.bin_mlon, vvels.bin_mlat, bin_alt, vv[:,0]*scale, vv[:,1]*scale, vv[:,2]*scale)
 
 
     plt.show()
+
+def plot_synth():
+
+    synth_grid = np.meshgrid(np.linspace(62.,70.,10), np.linspace(260.,275.,10))
+    velocity = np.tile(np.array([500.,0.,0.]), (10,10,1))
+    synth_field = synth.Field(synth_grid[0], synth_grid[1], velocity, 300.)
+
+    site = [65.13, -147.47, 0.213]
+    beams = [64016, 64157, 64964, 65066]
+    radar = synth.Radar(site, beams=beams)
+
+    synth.create_dataset(synth_field, radar)
+
+
+    vvels = rv.ResolveVectors(config='config.ini')
+
+    # get input data
+    vvels.read_data()
+    # vvels.filter_data()
+    vvels.transform()
+    vvels.bin_data()
+    vvels.get_integration_periods()
+
+    idx = 4
+
+    vlos = vvels.vlos[idx]
+
+    x, y, z = cc.geodetic_to_cartesian(vvels.lat, vvels.lon, vvels.alt/1000.)
+    kx, ky, kz = cc.vector_geodetic_to_cartesian(vvels.kn, vvels.ke, vvels.kz, vvels.lat, vvels.lon, vvels.alt/1000.)
+    vx, vy, vz = cc.vector_geodetic_to_cartesian(vvels.kn*vlos, vvels.ke*vlos, vvels.kz*vlos, vvels.lat, vvels.lon, vvels.alt/1000.)
+
+    # calculate vector velocities
+    vvels.compute_vectors()
+    vvels.compute_geodetic_output()
+
+    vv = vvels.Velocity_gd[idx,:,:]
+    # vmag = vvels.Vgd_mag[idx]
+
+    xo, yo, zo = cc.geodetic_to_cartesian(vvels.bin_glat, vvels.bin_glon, vvels.bin_galt)
+    vxo, vyo, vzo = cc.vector_geodetic_to_cartesian(vv[:,1],vv[:,0],vv[:,2], vvels.bin_glat, vvels.bin_glon, vvels.bin_galt)
+
+
+
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111,projection='3d')
+
+    s1=100.
+    ax.scatter(synth_field.X,synth_field.Y,synth_field.Z, s=0.1)
+    ax.quiver(synth_field.X,synth_field.Y,synth_field.Z, synth_field.Vx*s1, synth_field.Vy*s1, synth_field.Vz*s1)
+
+    s2 = 100000.
+    ax.scatter(radar.X, radar.Y, radar.Z)
+    # ax.quiver(radar.X, radar.Y, radar.Z, radar.kvec[:,:,0]*s2,radar.kvec[:,:,1]*s2,radar.kvec[:,:,2]*s2, color='orange')
+
+    # ax.scatter(x, y, z)
+    # ax.quiver(x, y, z, kx*s2, ky*s2, kz*s2)
+
+    s3 = 1000.
+    ax.quiver(x, y, z, vx*s3, vy*s3, vz*s3, color='green')
+
+    ax.scatter(xo, yo, zo)
+    ax.quiver(xo, yo, zo, vxo*s1, vyo*s1, vzo*s1)
+
+    plt.show()
+
+
 
 def read_vvels_file(filename):
     

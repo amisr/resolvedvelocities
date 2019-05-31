@@ -47,7 +47,7 @@ class ResolveVectors(object):
                 bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
             else:
                 bm_idx = np.arange(0,len(self.BeamCodes))
-            print bm_idx
+            # print bm_idx
 
             # geodetic location of each measurement
             self.alt = file.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
@@ -95,8 +95,8 @@ class ResolveVectors(object):
 
         # discard data outside of altitude range
         I = np.where(((self.alt < self.minalt*1000.) | (self.alt > self.maxalt*1000.)))
-        self.vlos[I] = np.nan
-        self.dvlos[I] = np.nan
+        self.vlos[:,I] = np.nan
+        self.dvlos[:,I] = np.nan
 
         # discard data with "unexceptable" error
         #   - not sure about these conditions - they come from original vvels code but eliminate a lot of data points
@@ -135,9 +135,11 @@ class ResolveVectors(object):
 
         # kvec in geodetic coordinates [e n u]
         kvec = np.array([self.ke, self.kn, self.kz]).T
+        # print kvec.shape, kvec
 
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
         self.A = np.einsum('ij,ijk->ik', kvec, d)
+        # print self.A.shape, self.A
 
         # calculate scaling factor D, used for ion outflow correction (Richmond, 1995 eqn. 3.15)
         d1_cross_d2 = np.cross(d1.T,d2.T).T
@@ -149,7 +151,9 @@ class ResolveVectors(object):
 
         # correct the los velocities for the entire array at each time
         for t in range(len(self.time)):
-            if self.ionup == 'UPB':
+            if not self.ionup:
+                continue
+            elif self.ionup == 'UPB':
                 # interpolate velocities from up B beam to all other measurements 
                 vion, dvion = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
             elif self.ionup == 'EMP':
@@ -169,7 +173,7 @@ class ResolveVectors(object):
         # bins defined in some way by initial config file
         # each bin has a specified MLAT/MLON
 
-        bin_edge_mlat = np.arange(64.0,68.0,0.25)
+        bin_edge_mlat = np.arange(64.0,68.0,0.5)
         self.bin_mlat = (bin_edge_mlat[:-1]+bin_edge_mlat[1:])/2.
         self.bin_mlon = np.full(self.bin_mlat.shape, np.nanmean(self.mlon))
         self.bin_idx = [np.argwhere((self.mlat>=bin_edge_mlat[i]) & (self.mlat<bin_edge_mlat[i+1])).flatten() for i in range(len(bin_edge_mlat)-1)]
@@ -246,10 +250,14 @@ class ResolveVectors(object):
         self.VelocityCovariance = np.array(VelocityCovariance)
 
 
+        # seperate method for electric field
+        # this lets you subtract out gravity waves, ect if desired
+
         # calculate electric field
         # find Be3 value at each output bin location
         Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,200.,coords='apex')
         # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+
 
         # form rotation array
         R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
@@ -293,7 +301,7 @@ class ResolveVectors(object):
         # - add processing paramters
         # - add config file info
         # - add computer/user info
-        
+
         # save output file
         filename = 'test_vvels.h5'
 
