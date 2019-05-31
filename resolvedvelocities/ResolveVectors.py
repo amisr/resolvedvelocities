@@ -18,11 +18,13 @@ class ResolveVectors(object):
 
         self.datafile = config.get('DEFAULT', 'DATAFILE')
         self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
-        self.nelim = eval(config.get('DEFAULT', 'NELIM'))
         self.integration_time = config.getfloat('DEFAULT', 'INTTIME', fallback=None)
         self.covar = eval(config.get('DEFAULT', 'COVAR'))
         self.ppp = eval(config.get('DEFAULT', 'PPP'))
         self.altlim = eval(config.get('DEFAULT', 'ALTLIM'))
+        self.nelim = eval(config.get('DEFAULT', 'NELIM'))
+        self.chi2lim = eval(config.get('DEFAULT', 'CHI2LIM'))
+        self.goodfitcode = eval(config.get('DEFAULT', 'GOODFITCODE'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
         self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
         self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
@@ -30,10 +32,10 @@ class ResolveVectors(object):
         if self.use_beams:
             self.use_beams = eval(self.use_beams)
 
-        # list of beam codes to use
 
     def read_data(self):
         # read data from standard AMISR fit files
+        # TODO: don't use vairable 'file'
         with tables.open_file(self.datafile,'r') as file:
 
             # time
@@ -61,6 +63,10 @@ class ResolveVectors(object):
             # line of sight velocity and error
             self.vlos = file.get_node('/FittedParams/Fits')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
             self.dvlos = file.get_node('/FittedParams/Errors')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
+
+            # chi2 and fitcode (for filtering poor quality data)
+            self.chi2 = file.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+            self.fitcode = file.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # density (for filtering and ion upflow)
             self.ne = file.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
@@ -93,18 +99,19 @@ class ResolveVectors(object):
         self.dvlos[I] = np.nan
 
         # discard data outside of altitude range
-        I = np.where(((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.)))
+        I = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
         self.vlos[:,I] = np.nan
         self.dvlos[:,I] = np.nan
 
-        # discard data with "unexceptable" error
-        #   - not sure about these conditions - they come from original vvels code but eliminate a lot of data points
-        fracerrs = np.absolute(self.dvlos)/(np.absolute(self.vlos)+self.ppp[0])
-        abserrs  = np.absolute(self.dvlos)
-        I = np.where(((fracerrs > self.ppp[1]) & (abserrs > self.ppp[3])))
+        # discard data with extremely high or extremely low chi2 values
+        I = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
         self.vlos[I] = np.nan
         self.dvlos[I] = np.nan
 
+        # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
+        I = np.where(~np.isin(self.fitcode, self.goodfitcode))
+        self.vlos[I] = np.nan
+        self.vlos[I] = np.nan
 
 
     def transform(self):
