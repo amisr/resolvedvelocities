@@ -250,10 +250,14 @@ class ResolveVectors(object):
         self.VelocityCovariance = np.array(VelocityCovariance)
 
 
+        # seperate method for electric field
+        # this lets you subtract out gravity waves, ect if desired
+
         # calculate electric field
         # find Be3 value at each output bin location
         Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,200.,coords='apex')
         # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+
 
         # form rotation array
         R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))

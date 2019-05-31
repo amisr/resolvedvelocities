@@ -16,37 +16,26 @@ class Field(object):
         self.create_interpolators()
 
 
-    def map_velocity_field(self, latitude, longitude, field, alt_in):
-        # input: apex grid at altitude alt_in
-        # geodetic components of velocity on grid
-        # output: 3D geodetic latitude, longitude, altitude
-        # 3D grid of geodetic velocity components
+    def map_velocity_field(self, alat, alon, field, alt_in):
+        # alat - 1D array (N,) of apex magnetic latitude
+        # alon - 1D array (N,) of apex magnetic longitude
+        # field - array (N,3) of geodetic E, N, U components of the velocity field at each position
+        # alt_in - scalar geodetic altitude of specified points
 
         # define output altitudes
         altitude = np.arange(50., 1000., 50.)
 
+        # initialize Apex object
         A = Apex(date=2019)
 
-        field_out = []
-        lat_out = []
-        lon_out = []
-        alt_out = []
+        # find positions at each altitude
+        self.altitude = np.repeat(altitude,len(alat))
+        self.latitude, self.longitude, __ = A.apex2geo(np.tile(alat,len(altitude)), np.tile(alon,len(altitude)), self.altitude)
 
-        for a in altitude:
+        # map field to each altitude
+        f = np.array([A.map_V_to_height(alat, alon, alt_in, a, field.T).T for a in altitude])
+        self.field = f.reshape(-1,f.shape[-1])
 
-            full_field = A.map_V_to_height(latitude, longitude, alt_in, a, field.T)
-            field_out.append(full_field.T)
-
-            lat, lon, __ = A.apex2geo(latitude,longitude,a)
-            lat_out.append(lat)
-            lon_out.append(lon)
-            alt_out.append(np.full(lat.shape,a))
-
-        # flatten output
-        self.field = np.array(field_out).reshape(-1,np.array(field_out).shape[-1])
-        self.latitude = np.array(lat_out).flatten()
-        self.longitude = np.array(lon_out).flatten()
-        self.altitude = np.array(alt_out).flatten()
 
     def convert_to_ECEF(self):
 
@@ -62,6 +51,10 @@ class Field(object):
 
 class Radar(object):
     def __init__(self, site, beams=None, azimuth=None, elevation=None, range_step=50.):
+        # beam - list of beam codes
+        # azimuth - list of azimuth angle for each beam (in degrees)
+        # elevation - list of elevation angle for each beam (in degrees)
+        # range_step - step between each range gate (in km)
 
         self.site = site
         if beams:
@@ -78,25 +71,30 @@ class Radar(object):
 
     def get_gate_locations(self, az, el, rs):
 
+        # create array of ranges
         ranges = np.arange(80.,800., rs)*1000.
 
+        # find E, N, U components of k (find k vector in geodetic coordinates)
         az = np.array(az)*np.pi/180.
         el = np.array(el)*np.pi/180.
         ke = np.cos(el)*np.sin(az)
         kn = np.cos(el)*np.cos(az)
         ku = np.sin(el)
 
+        # convert geodetic k vector to ECEF
         kx, ky, kz = cc.vector_geodetic_to_cartesian(kn, ke, ku, self.site[0], self.site[1], self.site[2])
 
+        # calculate position of each range gate in ECEF
         self.X = kx[:,None]*ranges + self.X0
         self.Y = ky[:,None]*ranges + self.Y0
         self.Z = kz[:,None]*ranges + self.Z0
 
+        # form array of k vector at each range gate
         self.kvec = np.array([np.tile(np.array([x,y,z]), (len(ranges),1)) for x, y, z in zip(kx,ky,kz)])
 
 
     def geodetic_locations(self):
-
+        # calculate gate position and k vectors in geodetic coordinates
         self.lat, self.lon, self.alt = cc.cartesian_to_geodetic(self.X, self.Y, self.Z)
         self.kn, self.ke, self.kz = cc.vector_cartesian_to_geodetic(self.kvec[:,:,0], self.kvec[:,:,1], self.kvec[:,:,2], self.X, self.Y, self.Z)
 
@@ -105,33 +103,32 @@ class Radar(object):
 def create_dataset(field, radar):
     # input: Field object, Radar object
 
+    # interpolate the field to the radar bin locations
     Vx = field.interpVx(np.array([radar.X, radar.Y, radar.Z]).T)
     Vy = field.interpVy(np.array([radar.X, radar.Y, radar.Z]).T)
     Vz = field.interpVz(np.array([radar.X, radar.Y, radar.Z]).T)
     Vvec = np.array([Vx, Vy, Vz]).T
 
+    # create unix time array
     time0 = (dt.datetime(2019,5,28,0,0)-dt.datetime.utcfromtimestamp(0)).total_seconds()
     times = np.array([[time0+t*60., time0+(t+1)*60.] for t in range(10)])
 
-    Vlos = []
-    for t in times:
-        Vlos.append(np.einsum('...i,...i->...',radar.kvec, Vvec))
-    Vlos = np.array(Vlos)
+    # calculate LoS velocity for each bin by taking the dot product of the radar kvector and the interpolated field
+    Vlos = np.tile(np.einsum('...i,...i->...',radar.kvec, Vvec), (len(times),1,1))
+    # assume constant error
+    dVlos = np.full(Vlos.shape, 10.)
 
-    dVlos = np.full(Vlos.shape, 100.)
-
-    # create output hdf5 file
+    # create fit and error arrays that match the shape of whats in the processed fitted files
     s = Vlos.shape
     fit_array = np.full((s[0],s[1],s[2],6,4),np.nan)
     fit_array[:,:,:,0,3] = Vlos
-
     err_array = np.full((s[0],s[1],s[2],6,4),np.nan)
     err_array[:,:,:,0,3] = dVlos
 
+    # generate dummy density array
     ne = np.full(Vlos.shape, 1e11)
-    # beam_codes = np.array([np.arange(len(radar.elevation)), radar.azimuth, radar.elevation, np.zeros(len(radar.elevation))])
 
-
+    # create output hdf5 file
     filename = 'synthetic_data.h5'
     with tables.open_file(filename, mode='w') as file:
         file.create_group('/','FittedParams')
