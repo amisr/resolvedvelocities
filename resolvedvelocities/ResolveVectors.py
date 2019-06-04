@@ -20,7 +20,6 @@ class ResolveVectors(object):
         self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
         self.integration_time = config.getfloat('DEFAULT', 'INTTIME', fallback=None)
         self.covar = eval(config.get('DEFAULT', 'COVAR'))
-        self.ppp = eval(config.get('DEFAULT', 'PPP'))
         self.altlim = eval(config.get('DEFAULT', 'ALTLIM'))
         self.nelim = eval(config.get('DEFAULT', 'NELIM'))
         self.chi2lim = eval(config.get('DEFAULT', 'CHI2LIM'))
@@ -31,6 +30,7 @@ class ResolveVectors(object):
         self.use_beams = config.get('DEFAULT', 'USE_BEAMS', fallback=None)
         if self.use_beams:
             self.use_beams = eval(self.use_beams)
+        self.outfilename = config.get('DEFAULT', 'OUTFILENAME')
 
 
     def read_data(self):
@@ -313,9 +313,9 @@ class ResolveVectors(object):
         # - add computer/user info
 
         # save output file
-        filename = 'test_vvels.h5'
+        # filename = 'test_vvels.h5'
 
-        with tables.open_file(filename,mode='w') as file:
+        with tables.open_file(self.outfilename,mode='w') as file:
 
             # copy some groups directly from fitted input file
             with tables.open_file(self.datafile, mode='r') as inputfile:
