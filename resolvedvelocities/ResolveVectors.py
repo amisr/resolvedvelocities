@@ -313,8 +313,6 @@ class ResolveVectors(object):
         # - add computer/user info
 
         # save output file
-        # filename = 'test_vvels.h5'
-
         with tables.open_file(self.outfilename,mode='w') as file:
 
             # copy some groups directly from fitted input file
