@@ -22,8 +22,8 @@ def plot_raw():
     vvels.bin_data()
     vvels.get_integration_periods()
 
-    # idx = 40
-    idx = 4
+    idx = 40
+    # idx = 300
 
     lat = vvels.lat
     lon = vvels.lon

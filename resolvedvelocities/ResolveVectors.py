@@ -5,7 +5,7 @@ import numpy as np
 import datetime as dt
 import configparser
 from apexpy import Apex
-
+from scipy.spatial import Delaunay
 
 class ResolveVectors(object):
     def __init__(self, config=None):
@@ -24,6 +24,7 @@ class ResolveVectors(object):
         self.nelim = eval(config.get('DEFAULT', 'NELIM'))
         self.chi2lim = eval(config.get('DEFAULT', 'CHI2LIM'))
         self.goodfitcode = eval(config.get('DEFAULT', 'GOODFITCODE'))
+        self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
         self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
         self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
@@ -176,13 +177,19 @@ class ResolveVectors(object):
 
     def bin_data(self):
         # divide data into an arbitrary number of bins
-        # bins defined in some way by initial config file
-        # each bin has a specified MLAT/MLON
+        # bins defined in config file by a list of bin vericies in apex magnetic coordinates
+        # the center of ecah bin is defined as the average of the verticies
 
-        bin_edge_mlat = np.arange(64.0,68.0,0.5)
-        self.bin_mlat = (bin_edge_mlat[:-1]+bin_edge_mlat[1:])/2.
-        self.bin_mlon = np.full(self.bin_mlat.shape, np.nanmean(self.mlon))
-        self.bin_idx = [np.argwhere((self.mlat>=bin_edge_mlat[i]) & (self.mlat<bin_edge_mlat[i+1])).flatten() for i in range(len(bin_edge_mlat)-1)]
+        self.bin_mlat = []
+        self.bin_mlon = []
+        self.bin_idx = []
+        for vert in self.binvert:
+            vert = np.array(vert)
+            hull = Delaunay(vert)
+
+            self.bin_mlat.append(np.nanmean(vert[:,0]))
+            self.bin_mlon.append(np.nanmean(vert[:,1]))
+            self.bin_idx.append(np.argwhere(hull.find_simplex(np.array([self.mlat, self.mlon]).T)>=0).flatten())
 
 
 
