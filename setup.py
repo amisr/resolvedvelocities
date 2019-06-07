@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-""" visuamisr is a data visualization tool for AMISR data
-It provides:
-- A data reading utilty
-- Range Time Intensity plotting
-- Profile plotting
-- 3D beam plotting
+""" 
+resolvedvelocities calculates the 2D plasma drift velocity
+  and convection electric field from AMISR LoS velocities
+  using the algorithm described by Heinselman and Nicolls, 2008
 The full license can be found in LICENSE.txt
 """
 
@@ -37,8 +35,8 @@ with open(README, 'r') as f:
 READMETXT = '\n'.join(READMETXT)
 
 # Package description
-DESC = "A library of data plotting utilities for visualizing processed "
-DESC += "Advanced Modular Incoherent Scatter Radar (AMISR) data."
+DESC = "Tool for resolving 2D plasma drift from AMISR LoS velocity "
+# DESC += "Advanced Modular Incoherent Scatter Radar (AMISR) data."
 
 #############################################################################
 # First, check to make sure we are executing
@@ -54,19 +52,19 @@ repo root directory."
 #############################################################################
 # Now execute the setup
 #############################################################################
-setup(name='visuamisr',
+setup(name='resolvedvelocities',
       install_requires=REQUIREMENTS,
       setup_requires=REQUIREMENTS,
       version="2.0.0",
       description=DESC,
       author="Ashton S. Reimer",
       author_email="ashtonsethreimer@gmail.com",
-      url="https://github.com/asreimer/visuamisr",
-      download_url="https://github.com/asreimer/visuamisr",
+      url="https://github.com/amisr/resolvedvelocities",
+      download_url="https://github.com/amisr/resolvedvelocities",
       packages=find_packages(),
       long_description=READMETXT,
       zip_safe=False,
-      py_modules=['visuamisr'],
+      py_modules=['resolvedvelocities'],
       classifiers=["Development Status :: 2.0.0 - Release",
                    "Topic :: Scientific/Engineering",
                    "Intended Audience :: Science/Research",
@@ -74,4 +72,9 @@ setup(name='visuamisr',
                    "Natural Language :: English",
                    "Programming Language :: Python",
                   ],
+      entry_points={
+          'console_scripts': [
+              'resolvedvelocities=resolvedvelocities.run_resolvedvelocities:main',
+        ],
+}
       )

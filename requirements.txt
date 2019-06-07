@@ -1,3 +1,5 @@
 numpy
 matplotlib
 tables
+scipy
+apexpy
