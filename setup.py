@@ -36,7 +36,6 @@ READMETXT = '\n'.join(READMETXT)
 
 # Package description
 DESC = "Tool for resolving 2D plasma drift from AMISR LoS velocity "
-# DESC += "Advanced Modular Incoherent Scatter Radar (AMISR) data."
 
 #############################################################################
 # First, check to make sure we are executing

@@ -84,7 +84,6 @@ def main():
     rv.compute_electric_field()
     rv.compute_geodetic_output()
     rv.save_output()
-    # nenotr.run()
 
 if __name__=='__main__':
     main()
