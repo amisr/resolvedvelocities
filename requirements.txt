@@ -1,5 +1,5 @@
-numpy
-matplotlib
-tables
-scipy
+numpy >= 1.16
+matplotlib >=2.24
+tables >= 3.30
+scipy >=1.2
 apexpy
