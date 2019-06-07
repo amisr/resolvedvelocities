@@ -25,6 +25,7 @@ class ResolveVectors(object):
         self.chi2lim = eval(config.get('DEFAULT', 'CHI2LIM'))
         self.goodfitcode = eval(config.get('DEFAULT', 'GOODFITCODE'))
         self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
+        self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
         self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
         self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
@@ -287,29 +288,35 @@ class ResolveVectors(object):
 
     def compute_geodetic_output(self):
         # map velocity and electric field to get an array at different altitudes
+        # altitudes are defined by config file
 
-        alt = 200.  # for now, just calculate vectors at a set altitude
+        hbins = len(self.bin_mlat)
+        vbins = len(self.outalt)
+        mlat = np.tile(self.bin_mlat,vbins)
+        mlon = np.tile(self.bin_mlon,vbins)
+        alt = np.repeat(self.outalt, hbins)
 
         # calculate bin locations in geodetic coordinates
-        self.bin_glat, self.bin_glon, err = self.Apex.apex2geo(self.bin_mlat, self.bin_mlon, alt)
-        # self.gdlat = gdlat
-        # self.gdlon = gdlon
-        self.bin_galt = np.full(self.bin_glat.shape, alt)
+        glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
+        self.bin_glat = glat.reshape((vbins,hbins))
+        self.bin_glon = glon.reshape((vbins,hbins))
+        self.bin_galt = alt.reshape((vbins,hbins))
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(self.bin_mlat, self.bin_mlon, alt, coords='apex')
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
 
-        e = np.array([e1,e2,e3]).T
-        self.Velocity_gd = np.einsum('ijk,...ik->...ij',e,self.Velocity)
-        self.VelocityCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',e,self.VelocityCovariance,e)
+        e = np.array([e1,e2,e3]).T.reshape((vbins,hbins,3,3))
+        self.Velocity_gd = np.einsum('aijk,...ik->...aij',e,self.Velocity)
+        self.VelocityCovariance_gd = np.einsum('aijk,...ikl,aiml->...aijm',e,self.VelocityCovariance,e)
 
-        d = np.array([d1,d2,d3]).T
-        self.ElectricField_gd = np.einsum('ijk,...ik->...ij',d,self.ElectricField)
-        self.ElectricFieldCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',d,self.ElectricFieldCovariance,d)
+        d = np.array([d1,d2,d3]).T.reshape((vbins,hbins,3,3))
+        self.ElectricField_gd = np.einsum('aijk,...ik->...aij',d,self.ElectricField)
+        self.ElectricFieldCovariance_gd = np.einsum('aijk,...ikl,aiml->...aijm',d,self.ElectricFieldCovariance,d)
 
         # calculate vector magnitude and direction
-        self.Vgd_mag, self.Vgd_mag_err, self.Vgd_dir, self.Vgd_dir_err = magnitude_direction(self.Velocity_gd, self.VelocityCovariance_gd, -e2.T)
-        self.Egd_mag, self.Egd_mag_err, self.Egd_dir, self.Egd_dir_err = magnitude_direction(self.ElectricField_gd, self.ElectricFieldCovariance_gd, -e2.T)
+        north = -e2.T.reshape((vbins,hbins,3))
+        self.Vgd_mag, self.Vgd_mag_err, self.Vgd_dir, self.Vgd_dir_err = magnitude_direction(self.Velocity_gd, self.VelocityCovariance_gd, north)
+        self.Egd_mag, self.Egd_mag_err, self.Egd_dir, self.Egd_dir_err = magnitude_direction(self.ElectricField_gd, self.ElectricFieldCovariance_gd, north)
 
 
     def save_output(self):
@@ -494,8 +501,10 @@ def magnitude_direction(A,Sig,e):
     # A = vector
     # Sig = covariance matrix for A
     # e = vector to take the direction relative to
+    # ep = e x z (vector perpendicular to e and up)
     # This is all done with somewhat obtuse matrix algebra using einsum to prevent nested for loops
     # Input vectors are assumed to have orthogonal components
+
 
     AA = np.einsum('...i,...i->...', A, A)                  # dot product of A and A
     ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)      # matrix multipy A*Sig*A
@@ -512,7 +521,7 @@ def magnitude_direction(A,Sig,e):
 
     direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
 
-    B = np.einsum('ij,...i->...ij',ep,eA)-np.einsum('ij,...i->...ij',e,epA)     # B = ep(e*A)-e(ep*A) = A x (ep x e)
+    B = np.einsum('...ij,...i->...ij',ep,eA)-np.einsum('...ij,...i->...ij',e,epA)     # B = ep(e*A)-e(ep*A) = A x (ep x e)
     BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)      # matrix multipy B*Sig*B
     dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
