@@ -74,7 +74,7 @@ setup(name='resolvedvelocities',
                   ],
       entry_points={
           'console_scripts': [
-              'resolvedvelocities=resolvedvelocities.run_resolvedvelocities:main',
+              'resolvedvelocities=resolvedvelocities.run_resolve_vectors:main',
         ],
 }
       )

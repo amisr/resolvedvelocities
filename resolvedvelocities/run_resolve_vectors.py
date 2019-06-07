@@ -1,4 +1,13 @@
-; config.ini
+# run_resolve_vectors.py
+
+import os
+import sys
+from ResolveVectors import ResolveVectors
+
+config_file_help = """Calculate 2D resolved plasma drift velocity and electric
+field vectors from the LoS measurments in a fitted AMISR file.
+
+Requires a configuration file containing the following example format:
 
 [DEFAULT]
 
@@ -50,3 +59,32 @@ MINNUMPOINTS = 1
 
 # post-integration time (optional) - if omitted, the native times of the input file are used
 #INTTIME = 180.
+
+"""
+
+
+# a function to run this file as a script
+def main():
+    from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
+    # Build the argument parser tree
+    parser = ArgumentParser(description=config_file_help,
+                            formatter_class=RawDescriptionHelpFormatter)
+    arg = parser.add_argument('config_file',help='A configuration file.')
+   
+    args = vars(parser.parse_args())
+    rv = ResolveVectors(args['config_file'])
+    rv.read_data()
+    rv.filter_data()
+    rv.transform()
+    rv.ion_upflow_correction()
+    rv.bin_data()
+    rv.get_integration_periods()
+    rv.compute_vector_velocity()
+    rv.compute_electric_field()
+    rv.compute_geodetic_output()
+    rv.save_output()
+    # nenotr.run()
+
+if __name__=='__main__':
+    main()

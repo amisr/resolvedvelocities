@@ -13,7 +13,7 @@ from scipy.spatial import Delaunay
 
 
 class ResolveVectors(object):
-    def __init__(self, config=None):
+    def __init__(self, config):
         self.configfile = config
         self.read_config(self.configfile)
 

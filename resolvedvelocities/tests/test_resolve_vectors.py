@@ -8,7 +8,7 @@ import ResolveVectors as rv
 
 def main():
     config_file = sys.argv[1]
-    vvels = rv.ResolveVectors(config=config_file)
+    vvels = rv.ResolveVectors(config_file)
     vvels.read_data()
     vvels.filter_data()
     vvels.transform()
