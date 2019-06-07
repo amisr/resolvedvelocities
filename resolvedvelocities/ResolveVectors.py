@@ -3,12 +3,18 @@
 import tables
 import numpy as np
 import datetime as dt
+import os
 import configparser
+import platform
+import getpass
+import socket
 from apexpy import Apex
 from scipy.spatial import Delaunay
 
+
 class ResolveVectors(object):
     def __init__(self, config=None):
+        self.configfile = config
         self.read_config(config)
 
     def read_config(self, config_file):
@@ -326,123 +332,171 @@ class ResolveVectors(object):
 
     def save_output(self):
         # TODO: come up with a better way to manage all this
-        # - naming conventions?  Do these make sense?
-        # - add processing paramters
-        # - add config file info
-        # - add computer/user info
 
         # save output file
-        with tables.open_file(self.outfilename,mode='w') as file:
+        with tables.open_file(self.outfilename,mode='w') as outfile:
 
             # copy some groups directly from fitted input file
-            with tables.open_file(self.datafile, mode='r') as inputfile:
+            with tables.open_file(self.datafile, mode='r') as infile:
                 if not self.integration_time:
-                    file.copy_children(inputfile.get_node('/Time'), file.create_group('/','Time'))
-                file.copy_children(inputfile.get_node('/Site'), file.create_group('/','Site'))
+                    outfile.copy_children(infile.get_node('/Time'), outfile.create_group('/','Time'))
+                outfile.copy_children(infile.get_node('/Site'), outfile.create_group('/','Site'))
 
-            file.create_group('/', 'Magnetic')
+            outfile.create_group('/', 'Magnetic')
 
-            file.create_array('/Magnetic', 'MagneticLatitude', self.bin_mlat)
-            file.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
-            file.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
+            outfile.create_array('/Magnetic', 'MagneticLatitude', self.bin_mlat)
+            outfile.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
+            outfile.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
 
-            file.create_array('/Magnetic','MagneticLongitude', self.bin_mlon)
-            file.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
-            file.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
+            outfile.create_array('/Magnetic','MagneticLongitude', self.bin_mlon)
+            outfile.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
+            outfile.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
 
-            file.create_array('/Magnetic', 'Velocity', self.Velocity)
-            file.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plama Drift Velocity')
-            file.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
-            file.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
+            outfile.create_array('/Magnetic', 'Velocity', self.Velocity)
+            outfile.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plama Drift Velocity')
+            outfile.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
+            outfile.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
 
-            file.create_array('/Magnetic','SigmaV', self.VelocityCovariance)
-            file.set_node_attr('/Magnetic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
-            file.set_node_attr('/Magnetic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Magnetic/SigmaV', 'Units', 'm/s')
+            outfile.create_array('/Magnetic','SigmaV', self.VelocityCovariance)
+            outfile.set_node_attr('/Magnetic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
+            outfile.set_node_attr('/Magnetic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
+            outfile.set_node_attr('/Magnetic/SigmaV', 'Units', 'm/s')
 
-            file.create_array('/Magnetic','ElectricField',self.ElectricField)
-            file.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
-            file.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
-            file.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
+            outfile.create_array('/Magnetic','ElectricField',self.ElectricField)
+            outfile.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
+            outfile.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
+            outfile.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
 
-            file.create_array('/Magnetic','SigmaE',self.ElectricFieldCovariance)
-            file.set_node_attr('/Magnetic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
-            file.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
+            outfile.create_array('/Magnetic','SigmaE',self.ElectricFieldCovariance)
+            outfile.set_node_attr('/Magnetic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
+            outfile.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
+            outfile.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
 
-            file.create_array('/Magnetic', 'Chi2', self.ChiSquared)
-            file.set_node_attr('/Magnetic/Chi2', 'TITLE', 'Reduced Chi-Squared')
-            file.set_node_attr('/Magnetic/Chi2', 'Size', 'Nrecords x Nbins')
+            outfile.create_array('/Magnetic', 'Chi2', self.ChiSquared)
+            outfile.set_node_attr('/Magnetic/Chi2', 'TITLE', 'Reduced Chi-Squared')
+            outfile.set_node_attr('/Magnetic/Chi2', 'Size', 'Nrecords x Nbins')
 
-            file.create_group('/', 'Geographic')
+            outfile.create_group('/', 'Geographic')
 
-            file.create_array('/Geographic', 'GeographicLatitude', self.bin_glat)
-            file.set_node_attr('/Geographic/GeographicLatitude', 'TITLE', 'Geographic Latitude')
-            file.set_node_attr('/Geographic/GeographicLatitude', 'Size', 'Nbins')
+            outfile.create_array('/Geographic', 'GeographicLatitude', self.bin_glat)
+            outfile.set_node_attr('/Geographic/GeographicLatitude', 'TITLE', 'Geographic Latitude')
+            outfile.set_node_attr('/Geographic/GeographicLatitude', 'Size', 'Nalt x Nbins')
 
-            file.create_array('/Geographic','GeographicLongitude', self.bin_glon)
-            file.set_node_attr('/Geographic/GeographicLongitude', 'TITLE', 'Geographic Longitude')
-            file.set_node_attr('/Geographic/GeographicLongitude', 'Size', 'Nbins')
+            outfile.create_array('/Geographic','GeographicLongitude', self.bin_glon)
+            outfile.set_node_attr('/Geographic/GeographicLongitude', 'TITLE', 'Geographic Longitude')
+            outfile.set_node_attr('/Geographic/GeographicLongitude', 'Size', 'Nalt x Nbins')
 
-            file.create_array('/Geographic', 'Velocity', self.Velocity_gd)
-            file.set_node_attr('/Geographic/Velocity', 'TITLE', 'Plama Drift Velocity')
-            file.set_node_attr('/Geographic/Velocity', 'Size', 'Nrecords x Nbins x 3 (East, North, Up)')
-            file.set_node_attr('/Geographic/Velocity', 'Units', 'm/s')
+            outfile.create_array('/Geographic','GeographicAltitude', self.bin_galt)
+            outfile.set_node_attr('/Geographic/GeographicAltitude', 'TITLE', 'Geographic Altitude')
+            outfile.set_node_attr('/Geographic/GeographicAltitude', 'Size', 'Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/GeographicAltitude', 'Units', 'km')
 
-            file.create_array('/Geographic','SigmaV', self.VelocityCovariance_gd)
-            file.set_node_attr('/Geographic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
-            file.set_node_attr('/Geographic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Geographic/SigmaV', 'Units', 'm/s')
+            outfile.create_array('/Geographic', 'Velocity', self.Velocity_gd)
+            outfile.set_node_attr('/Geographic/Velocity', 'TITLE', 'Plama Drift Velocity')
+            outfile.set_node_attr('/Geographic/Velocity', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            outfile.set_node_attr('/Geographic/Velocity', 'Units', 'm/s')
 
-            file.create_array('/Geographic','Vmag',self.Vgd_mag)
-            file.set_node_attr('/Geographic/Vmag', 'TITLE', 'Velocity Magnitude')
-            file.set_node_attr('/Geographic/Vmag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/Vmag', 'Units', 'm/s')
+            outfile.create_array('/Geographic','SigmaV', self.VelocityCovariance_gd)
+            outfile.set_node_attr('/Geographic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
+            outfile.set_node_attr('/Geographic/SigmaV', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            outfile.set_node_attr('/Geographic/SigmaV', 'Units', 'm/s')
 
-            file.create_array('/Geographic','errVmag',self.Vgd_mag_err)
-            file.set_node_attr('/Geographic/errVmag', 'TITLE', 'Velocity Magnitude Error')
-            file.set_node_attr('/Geographic/errVmag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/errVmag', 'Units', 'm/s')
+            outfile.create_array('/Geographic','Vmag',self.Vgd_mag)
+            outfile.set_node_attr('/Geographic/Vmag', 'TITLE', 'Velocity Magnitude')
+            outfile.set_node_attr('/Geographic/Vmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Vmag', 'Units', 'm/s')
 
-            file.create_array('/Geographic','Vdir',self.Vgd_dir)
-            file.set_node_attr('/Geographic/Vdir', 'TITLE', 'Velocity Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/Vdir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/Vdir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','errVmag',self.Vgd_mag_err)
+            outfile.set_node_attr('/Geographic/errVmag', 'TITLE', 'Velocity Magnitude Error')
+            outfile.set_node_attr('/Geographic/errVmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errVmag', 'Units', 'm/s')
 
-            file.create_array('/Geographic','errVdir',self.Vgd_dir_err)
-            file.set_node_attr('/Geographic/errVdir', 'TITLE', 'Error in Velocity Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/errVdir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/errVdir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','Vdir',self.Vgd_dir)
+            outfile.set_node_attr('/Geographic/Vdir', 'TITLE', 'Velocity Direction Angle East of North Magnetic Meridian (-e2)')
+            outfile.set_node_attr('/Geographic/Vdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Vdir', 'Units', 'Degrees')
 
-            file.create_array('/Geographic','ElectricField',self.ElectricField_gd)
-            file.set_node_attr('/Geographic/ElectricField', 'TITLE', 'Convection Electric Field')
-            file.set_node_attr('/Geographic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (East, North, Up)')
-            file.set_node_attr('/Geographic/ElectricField', 'Units', 'V/m')
+            outfile.create_array('/Geographic','errVdir',self.Vgd_dir_err)
+            outfile.set_node_attr('/Geographic/errVdir', 'TITLE', 'Error in Velocity Direction')
+            outfile.set_node_attr('/Geographic/errVdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errVdir', 'Units', 'Degrees')
 
-            file.create_array('/Geographic','SigmaE',self.ElectricFieldCovariance_gd)
-            file.set_node_attr('/Geographic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
-            file.set_node_attr('/Geographic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Geographic/SigmaE', 'Units', 'V/m')
+            outfile.create_array('/Geographic','ElectricField',self.ElectricField_gd)
+            outfile.set_node_attr('/Geographic/ElectricField', 'TITLE', 'Convection Electric Field')
+            outfile.set_node_attr('/Geographic/ElectricField', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            outfile.set_node_attr('/Geographic/ElectricField', 'Units', 'V/m')
 
-            file.create_array('/Geographic','Emag',self.Egd_mag)
-            file.set_node_attr('/Geographic/Emag', 'TITLE', 'Electric Field Magnitude')
-            file.set_node_attr('/Geographic/Emag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/Emag', 'Units', 'V/m')
+            outfile.create_array('/Geographic','SigmaE',self.ElectricFieldCovariance_gd)
+            outfile.set_node_attr('/Geographic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
+            outfile.set_node_attr('/Geographic/SigmaE', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            outfile.set_node_attr('/Geographic/SigmaE', 'Units', 'V/m')
 
-            file.create_array('/Geographic','errEmag',self.Egd_mag_err)
-            file.set_node_attr('/Geographic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
-            file.set_node_attr('/Geographic/errEmag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/errEmag', 'Units', 'V/m')
+            outfile.create_array('/Geographic','Emag',self.Egd_mag)
+            outfile.set_node_attr('/Geographic/Emag', 'TITLE', 'Electric Field Magnitude')
+            outfile.set_node_attr('/Geographic/Emag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Emag', 'Units', 'V/m')
 
-            file.create_array('/Geographic','Edir',self.Egd_dir)
-            file.set_node_attr('/Geographic/Edir', 'TITLE', 'Electric Field Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/Edir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/Edir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','errEmag',self.Egd_mag_err)
+            outfile.set_node_attr('/Geographic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
+            outfile.set_node_attr('/Geographic/errEmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errEmag', 'Units', 'V/m')
 
-            file.create_array('/Geographic','errEdir',self.Egd_dir_err)
-            file.set_node_attr('/Geographic/errEdir', 'TITLE', 'Error in Electric Field Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/errEdir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/errEdir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','Edir',self.Egd_dir)
+            outfile.set_node_attr('/Geographic/Edir', 'TITLE', 'Electric Field Direction Angle East of North Magnetic Meridian (-e2)')
+            outfile.set_node_attr('/Geographic/Edir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Edir', 'Units', 'Degrees')
+
+            outfile.create_array('/Geographic','errEdir',self.Egd_dir_err)
+            outfile.set_node_attr('/Geographic/errEdir', 'TITLE', 'Error in Electric Field Direction')
+            outfile.set_node_attr('/Geographic/errEdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errEdir', 'Units', 'Degrees')
+
+            outfile.create_group('/', 'ProcessingParams')
+
+            outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
+            outfile.set_node_attr('/ProcessingParams/ApexYear', 'TITLE', 'Decimal Year used for IGRF Model')
+
+            outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
+            outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'TITLE', 'Reference height used for Apex coordinates')
+            outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'Units', 'km')
+
+
+            outfile.create_array('/ProcessingParams', 'InputFile', str(self.datafile))
+
+            # Save computer information and config file
+            # Computer information:
+            PythonVersion   = platform.python_version()
+            Type            = platform.machine()
+            System          = '{} {} {}'.format(platform.system(),platform.release(),platform.version())
+            User            = getpass.getuser()
+            Hostname        = platform.node()
+            if len(Hostname) == 0:
+                Hostname = socket.gethostname()
+            
+            outfile.create_group('/ProcessingParams', 'ComputerInfo')
+
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'PythonVersion', PythonVersion)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'Type', Type)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'System', System)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'User', User)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'Host', Hostname)
+
+            Path = os.path.dirname(os.path.abspath(self.configfile))
+            Name = os.path.basename(self.configfile)
+            with open(self.configfile, 'r') as f:
+                Contents = ''.join(f.readlines())
+
+            outfile.create_group('/ProcessingParams', 'ConfigFile')
+
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Name', Name)
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Path', Path)
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Contents', Contents)
+
+
+
+
+
+
 
 
 
