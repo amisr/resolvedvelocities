@@ -305,13 +305,18 @@ class ResolveVectors(object):
         # apex basis vectors in geodetic coordinates [e n u]
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
 
+        # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
+        # To force this, set e3 = 0 and d3 = 0
+        e3 = np.zeros(e3.shape)
+        d3 = np.zeros(d3.shape)
+
         e = np.array([e1,e2,e3]).T.reshape((vbins,hbins,3,3))
-        self.Velocity_gd = np.einsum('aijk,...ik->...aij',e,self.Velocity)
-        self.VelocityCovariance_gd = np.einsum('aijk,...ikl,aiml->...aijm',e,self.VelocityCovariance,e)
+        self.Velocity_gd = np.einsum('hijk,...ik->...hij',e,self.Velocity)
+        self.VelocityCovariance_gd = np.einsum('hijk,...ikl,himl->...hijm',e,self.VelocityCovariance,e)
 
         d = np.array([d1,d2,d3]).T.reshape((vbins,hbins,3,3))
-        self.ElectricField_gd = np.einsum('aijk,...ik->...aij',d,self.ElectricField)
-        self.ElectricFieldCovariance_gd = np.einsum('aijk,...ikl,aiml->...aijm',d,self.ElectricFieldCovariance,d)
+        self.ElectricField_gd = np.einsum('hijk,...ik->...hij',d,self.ElectricField)
+        self.ElectricFieldCovariance_gd = np.einsum('hijk,...ikl,himl->...hijm',d,self.ElectricFieldCovariance,d)
 
         # calculate vector magnitude and direction
         north = -e2.T.reshape((vbins,hbins,3))
