@@ -4,7 +4,10 @@ import tables
 import numpy as np
 import datetime as dt
 import os
-import configparser
+try:
+    import ConfigParser as configparser
+except ImportError:
+    import configparser
 import platform
 import getpass
 import socket
@@ -19,12 +22,12 @@ class ResolveVectors(object):
 
     def read_config(self, config_file):
         # read config file
-        config = configparser.ConfigParser(allow_no_values=True)
+        config = configparser.ConfigParser()
         config.read(config_file)
 
         self.datafile = config.get('DEFAULT', 'DATAFILE')
+        self.outfilename = config.get('DEFAULT', 'OUTFILENAME')
         self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
-        self.integration_time = config.getfloat('DEFAULT', 'INTTIME', fallback=None)
         self.covar = eval(config.get('DEFAULT', 'COVAR'))
         self.altlim = eval(config.get('DEFAULT', 'ALTLIM'))
         self.nelim = eval(config.get('DEFAULT', 'NELIM'))
@@ -33,12 +36,23 @@ class ResolveVectors(object):
         self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
         self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
-        self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
-        self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
-        self.use_beams = config.get('DEFAULT', 'USE_BEAMS', fallback=None)
-        if self.use_beams:
-            self.use_beams = eval(self.use_beams)
-        self.outfilename = config.get('DEFAULT', 'OUTFILENAME')
+
+        if config.has_option('DEFAULT', 'UPB_BEAMCODE'):
+            self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE')
+        else:
+            self.upB_beamcode = None
+        if config.has_option('DEFAULT', 'IONUP'):
+            self.ionup = config.get('DEFAULT', 'IONUP')
+        else:
+            self.ionup = None
+        if config.has_option('DEFAULT', 'USE_BEAMS'):
+            self.use_beams = eval(config.get('DEFAULT', 'USE_BEAMS'))
+        else:
+            self.use_beams = None
+        if config.has_option('DEFAULT', 'INTTIME'):
+            self.integration_time = config.getfloat('DEFAULT', 'INTTIME')
+        else:
+            self.integration_time = None
 
 
     def read_data(self):
