@@ -3,13 +3,19 @@
 import tables
 import numpy as np
 import datetime as dt
+import os
 import configparser
+import platform
+import getpass
+import socket
 from apexpy import Apex
+from scipy.spatial import Delaunay
 
 
 class ResolveVectors(object):
     def __init__(self, config=None):
-        self.read_config(config)
+        self.configfile = config
+        self.read_config(self.configfile)
 
     def read_config(self, config_file):
         # read config file
@@ -18,66 +24,70 @@ class ResolveVectors(object):
 
         self.datafile = config.get('DEFAULT', 'DATAFILE')
         self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
-        self.neMin = eval(config.get('DEFAULT', 'NEMIN'))
         self.integration_time = config.getfloat('DEFAULT', 'INTTIME', fallback=None)
         self.covar = eval(config.get('DEFAULT', 'COVAR'))
-        self.ppp = eval(config.get('DEFAULT', 'PPP'))
-        self.minalt = eval(config.get('DEFAULT', 'MINALT'))
-        self.maxalt = eval(config.get('DEFAULT', 'MAXALT'))
+        self.altlim = eval(config.get('DEFAULT', 'ALTLIM'))
+        self.nelim = eval(config.get('DEFAULT', 'NELIM'))
+        self.chi2lim = eval(config.get('DEFAULT', 'CHI2LIM'))
+        self.goodfitcode = eval(config.get('DEFAULT', 'GOODFITCODE'))
+        self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
+        self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
         self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE', fallback=None)
         self.ionup = config.get('DEFAULT', 'IONUP', fallback=None)
         self.use_beams = config.get('DEFAULT', 'USE_BEAMS', fallback=None)
         if self.use_beams:
             self.use_beams = eval(self.use_beams)
+        self.outfilename = config.get('DEFAULT', 'OUTFILENAME')
 
-        # list of beam codes to use
 
     def read_data(self):
         # read data from standard AMISR fit files
-        with tables.open_file(self.datafile,'r') as file:
+        with tables.open_file(self.datafile,'r') as infile:
 
             # time
-            self.time = file.get_node('/Time/UnixTime')[:]
+            self.time = infile.get_node('/Time/UnixTime')[:]
 
-            # beam codes
             # define which beams to use (default is all)
-            self.BeamCodes=file.get_node('/BeamCodes')[:,0]
+            self.BeamCodes=infile.get_node('/BeamCodes')[:,0]
             if self.use_beams:
                 bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
             else:
                 bm_idx = np.arange(0,len(self.BeamCodes))
-            # print bm_idx
 
             # geodetic location of each measurement
-            self.alt = file.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
-            self.lat = file.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
-            self.lon = file.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
+            self.alt = infile.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
+            self.lat = infile.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
+            self.lon = infile.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
 
             # geodetic k vectors
-            self.ke = file.get_node('/Geomag/ke')[bm_idx,:].flatten()
-            self.kn = file.get_node('/Geomag/kn')[bm_idx,:].flatten()
-            self.kz = file.get_node('/Geomag/kz')[bm_idx,:].flatten()
+            self.ke = infile.get_node('/Geomag/ke')[bm_idx,:].flatten()
+            self.kn = infile.get_node('/Geomag/kn')[bm_idx,:].flatten()
+            self.kz = infile.get_node('/Geomag/kz')[bm_idx,:].flatten()
 
             # line of sight velocity and error
-            self.vlos = file.get_node('/FittedParams/Fits')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
-            self.dvlos = file.get_node('/FittedParams/Errors')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
+            self.vlos = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
+            self.dvlos = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
+
+            # chi2 and fitcode (for filtering poor quality data)
+            self.chi2 = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+            self.fitcode = infile.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # density (for filtering and ion upflow)
-            self.ne = file.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+            self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # temperature (for ion upflow)
-            self.Te = file.get_node('/FittedParams/Fits')[:,bm_idx,:,5,1].reshape((len(self.time[:,0]),len(self.alt)))
-            Ts = file.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,1]
-            frac = file.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,0]
+            self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,5,1].reshape((len(self.time[:,0]),len(self.alt)))
+            Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,1]
+            frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,0]
             self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
 
             # get up-B beam velocities for ion outflow correction
             if self.upB_beamcode:
                 upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
-                upB_alt = file.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
-                upB_vlos = file.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
-                upB_dvlos = file.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
+                upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
                 self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
 
 
@@ -89,23 +99,24 @@ class ResolveVectors(object):
         self.vlos = self.vlos + self.chirp
 
         # discard data with low density
-        I = np.where((self.ne < self.neMin))
+        I = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
         self.vlos[I] = np.nan
         self.dvlos[I] = np.nan
 
         # discard data outside of altitude range
-        I = np.where(((self.alt < self.minalt*1000.) | (self.alt > self.maxalt*1000.)))
+        I = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
         self.vlos[:,I] = np.nan
         self.dvlos[:,I] = np.nan
 
-        # discard data with "unexceptable" error
-        #   - not sure about these conditions - they come from original vvels code but eliminate a lot of data points
-        fracerrs = np.absolute(self.dvlos)/(np.absolute(self.vlos)+self.ppp[0])
-        abserrs  = np.absolute(self.dvlos)
-        I = np.where(((fracerrs > self.ppp[1]) & (abserrs > self.ppp[3])))
+        # discard data with extremely high or extremely low chi2 values
+        I = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
         self.vlos[I] = np.nan
         self.dvlos[I] = np.nan
 
+        # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
+        I = np.where(~np.isin(self.fitcode, self.goodfitcode))
+        self.vlos[I] = np.nan
+        self.vlos[I] = np.nan
 
 
     def transform(self):
@@ -139,7 +150,6 @@ class ResolveVectors(object):
 
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
         self.A = np.einsum('ij,ijk->ik', kvec, d)
-        # print self.A.shape, self.A
 
         # calculate scaling factor D, used for ion outflow correction (Richmond, 1995 eqn. 3.15)
         d1_cross_d2 = np.cross(d1.T,d2.T).T
@@ -170,13 +180,19 @@ class ResolveVectors(object):
 
     def bin_data(self):
         # divide data into an arbitrary number of bins
-        # bins defined in some way by initial config file
-        # each bin has a specified MLAT/MLON
+        # bins defined in config file by a list of bin vericies in apex magnetic coordinates
+        # the center of ecah bin is defined as the average of the verticies
 
-        bin_edge_mlat = np.arange(64.0,68.0,0.5)
-        self.bin_mlat = (bin_edge_mlat[:-1]+bin_edge_mlat[1:])/2.
-        self.bin_mlon = np.full(self.bin_mlat.shape, np.nanmean(self.mlon))
-        self.bin_idx = [np.argwhere((self.mlat>=bin_edge_mlat[i]) & (self.mlat<bin_edge_mlat[i+1])).flatten() for i in range(len(bin_edge_mlat)-1)]
+        self.bin_mlat = []
+        self.bin_mlon = []
+        self.bin_idx = []
+        for vert in self.binvert:
+            vert = np.array(vert)
+            hull = Delaunay(vert)
+
+            self.bin_mlat.append(np.nanmean(vert[:,0]))
+            self.bin_mlon.append(np.nanmean(vert[:,1]))
+            self.bin_idx.append(np.argwhere(hull.find_simplex(np.array([self.mlat, self.mlon]).T)>=0).flatten())
 
 
 
@@ -212,17 +228,19 @@ class ResolveVectors(object):
             self.int_period = np.array(self.int_period)
 
 
-    def compute_vectors(self):
+    def compute_vector_velocity(self):
         # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
         
         Velocity = []
         VelocityCovariance = []
+        ChiSquared = []
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
         for tidx in self.int_idx:
             Vel = []
             SigmaV = []
+            Chi2 = []
             # loop over spatial bins
             for bidx in self.bin_idx:
 
@@ -237,27 +255,29 @@ class ResolveVectors(object):
                     A = self.A[bidx]
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-                V, SigV = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
+                V, SigV, chi2 = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
 
                 # append vector and coviarience matrix
                 Vel.append(V)
                 SigmaV.append(SigV)
+                Chi2.append(chi2)
 
             Velocity.append(Vel)
             VelocityCovariance.append(SigmaV)
+            ChiSquared.append(Chi2)
 
         self.Velocity = np.array(Velocity)
         self.VelocityCovariance = np.array(VelocityCovariance)
+        self.ChiSquared = np.array(ChiSquared)
 
 
-        # seperate method for electric field
-        # this lets you subtract out gravity waves, ect if desired
-
+    def compute_electric_field(self):
         # calculate electric field
-        # find Be3 value at each output bin location
-        Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,200.,coords='apex')
-        # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
+        # find Be3 value at each output bin location
+        # NOTE: Be3 is constant along magnetic field lines, so the altitude chosen here doesn't matter
+        Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
+        # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
         R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
@@ -270,148 +290,211 @@ class ResolveVectors(object):
 
     def compute_geodetic_output(self):
         # map velocity and electric field to get an array at different altitudes
+        # altitudes are defined by config file
 
-        alt = 200.  # for now, just calculate vectors at a set altitude
+        hbins = len(self.bin_mlat)
+        vbins = len(self.outalt)
+        mlat = np.tile(self.bin_mlat,vbins)
+        mlon = np.tile(self.bin_mlon,vbins)
+        alt = np.repeat(self.outalt, hbins)
 
         # calculate bin locations in geodetic coordinates
-        self.bin_glat, self.bin_glon, err = self.Apex.apex2geo(self.bin_mlat, self.bin_mlon, alt)
-        # self.gdlat = gdlat
-        # self.gdlon = gdlon
-        self.bin_galt = np.full(self.bin_glat.shape, alt)
+        glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
+        self.bin_glat = glat.reshape((vbins,hbins))
+        self.bin_glon = glon.reshape((vbins,hbins))
+        self.bin_galt = alt.reshape((vbins,hbins))
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(self.bin_mlat, self.bin_mlon, alt, coords='apex')
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
 
-        e = np.array([e1,e2,e3]).T
-        self.Velocity_gd = np.einsum('ijk,...ik->...ij',e,self.Velocity)
-        self.VelocityCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',e,self.VelocityCovariance,e)
+        # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
+        # To force this, set e3 = 0 and d3 = 0
+        e3 = np.zeros(e3.shape)
+        d3 = np.zeros(d3.shape)
 
-        d = np.array([d1,d2,d3]).T
-        self.ElectricField_gd = np.einsum('ijk,...ik->...ij',d,self.ElectricField)
-        self.ElectricFieldCovariance_gd = np.einsum('ijk,...ikl,iml->...ijm',d,self.ElectricFieldCovariance,d)
+        # caluclate plasma drift velocity geodetic components
+        e = np.array([e1,e2,e3]).T.reshape((vbins,hbins,3,3))
+        self.Velocity_gd = np.einsum('hijk,...ik->...hij',e,self.Velocity)
+        self.VelocityCovariance_gd = np.einsum('hijk,...ikl,himl->...hijm',e,self.VelocityCovariance,e)
+
+        # calculate electric field geodetic components
+        d = np.array([d1,d2,d3]).T.reshape((vbins,hbins,3,3))
+        self.ElectricField_gd = np.einsum('hijk,...ik->...hij',d,self.ElectricField)
+        self.ElectricFieldCovariance_gd = np.einsum('hijk,...ikl,himl->...hijm',d,self.ElectricFieldCovariance,d)
 
         # calculate vector magnitude and direction
-        self.Vgd_mag, self.Vgd_mag_err, self.Vgd_dir, self.Vgd_dir_err = magnitude_direction(self.Velocity_gd, self.VelocityCovariance_gd, -e2.T)
-        self.Egd_mag, self.Egd_mag_err, self.Egd_dir, self.Egd_dir_err = magnitude_direction(self.ElectricField_gd, self.ElectricFieldCovariance_gd, -e2.T)
+        north = -e2.T.reshape((vbins,hbins,3))
+        self.Vgd_mag, self.Vgd_mag_err, self.Vgd_dir, self.Vgd_dir_err = magnitude_direction(self.Velocity_gd, self.VelocityCovariance_gd, north)
+        self.Egd_mag, self.Egd_mag_err, self.Egd_dir, self.Egd_dir_err = magnitude_direction(self.ElectricField_gd, self.ElectricFieldCovariance_gd, north)
 
 
     def save_output(self):
         # TODO: come up with a better way to manage all this
-        # - naming conventions?  Do these make sense?
-        # - add processing paramters
-        # - add config file info
-        # - add computer/user info
 
         # save output file
-        filename = 'test_vvels.h5'
-
-        with tables.open_file(filename,mode='w') as file:
+        with tables.open_file(self.outfilename,mode='w') as outfile:
 
             # copy some groups directly from fitted input file
-            with tables.open_file(self.datafile, mode='r') as inputfile:
+            with tables.open_file(self.datafile, mode='r') as infile:
                 if not self.integration_time:
-                    file.copy_children(inputfile.get_node('/Time'), file.create_group('/','Time'))
-                file.copy_children(inputfile.get_node('/Site'), file.create_group('/','Site'))
+                    outfile.copy_children(infile.get_node('/Time'), outfile.create_group('/','Time'))
+                outfile.copy_children(infile.get_node('/Site'), outfile.create_group('/','Site'))
 
-            file.create_group('/', 'Magnetic')
+            outfile.create_group('/', 'Magnetic')
 
-            file.create_array('/Magnetic', 'MagneticLatitude', self.bin_mlat)
-            file.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
-            file.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
+            outfile.create_array('/Magnetic', 'MagneticLatitude', self.bin_mlat)
+            outfile.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
+            outfile.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
 
-            file.create_array('/Magnetic','MagneticLongitude', self.bin_mlon)
-            file.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
-            file.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
+            outfile.create_array('/Magnetic','MagneticLongitude', self.bin_mlon)
+            outfile.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
+            outfile.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
 
-            file.create_array('/Magnetic', 'Velocity', self.Velocity)
-            file.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plama Drift Velocity')
-            file.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
-            file.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
+            outfile.create_array('/Magnetic', 'Velocity', self.Velocity)
+            outfile.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plama Drift Velocity')
+            outfile.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
+            outfile.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
 
-            file.create_array('/Magnetic','SigmaV', self.VelocityCovariance)
-            file.set_node_attr('/Magnetic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
-            file.set_node_attr('/Magnetic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Magnetic/SigmaV', 'Units', 'm/s')
+            outfile.create_array('/Magnetic','SigmaV', self.VelocityCovariance)
+            outfile.set_node_attr('/Magnetic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
+            outfile.set_node_attr('/Magnetic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
+            outfile.set_node_attr('/Magnetic/SigmaV', 'Units', 'm/s')
 
-            file.create_array('/Magnetic','ElectricField',self.ElectricField)
-            file.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
-            file.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
-            file.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
+            outfile.create_array('/Magnetic','ElectricField',self.ElectricField)
+            outfile.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
+            outfile.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
+            outfile.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
 
-            file.create_array('/Magnetic','SigmaE',self.ElectricFieldCovariance)
-            file.set_node_attr('/Magnetic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
-            file.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
+            outfile.create_array('/Magnetic','SigmaE',self.ElectricFieldCovariance)
+            outfile.set_node_attr('/Magnetic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
+            outfile.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
+            outfile.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
 
-            file.create_group('/', 'Geographic')
+            outfile.create_array('/Magnetic', 'Chi2', self.ChiSquared)
+            outfile.set_node_attr('/Magnetic/Chi2', 'TITLE', 'Reduced Chi-Squared')
+            outfile.set_node_attr('/Magnetic/Chi2', 'Size', 'Nrecords x Nbins')
 
-            file.create_array('/Geographic', 'GeographicLatitude', self.bin_glat)
-            file.set_node_attr('/Geographic/GeographicLatitude', 'TITLE', 'Geographic Latitude')
-            file.set_node_attr('/Geographic/GeographicLatitude', 'Size', 'Nbins')
+            outfile.create_group('/', 'Geographic')
 
-            file.create_array('/Geographic','GeographicLongitude', self.bin_glon)
-            file.set_node_attr('/Geographic/GeographicLongitude', 'TITLE', 'Geographic Longitude')
-            file.set_node_attr('/Geographic/GeographicLongitude', 'Size', 'Nbins')
+            outfile.create_array('/Geographic', 'GeographicLatitude', self.bin_glat)
+            outfile.set_node_attr('/Geographic/GeographicLatitude', 'TITLE', 'Geographic Latitude')
+            outfile.set_node_attr('/Geographic/GeographicLatitude', 'Size', 'Nalt x Nbins')
 
-            file.create_array('/Geographic', 'Velocity', self.Velocity_gd)
-            file.set_node_attr('/Geographic/Velocity', 'TITLE', 'Plama Drift Velocity')
-            file.set_node_attr('/Geographic/Velocity', 'Size', 'Nrecords x Nbins x 3 (East, North, Up)')
-            file.set_node_attr('/Geographic/Velocity', 'Units', 'm/s')
+            outfile.create_array('/Geographic','GeographicLongitude', self.bin_glon)
+            outfile.set_node_attr('/Geographic/GeographicLongitude', 'TITLE', 'Geographic Longitude')
+            outfile.set_node_attr('/Geographic/GeographicLongitude', 'Size', 'Nalt x Nbins')
 
-            file.create_array('/Geographic','SigmaV', self.VelocityCovariance_gd)
-            file.set_node_attr('/Geographic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
-            file.set_node_attr('/Geographic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Geographic/SigmaV', 'Units', 'm/s')
+            outfile.create_array('/Geographic','GeographicAltitude', self.bin_galt)
+            outfile.set_node_attr('/Geographic/GeographicAltitude', 'TITLE', 'Geographic Altitude')
+            outfile.set_node_attr('/Geographic/GeographicAltitude', 'Size', 'Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/GeographicAltitude', 'Units', 'km')
 
-            file.create_array('/Geographic','Vmag',self.Vgd_mag)
-            file.set_node_attr('/Geographic/Vmag', 'TITLE', 'Velocity Magnitude')
-            file.set_node_attr('/Geographic/Vmag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/Vmag', 'Units', 'm/s')
+            outfile.create_array('/Geographic', 'Velocity', self.Velocity_gd)
+            outfile.set_node_attr('/Geographic/Velocity', 'TITLE', 'Plama Drift Velocity')
+            outfile.set_node_attr('/Geographic/Velocity', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            outfile.set_node_attr('/Geographic/Velocity', 'Units', 'm/s')
 
-            file.create_array('/Geographic','errVmag',self.Vgd_mag_err)
-            file.set_node_attr('/Geographic/errVmag', 'TITLE', 'Velocity Magnitude Error')
-            file.set_node_attr('/Geographic/errVmag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/errVmag', 'Units', 'm/s')
+            outfile.create_array('/Geographic','SigmaV', self.VelocityCovariance_gd)
+            outfile.set_node_attr('/Geographic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
+            outfile.set_node_attr('/Geographic/SigmaV', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            outfile.set_node_attr('/Geographic/SigmaV', 'Units', 'm/s')
 
-            file.create_array('/Geographic','Vdir',self.Vgd_dir)
-            file.set_node_attr('/Geographic/Vdir', 'TITLE', 'Velocity Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/Vdir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/Vdir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','Vmag',self.Vgd_mag)
+            outfile.set_node_attr('/Geographic/Vmag', 'TITLE', 'Velocity Magnitude')
+            outfile.set_node_attr('/Geographic/Vmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Vmag', 'Units', 'm/s')
 
-            file.create_array('/Geographic','errVdir',self.Vgd_dir_err)
-            file.set_node_attr('/Geographic/errVdir', 'TITLE', 'Error in Velocity Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/errVdir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/errVdir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','errVmag',self.Vgd_mag_err)
+            outfile.set_node_attr('/Geographic/errVmag', 'TITLE', 'Velocity Magnitude Error')
+            outfile.set_node_attr('/Geographic/errVmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errVmag', 'Units', 'm/s')
 
-            file.create_array('/Geographic','ElectricField',self.ElectricField_gd)
-            file.set_node_attr('/Geographic/ElectricField', 'TITLE', 'Convection Electric Field')
-            file.set_node_attr('/Geographic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (East, North, Up)')
-            file.set_node_attr('/Geographic/ElectricField', 'Units', 'V/m')
+            outfile.create_array('/Geographic','Vdir',self.Vgd_dir)
+            outfile.set_node_attr('/Geographic/Vdir', 'TITLE', 'Velocity Direction Angle East of North Magnetic Meridian (-e2)')
+            outfile.set_node_attr('/Geographic/Vdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Vdir', 'Units', 'Degrees')
 
-            file.create_array('/Geographic','SigmaE',self.ElectricFieldCovariance_gd)
-            file.set_node_attr('/Geographic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
-            file.set_node_attr('/Geographic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
-            file.set_node_attr('/Geographic/SigmaE', 'Units', 'V/m')
+            outfile.create_array('/Geographic','errVdir',self.Vgd_dir_err)
+            outfile.set_node_attr('/Geographic/errVdir', 'TITLE', 'Error in Velocity Direction')
+            outfile.set_node_attr('/Geographic/errVdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errVdir', 'Units', 'Degrees')
 
-            file.create_array('/Geographic','Emag',self.Egd_mag)
-            file.set_node_attr('/Geographic/Emag', 'TITLE', 'Electric Field Magnitude')
-            file.set_node_attr('/Geographic/Emag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/Emag', 'Units', 'V/m')
+            outfile.create_array('/Geographic','ElectricField',self.ElectricField_gd)
+            outfile.set_node_attr('/Geographic/ElectricField', 'TITLE', 'Convection Electric Field')
+            outfile.set_node_attr('/Geographic/ElectricField', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            outfile.set_node_attr('/Geographic/ElectricField', 'Units', 'V/m')
 
-            file.create_array('/Geographic','errEmag',self.Egd_mag_err)
-            file.set_node_attr('/Geographic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
-            file.set_node_attr('/Geographic/errEmag', 'Size', 'Nrecords x Nbins')
-            file.set_node_attr('/Geographic/errEmag', 'Units', 'V/m')
+            outfile.create_array('/Geographic','SigmaE',self.ElectricFieldCovariance_gd)
+            outfile.set_node_attr('/Geographic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
+            outfile.set_node_attr('/Geographic/SigmaE', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            outfile.set_node_attr('/Geographic/SigmaE', 'Units', 'V/m')
 
-            file.create_array('/Geographic','Edir',self.Egd_dir)
-            file.set_node_attr('/Geographic/Edir', 'TITLE', 'Electric Field Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/Edir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/Edir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','Emag',self.Egd_mag)
+            outfile.set_node_attr('/Geographic/Emag', 'TITLE', 'Electric Field Magnitude')
+            outfile.set_node_attr('/Geographic/Emag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Emag', 'Units', 'V/m')
 
-            file.create_array('/Geographic','errEdir',self.Egd_dir_err)
-            file.set_node_attr('/Geographic/errEdir', 'TITLE', 'Error in Electric Field Direction from Magnetic North Meridian')
-            file.set_node_attr('/Geographic/errEdir', 'Size', 'Nrecord x Nbins')
-            file.set_node_attr('/Geographic/errEdir', 'Units', 'Degrees')
+            outfile.create_array('/Geographic','errEmag',self.Egd_mag_err)
+            outfile.set_node_attr('/Geographic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
+            outfile.set_node_attr('/Geographic/errEmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errEmag', 'Units', 'V/m')
+
+            outfile.create_array('/Geographic','Edir',self.Egd_dir)
+            outfile.set_node_attr('/Geographic/Edir', 'TITLE', 'Electric Field Direction Angle East of North Magnetic Meridian (-e2)')
+            outfile.set_node_attr('/Geographic/Edir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/Edir', 'Units', 'Degrees')
+
+            outfile.create_array('/Geographic','errEdir',self.Egd_dir_err)
+            outfile.set_node_attr('/Geographic/errEdir', 'TITLE', 'Error in Electric Field Direction')
+            outfile.set_node_attr('/Geographic/errEdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geographic/errEdir', 'Units', 'Degrees')
+
+            outfile.create_group('/', 'ProcessingParams')
+
+            outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
+            outfile.set_node_attr('/ProcessingParams/ApexYear', 'TITLE', 'Decimal Year used for IGRF Model')
+
+            outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
+            outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'TITLE', 'Reference height used for Apex coordinates')
+            outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'Units', 'km')
+
+
+            outfile.create_array('/ProcessingParams', 'InputFile', str(self.datafile))
+
+            # Save computer information and config file
+            # Computer information:
+            PythonVersion   = platform.python_version()
+            Type            = platform.machine()
+            System          = '{} {} {}'.format(platform.system(),platform.release(),platform.version())
+            User            = getpass.getuser()
+            Hostname        = platform.node()
+            if len(Hostname) == 0:
+                Hostname = socket.gethostname()
+            
+            outfile.create_group('/ProcessingParams', 'ComputerInfo')
+
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'PythonVersion', PythonVersion)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'Type', Type)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'System', System)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'User', User)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'Host', Hostname)
+
+            Path = os.path.dirname(os.path.abspath(self.configfile))
+            Name = os.path.basename(self.configfile)
+            with open(self.configfile, 'r') as f:
+                Contents = ''.join(f.readlines())
+
+            outfile.create_group('/ProcessingParams', 'ConfigFile')
+
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Name', Name)
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Path', Path)
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Contents', Contents)
+
+
+
+
+
+
 
 
 
@@ -431,17 +514,19 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
         I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)   # calculate I = (A*SigV*A.T + SigE)^-1
         V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)      # calculate velocity estimate (Heinselman 2008 eqn 12)
         SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))       # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
+        chi2 = np.sum((vlos-np.einsum('...i,i->...',A,V))**2/dvlos**2)/(sum(finite)-3)
 
     except np.linalg.LinAlgError:
         V = np.full(3,np.nan)
         SigV = np.full((3,3),np.nan)
+        chi2 = np.nan
 
-    # if there are too few points for a valid reconstruction, set output to NAN
-    if sum(finite) < minnumpoints:
-        V = np.full(3,np.nan)
-        SigV = np.full((3,3),np.nan)
+    # # if there are too few points for a valid reconstruction, set output to NAN
+    # if sum(finite) < minnumpoints:
+    #     V = np.full(3,np.nan)
+    #     SigV = np.full((3,3),np.nan)
 
-    return V, SigV
+    return V, SigV, chi2
 
 
 def lin_interp(x, xp, fp, dfp):
@@ -454,7 +539,7 @@ def lin_interp(x, xp, fp, dfp):
     # calculate X
     X = (x-xp[i])/(xp[i+1]-xp[i])
     # calculate interpolated values
-    f = fp[i] + (fp[i+1]-fp[i])*X
+    f = (1-X)*fp[i] + X*fp[i+1]
     # calculate interpolation error
     df = np.sqrt((1-X)**2*dfp[i]**2 + X**2*dfp[i+1]**2)
     # replace out-of-range values with NaN
@@ -473,14 +558,17 @@ def magnitude_direction(A,Sig,e):
     # A = vector
     # Sig = covariance matrix for A
     # e = vector to take the direction relative to
+    # ep = e x z (vector perpendicular to e and up)
     # This is all done with somewhat obtuse matrix algebra using einsum to prevent nested for loops
     # Input vectors are assumed to have orthogonal components
+
 
     AA = np.einsum('...i,...i->...', A, A)                  # dot product of A and A
     ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)      # matrix multipy A*Sig*A
     ee = np.einsum('...i,...i->...', e, e)                  # dot product of e and e
     eA = np.einsum('...i,...i->...', e, A)                  # dot product of e and A
 
+    # calculate magnitude and magnitude error
     magnitude = np.sqrt(AA)
     mag_err = np.sqrt(ASA/AA)
 
@@ -489,10 +577,11 @@ def magnitude_direction(A,Sig,e):
     epep = np.einsum('...i,...i->...', ep, ep)
     epA = np.einsum('...i,...i->...', ep, A)
 
-    direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
-
-    B = np.einsum('ij,...i->...ij',ep,eA)-np.einsum('ij,...i->...ij',e,epA)     # B = ep(e*A)-e(ep*A) = A x (ep x e)
+    B = np.einsum('...ij,...i->...ij',ep,eA)-np.einsum('...ij,...i->...ij',e,epA)     # B = ep(e*A)-e(ep*A) = A x (ep x e)
     BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)      # matrix multipy B*Sig*B
+
+    # calculate direction and direction error
+    direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
     dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi

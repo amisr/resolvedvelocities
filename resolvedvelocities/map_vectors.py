@@ -22,8 +22,8 @@ def plot_raw():
     vvels.bin_data()
     vvels.get_integration_periods()
 
-    # idx = 40
-    idx = 4
+    idx = 40
+    # idx = 300
 
     lat = vvels.lat
     lon = vvels.lon
@@ -43,7 +43,8 @@ def plot_raw():
 
 
     # calculate vector velocities
-    vvels.compute_vectors()
+    vvels.compute_vector_velocity()
+    vvels.compute_electric_field()
     vvels.compute_geodetic_output()
 
     lato = vvels.bin_glat
@@ -113,7 +114,8 @@ def plot_mag():
     vvels.transform()
     vvels.bin_data()
     vvels.get_integration_periods()
-    vvels.compute_vectors()
+    vvels.compute_vector_velocity()
+    vvels.compute_electric_field()
 
     A = vvels.A
     vlos = vvels.vlos
@@ -175,7 +177,8 @@ def plot_synth():
     vx, vy, vz = cc.vector_geodetic_to_cartesian(vvels.kn*vlos, vvels.ke*vlos, vvels.kz*vlos, vvels.lat, vvels.lon, vvels.alt/1000.)
 
     # calculate vector velocities
-    vvels.compute_vectors()
+    vvels.compute_vector_velocity()
+    vvels.compute_electric_field()
     vvels.compute_geodetic_output()
 
     vv = vvels.Velocity_gd[idx,:,:]
