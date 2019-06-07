@@ -15,7 +15,7 @@ from scipy.spatial import Delaunay
 class ResolveVectors(object):
     def __init__(self, config=None):
         self.configfile = config
-        self.read_config(config)
+        self.read_config(self.configfile)
 
     def read_config(self, config_file):
         # read config file
@@ -43,54 +43,51 @@ class ResolveVectors(object):
 
     def read_data(self):
         # read data from standard AMISR fit files
-        # TODO: don't use vairable 'file'
-        with tables.open_file(self.datafile,'r') as file:
+        with tables.open_file(self.datafile,'r') as infile:
 
             # time
-            self.time = file.get_node('/Time/UnixTime')[:]
+            self.time = infile.get_node('/Time/UnixTime')[:]
 
-            # beam codes
             # define which beams to use (default is all)
-            self.BeamCodes=file.get_node('/BeamCodes')[:,0]
+            self.BeamCodes=infile.get_node('/BeamCodes')[:,0]
             if self.use_beams:
                 bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
             else:
                 bm_idx = np.arange(0,len(self.BeamCodes))
-            # print bm_idx
 
             # geodetic location of each measurement
-            self.alt = file.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
-            self.lat = file.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
-            self.lon = file.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
+            self.alt = infile.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
+            self.lat = infile.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
+            self.lon = infile.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
 
             # geodetic k vectors
-            self.ke = file.get_node('/Geomag/ke')[bm_idx,:].flatten()
-            self.kn = file.get_node('/Geomag/kn')[bm_idx,:].flatten()
-            self.kz = file.get_node('/Geomag/kz')[bm_idx,:].flatten()
+            self.ke = infile.get_node('/Geomag/ke')[bm_idx,:].flatten()
+            self.kn = infile.get_node('/Geomag/kn')[bm_idx,:].flatten()
+            self.kz = infile.get_node('/Geomag/kz')[bm_idx,:].flatten()
 
             # line of sight velocity and error
-            self.vlos = file.get_node('/FittedParams/Fits')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
-            self.dvlos = file.get_node('/FittedParams/Errors')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
+            self.vlos = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
+            self.dvlos = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
 
             # chi2 and fitcode (for filtering poor quality data)
-            self.chi2 = file.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
-            self.fitcode = file.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+            self.chi2 = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+            self.fitcode = infile.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # density (for filtering and ion upflow)
-            self.ne = file.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+            self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # temperature (for ion upflow)
-            self.Te = file.get_node('/FittedParams/Fits')[:,bm_idx,:,5,1].reshape((len(self.time[:,0]),len(self.alt)))
-            Ts = file.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,1]
-            frac = file.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,0]
+            self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,5,1].reshape((len(self.time[:,0]),len(self.alt)))
+            Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,1]
+            frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,0]
             self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
 
             # get up-B beam velocities for ion outflow correction
             if self.upB_beamcode:
                 upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
-                upB_alt = file.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
-                upB_vlos = file.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
-                upB_dvlos = file.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
+                upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
                 self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
 
 
@@ -153,7 +150,6 @@ class ResolveVectors(object):
 
         # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
         self.A = np.einsum('ij,ijk->ik', kvec, d)
-        # print self.A.shape, self.A
 
         # calculate scaling factor D, used for ion outflow correction (Richmond, 1995 eqn. 3.15)
         d1_cross_d2 = np.cross(d1.T,d2.T).T
@@ -316,10 +312,12 @@ class ResolveVectors(object):
         e3 = np.zeros(e3.shape)
         d3 = np.zeros(d3.shape)
 
+        # caluclate plasma drift velocity geodetic components
         e = np.array([e1,e2,e3]).T.reshape((vbins,hbins,3,3))
         self.Velocity_gd = np.einsum('hijk,...ik->...hij',e,self.Velocity)
         self.VelocityCovariance_gd = np.einsum('hijk,...ikl,himl->...hijm',e,self.VelocityCovariance,e)
 
+        # calculate electric field geodetic components
         d = np.array([d1,d2,d3]).T.reshape((vbins,hbins,3,3))
         self.ElectricField_gd = np.einsum('hijk,...ik->...hij',d,self.ElectricField)
         self.ElectricFieldCovariance_gd = np.einsum('hijk,...ikl,himl->...hijm',d,self.ElectricFieldCovariance,d)
@@ -541,7 +539,7 @@ def lin_interp(x, xp, fp, dfp):
     # calculate X
     X = (x-xp[i])/(xp[i+1]-xp[i])
     # calculate interpolated values
-    f = fp[i] + (fp[i+1]-fp[i])*X
+    f = (1-X)*fp[i] + X*fp[i+1]
     # calculate interpolation error
     df = np.sqrt((1-X)**2*dfp[i]**2 + X**2*dfp[i+1]**2)
     # replace out-of-range values with NaN
@@ -570,6 +568,7 @@ def magnitude_direction(A,Sig,e):
     ee = np.einsum('...i,...i->...', e, e)                  # dot product of e and e
     eA = np.einsum('...i,...i->...', e, A)                  # dot product of e and A
 
+    # calculate magnitude and magnitude error
     magnitude = np.sqrt(AA)
     mag_err = np.sqrt(ASA/AA)
 
@@ -578,10 +577,11 @@ def magnitude_direction(A,Sig,e):
     epep = np.einsum('...i,...i->...', ep, ep)
     epA = np.einsum('...i,...i->...', ep, A)
 
-    direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
-
     B = np.einsum('...ij,...i->...ij',ep,eA)-np.einsum('...ij,...i->...ij',e,epA)     # B = ep(e*A)-e(ep*A) = A x (ep x e)
     BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)      # matrix multipy B*Sig*B
+
+    # calculate direction and direction error
+    direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
     dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
