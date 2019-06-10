@@ -2,7 +2,7 @@
 
 import os
 import sys
-from ResolveVectors import ResolveVectors
+from .ResolveVectors import ResolveVectors
 
 config_file_help = """Calculate 2D resolved plasma drift velocity and electric
 field vectors from the LoS measurments in a fitted AMISR file.
