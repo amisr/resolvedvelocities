@@ -473,7 +473,7 @@ class ResolveVectors(object):
             outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'Units', 'km')
 
 
-            outfile.create_array('/ProcessingParams', 'InputFile', str(self.datafile))
+            outfile.create_array('/ProcessingParams', 'InputFile', self.datafile.encode('utf-8'))
 
             # Save computer information and config file
             # Computer information:
@@ -487,11 +487,11 @@ class ResolveVectors(object):
             
             outfile.create_group('/ProcessingParams', 'ComputerInfo')
 
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'PythonVersion', PythonVersion)
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'Type', Type)
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'System', System)
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'User', User)
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'Host', Hostname)
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'PythonVersion', PythonVersion.encode('utf-8'))
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'Type', Type.encode('utf-8'))
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'System', System.encode('utf-8'))
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'User', User.encode('utf-8'))
+            outfile.create_array('/ProcessingParams/ComputerInfo', 'Host', Hostname.encode('utf-8'))
 
             Path = os.path.dirname(os.path.abspath(self.configfile))
             Name = os.path.basename(self.configfile)
@@ -500,9 +500,9 @@ class ResolveVectors(object):
 
             outfile.create_group('/ProcessingParams', 'ConfigFile')
 
-            outfile.create_array('/ProcessingParams/ConfigFile', 'Name', Name)
-            outfile.create_array('/ProcessingParams/ConfigFile', 'Path', Path)
-            outfile.create_array('/ProcessingParams/ConfigFile', 'Contents', Contents)
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Name', Name.encode('utf-8'))
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Path', Path.encode('utf-8'))
+            outfile.create_array('/ProcessingParams/ConfigFile', 'Contents', Contents.encode('utf-8'))
 
 
 
