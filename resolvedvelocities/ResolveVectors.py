@@ -62,6 +62,12 @@ class ResolveVectors(object):
             # time
             self.time = infile.get_node('/Time/UnixTime')[:]
 
+            # site
+            lat = infile.get_node('/Site/Latitude').read()
+            lon = infile.get_node('/Site/Longitude').read()
+            alt = infile.get_node('/Site/Altitude').read()
+            self.site = np.array([lat, lon, alt/1000.])
+
             # define which beams to use (default is all)
             self.BeamCodes=infile.get_node('/BeamCodes')[:,0]
             if self.use_beams:
@@ -323,6 +329,7 @@ class ResolveVectors(object):
 
         # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
         # To force this, set e3 = 0 and d3 = 0
+        # Because E was derived by taking the cross product between B and V, setting d3=0 SHOULD be redundant
         e3 = np.zeros(e3.shape)
         d3 = np.zeros(d3.shape)
 
@@ -350,9 +357,43 @@ class ResolveVectors(object):
 
             # copy some groups directly from fitted input file
             with tables.open_file(self.datafile, mode='r') as infile:
+                outfile.copy_children(infile.get_node('/Site'), outfile.create_group('/','Site'))
                 if not self.integration_time:
                     outfile.copy_children(infile.get_node('/Time'), outfile.create_group('/','Time'))
-                outfile.copy_children(infile.get_node('/Site'), outfile.create_group('/','Site'))
+                else:
+                    outfile.create_group('/','Time')
+                    year, month, day, doy, dtime, mlt = self.create_time_arrays()
+
+                    outfile.create_array('/Time', 'UnixTime', self.int_period)
+                    outfile.set_node_attr('/Time/UnixTime', 'TITLE', 'UnixTime')
+                    outfile.set_node_attr('/Time/UnixTime', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    outfile.set_node_attr('/Time/UnixTime', 'Unit', 'Seconds')
+
+                    outfile.create_array('/Time', 'Year', year)
+                    outfile.set_node_attr('/Time/Year', 'TITLE', 'Year')
+                    outfile.set_node_attr('/Time/Year', 'Size', 'Nrecords x 2 (Start and end of integration')
+
+                    outfile.create_array('/Time', 'Month', month)
+                    outfile.set_node_attr('/Time/Month', 'TITLE', 'Month')
+                    outfile.set_node_attr('/Time/Month', 'Size', 'Nrecords x 2 (Start and end of integration')
+
+                    outfile.create_array('/Time', 'Day', day)
+                    outfile.set_node_attr('/Time/Day', 'TITLE', 'Day of Month')
+                    outfile.set_node_attr('/Time/Day', 'Size', 'Nrecords x 2 (Start and end of integration')
+
+                    outfile.create_array('/Time', 'doy', doy)
+                    outfile.set_node_attr('/Time/doy', 'TITLE', 'Day of Year')
+                    outfile.set_node_attr('/Time/doy', 'Size', 'Nrecords x 2 (Start and end of integration')
+
+                    outfile.create_array('/Time', 'dtime', dtime)
+                    outfile.set_node_attr('/Time/dtime', 'TITLE', 'Decimal Time')
+                    outfile.set_node_attr('/Time/dtime', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    outfile.set_node_attr('/Time/dtime', 'Unit', 'UT Hour')
+
+                    outfile.create_array('/Time', 'MagneticLocalTimeSite', mlt)
+                    outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'TITLE', 'Magnetic Local Time')
+                    outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Unit', 'UT Hour')
 
             outfile.create_group('/', 'Magnetic')
 
@@ -505,7 +546,16 @@ class ResolveVectors(object):
             outfile.create_array('/ProcessingParams/ConfigFile', 'Contents', Contents.encode('utf-8'))
 
 
-
+    def create_time_arrays(self):
+        time_array = np.array([[dt.datetime.utcfromtimestamp(t[0]), dt.datetime.utcfromtimestamp(t[1])] for t in self.int_period])
+        year = np.array([[t[0].year, t[1].year] for t in time_array])
+        month = np.array([[t[0].month, t[1].month] for t in time_array])
+        day = np.array([[t[0].day, t[1].day] for t in time_array])
+        doy = np.array([[t[0].timetuple().tm_yday, t[1].timetuple().tm_yday] for t in time_array])
+        dtime = np.array([[(t[0]-t[0].replace(hour=0,minute=0,second=0)).total_seconds()/(60.*60.), (t[0]-t[0].replace(hour=0,minute=0,second=0)).total_seconds()/(60.*60.)] for t in time_array])
+        mlat, mlon = self.Apex.geo2apex(self.site[0], self.site[1], self.site[2])
+        mlt = np.array([[self.Apex.mlon2mlt(mlon,t[0]), self.Apex.mlon2mlt(mlon,t[1])] for t in time_array])
+        return year, month, day, doy, dtime, mlt
 
 
 
