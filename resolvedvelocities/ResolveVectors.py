@@ -14,6 +14,7 @@ import socket
 from apexpy import Apex
 from scipy.spatial import Delaunay
 
+# TODO: rename int_period variable to something more sensible
 
 class ResolveVectors(object):
     def __init__(self, config):
@@ -213,6 +214,9 @@ class ResolveVectors(object):
             self.bin_mlat.append(np.nanmean(vert[:,0]))
             self.bin_mlon.append(np.nanmean(vert[:,1]))
             self.bin_idx.append(np.argwhere(hull.find_simplex(np.array([self.mlat, self.mlon]).T)>=0).flatten())
+
+        self.bin_mlat = np.array(self.bin_mlat)
+        self.bin_mlon = np.array(self.bin_mlon)
 
 
 
@@ -557,6 +561,11 @@ class ResolveVectors(object):
         mlt = np.array([[self.Apex.mlon2mlt(mlon,t[0]), self.Apex.mlon2mlt(mlon,t[1])] for t in time_array])
         return year, month, day, doy, dtime, mlt
 
+
+    def create_plots(self):
+        from plot import plot_components
+
+        plot_components(self.int_period, self.bin_mlat, self.Velocity, self.VelocityCovariance)
 
 
 

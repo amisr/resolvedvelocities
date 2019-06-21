@@ -84,6 +84,7 @@ def main():
     rv.compute_electric_field()
     rv.compute_geodetic_output()
     rv.save_output()
+    rv.create_plots()
 
 if __name__=='__main__':
     main()
