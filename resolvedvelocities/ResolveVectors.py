@@ -311,7 +311,6 @@ class ResolveVectors(object):
         self.ElectricFieldCovariance = np.einsum('ijk,...ikl,iml->...ijm',R,self.VelocityCovariance,R)
 
 
-
     def compute_geodetic_output(self):
         # map velocity and electric field to get an array at different altitudes
         # altitudes are defined by config file
@@ -565,7 +564,8 @@ class ResolveVectors(object):
     def create_plots(self):
         from plot import plot_components
 
-        plot_components(self.int_period, self.bin_mlat, self.Velocity, self.VelocityCovariance)
+        plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V')
+        plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E')
 
 
 
