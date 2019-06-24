@@ -562,11 +562,13 @@ class ResolveVectors(object):
 
 
     def create_plots(self):
-        from plot import plot_components
+        from plot import plot_components, plot_magnitude
 
         plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V')
         plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E')
 
+        plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,3,:], self.Vgd_mag_err[:,3,:], self.Vgd_dir[:,3,:], self.Vgd_dir_err[:,3,:], param='V')
+        plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,3,:], self.Egd_mag_err[:,3,:], self.Egd_dir[:,3,:], self.Egd_dir_err[:,3,:], param='E')
 
 
 
