@@ -47,7 +47,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V'):
             fac=1.
 
         ax1 = plt.subplot(gs[0,i])
-        f1 = ax1.pcolormesh(vector[:,:,i].T*fac, vmin=vlim[0], vmax=vlim[1], cmap=plt.get_cmap('RdBu'))
+        f1 = ax1.pcolormesh(vector[:,:,i].T*fac, vmin=vlim[0], vmax=vlim[1], cmap=plt.get_cmap('coolwarm'))
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(time)
         ax1.set_yticks(yticks)
@@ -73,6 +73,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V'):
     cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
     cbar = fig.colorbar(f2, cax=cax)
 
+    plt.savefig('{}components.png'.format(param))
     plt.show()
 
 
@@ -151,16 +152,19 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V'):
     cbar = fig.colorbar(f, cax=cax)
 
     ax = plt.subplot(gs[4])
-    f = ax.quiver(vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), vmag.T)
+    f = ax.quiver(vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'))
     ax.set_xticks(xticks)
     ax.set_xticklabels(time)
-    ax.set_yticks(yticks)
+    ax.set_yticks(np.arange(len(mlat)))
     ax.set_title(titles[4])
     ax.set_yticklabels(binloc)
     pos = ax.get_position()
     cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
-    cbar = fig.colorbar(f, cax=cax)
+    cbar = fig.colorbar(f, cax=cax, ticks=[-0.9,0,0.9])
+    cbar.ax.set_yticklabels(['West','','East'])
+    cbar.ax.quiverkey(f, 1.05, 1.1, mlim[1], str(mlim[1]))
 
+    plt.savefig('{}magnitude.png'.format(param))
     plt.show()
 
 def get_time_ticks(utime):
