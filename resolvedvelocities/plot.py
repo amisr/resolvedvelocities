@@ -7,12 +7,18 @@ import datetime as dt
 
 def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=None, clim=None, cmap=None):
 
+    # pad time gaps
+    utime, [vector, covariance] = timegaps(utime, [vector, covariance])
+
     # get x-axis (time) tick locations and labels
     time, xticks = get_time_ticks(utime)
 
     # get y-axis (bin) tick locations and labels
     yticks = np.arange(len(mlat))+0.5
     binloc = ['({} N,\n {} E)'.format(lat, lon) for lat, lon in zip(mlat, mlon)]
+
+    xedge = np.append(utime[:,0],utime[-1,1])
+    yedge = np.arange(len(mlat)+1)
 
     # set defaults
     defaults = {'V': {'titles':[['Ve1 (m/s)', 'Ve2 (m/s)', 'Ve3 (m/s) x 10'],
@@ -42,6 +48,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
     gs.update(wspace=0.3,hspace=0.2,left=0.05,right=0.9,bottom=0.05,top=0.95)
 
     for i, A in enumerate([vector,np.sqrt(np.diagonal(covariance,axis1=-1,axis2=-2))]):
+    # for i, A in enumerate([vector]):
         for j in range(3):
             # for along B component, multiply by 10
             if j==2:
@@ -50,7 +57,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
                 fac=1.
 
             ax = plt.subplot(gs[i,j])
-            f = ax.pcolormesh(A[:,:,j].T*fac, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
+            f = ax.pcolormesh(xedge, yedge, A[:,:,j].T*fac, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
             ax.set_xticks(xticks)
             ax.set_xticklabels(time)
             ax.set_yticks(yticks)
@@ -68,12 +75,18 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
 
 def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', titles=None, clim=None, cmap=None):
 
+    # pad time gaps
+    utime, [vmag, dvmag, vdir, dvdir] = timegaps(utime, [vmag, dvmag, vdir, dvdir])
+
     # get x-axis (time) tick locations and labels
     time, xticks = get_time_ticks(utime)
 
     # get y-axis (bin) tick locations and labels
     yticks = np.arange(len(mlat))+0.5
     binloc = ['({} N, {} E)'.format(lat, lon) for lat, lon in zip(mlat, mlon)]
+
+    xedge = np.append(utime[:,0],utime[-1,1])
+    yedge = np.arange(len(mlat)+1)
 
     # set defaults
     defaults = {'V': {'titles':['V magnitude (m/s)', 'V magnitude error (m/s)', 'V direction (deg)', 'V direction error (deg)', ''],
@@ -102,7 +115,7 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
 
     for i, A in enumerate([vmag, dvmag, vdir, dvdir]):
         ax = plt.subplot(gs[i])
-        f = ax.pcolormesh(A.T, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
+        f = ax.pcolormesh(xedge, yedge, A.T, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
         ax.set_xticks(xticks)
         ax.set_xticklabels(time)
         ax.set_yticks(yticks)
@@ -113,7 +126,7 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         cbar = fig.colorbar(f, cax=cax)
 
     ax = plt.subplot(gs[4])
-    f = ax.quiver(vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'))
+    f = ax.quiver(xedge[:-1], yedge[:-1], vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'))
     ax.set_xticks(xticks)
     ax.set_xticklabels(time)
     ax.set_yticks(np.arange(len(mlat)))
@@ -156,8 +169,33 @@ def get_time_ticks(utime):
         h0 = h0+dt.timedelta(minutes=dtick)
 
     # calculate position of each time tick
-    xticks = [(tt-time[0]).total_seconds()/exp_len*len(time) for tt in time_ticks]
+    xticks = [(tt-dt.datetime.utcfromtimestamp(0)).total_seconds() for tt in time_ticks]
     # form list of strings for actual labels
     time = [t.strftime('%H:%M') for t in time_ticks]
 
     return time, xticks
+
+
+def timegaps(time, data_arrays):
+# pad time gaps with NaNs for better pcolormesh plotting
+    
+    # find the time between sucessive records and the cadance of the entire time series
+    time_diff = np.diff(np.mean(time,axis=1))
+    dt = np.median(time_diff)
+    # find gaps in the time series
+    gaps = np.argwhere(time_diff > 2*dt).flatten()
+
+    # create array of times to fill each gap
+    time_insert = np.array([time[g]+dt for g in gaps])
+    # insert fill times into each gap
+    time2 = np.insert(time,gaps,time_insert, axis=0)
+
+    data_arrays2 = []
+    for data in data_arrays:
+        # create array of nans to fill each gap in data array
+        data_insert = np.full(data[0].shape,np.nan)
+        # insert fill nans into data array
+        data2 = np.insert(data,gaps,data_insert, axis=0)
+        data_arrays2.append(data2)
+
+    return time2, data_arrays2
