@@ -561,14 +561,16 @@ class ResolveVectors(object):
         return year, month, day, doy, dtime, mlt
 
 
-    def create_plots(self):
-        from plot import plot_components, plot_magnitude
+    def create_plots(self, alt=300., vcomptitles=None, vcomplim=None, vcompcmap=None, ecomptitles=None, ecomplim=None, ecompcmap=None, vmagtitles=None, vmaglim=None, vmagcmap=None, emagtitles=None, emaglim=None, emagcmap=None):
+        from .plot import plot_components, plot_magnitude
 
-        plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V')
-        plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E')
+        plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap)
+        plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap)
 
-        plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,3,:], self.Vgd_mag_err[:,3,:], self.Vgd_dir[:,3,:], self.Vgd_dir_err[:,3,:], param='V')
-        plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,3,:], self.Egd_mag_err[:,3,:], self.Egd_dir[:,3,:], self.Egd_dir_err[:,3,:], param='E')
+        # find index of altitude bin that is closest to alt
+        i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
+        plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap)
+        plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap)
 
 
 
