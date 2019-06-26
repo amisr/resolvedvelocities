@@ -1,4 +1,4 @@
-# plot.py
+# summary_plots.py
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -218,6 +218,10 @@ def timegaps(time, data_arrays):
     dt = np.median(time_diff)
     # find gaps in the time series
     gaps = np.argwhere(time_diff > 2*dt).flatten()+1
+
+    # if no gaps, return original arrays
+    if not gaps:
+        return time, data_arrays
 
     # create array of times to fill each gap
     time_insert = np.array([time[g-1]+dt for g in gaps])
