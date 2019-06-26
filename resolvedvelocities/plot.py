@@ -48,7 +48,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
 
         fig = plt.figure(figsize=(15,10))
         gs = gridspec.GridSpec(2,3)
-        gs.update(wspace=0.3,hspace=0.2,left=0.05,right=0.9,bottom=0.05,top=0.95)
+        gs.update(wspace=0.3,hspace=0.2,left=0.05,right=0.9,bottom=0.05,top=0.9)
 
         for i, A in enumerate([vector,np.sqrt(np.diagonal(covariance,axis1=-1,axis2=-2))]):
             for j in range(3):
@@ -71,6 +71,9 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
             pos = ax.get_position()
             cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
             cbar = fig.colorbar(f, cax=cax)
+
+        datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
+        plt.gcf().text(0.02, 0.95, datestr, fontsize=12)
 
         plt.savefig('{}components.png'.format(param))
         plt.show()
@@ -117,7 +120,7 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
 
         fig = plt.figure(figsize=(10,10))
         gs = gridspec.GridSpec(5,1)
-        gs.update(hspace=0.4,left=0.15,right=0.9,bottom=0.05,top=0.95)
+        gs.update(hspace=0.4,left=0.15,right=0.9,bottom=0.05,top=0.94)
 
         for i, A in enumerate([vmag, dvmag, vdir, dvdir]):
             ax = plt.subplot(gs[i])
@@ -144,6 +147,9 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         cbar = fig.colorbar(f, cax=cax, ticks=[-0.9,0,0.9])
         cbar.ax.set_yticklabels(['West','','East'])
         cbar.ax.quiverkey(f, 1.05, 1.1, clim[0][1], str(clim[0][1]))
+
+        datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
+        plt.gcf().text(0.02, 0.97, datestr, fontsize=12)
 
         plt.savefig('{}magnitude.png'.format(param))
         plt.show()
@@ -211,10 +217,10 @@ def timegaps(time, data_arrays):
     time_diff = np.diff(np.mean(time,axis=1))
     dt = np.median(time_diff)
     # find gaps in the time series
-    gaps = np.argwhere(time_diff > 2*dt).flatten()
+    gaps = np.argwhere(time_diff > 2*dt).flatten()+1
 
     # create array of times to fill each gap
-    time_insert = np.array([time[g]+dt for g in gaps])
+    time_insert = np.array([time[g-1]+dt for g in gaps])
     # insert fill times into each gap
     time2 = np.insert(time,gaps,time_insert, axis=0)
 
