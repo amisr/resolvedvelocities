@@ -1,8 +1,4 @@
-import sys
-import os
-sys.path.append(os.path.abspath('../'))
 import synthetic_data as synth
-# from synthetic_data import Field, Radar
 import numpy as np
 
 def main():
