@@ -13,7 +13,7 @@ def main():
     radar = synth.Radar(site, beams=beams)
     # radar = synth.Radar(site, azimuth=az, elevation=el)
 
-    synth.create_dataset(synth_field, radar)
+    synth.SyntheticData(synth_field, radar)
 
 if __name__ == '__main__':
     main()
