@@ -11,6 +11,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 
+import sys
+sys.path.append("..")
+from ResolveVectors import ResolveVectors
+
 
 class Field(object):
     def __init__(self, lat, lon, field, alt):
@@ -145,6 +149,7 @@ class SyntheticData(object):
 
     def __init__(self, field, radar):
         self.create_dataset(field, radar)
+        self.eval_vvels()
         self.plot(field, radar)
 
     def create_dataset(self,field, radar):
@@ -174,6 +179,9 @@ class SyntheticData(object):
         err_array = np.full((s[0],s[1],s[2],6,4),np.nan)
         err_array[:,:,:,0,3] = dVlos
 
+        chi2 = np.full(s, 1.0)
+        fitcode = np.full(s, 1)
+
         # generate dummy density array
         ne = np.full(Vlos.shape, 1e11)
 
@@ -185,11 +193,16 @@ class SyntheticData(object):
             file.create_group('/','Time')
             file.create_group('/','Site')
 
+            file.create_group('/FittedParams', 'FitInfo')
+
             file.create_array('/','BeamCodes',radar.beam_codes)
 
             file.create_array('/FittedParams','Fits',fit_array)
             file.create_array('/FittedParams','Errors',err_array)
             file.create_array('/FittedParams','Ne',ne)
+
+            file.create_array('/FittedParams/FitInfo', 'chi2', chi2)
+            file.create_array('/FittedParams/FitInfo', 'fitcode', fitcode)
 
             file.create_array('/Geomag','Latitude',radar.lat)
             file.create_array('/Geomag','Longitude',radar.lon)
@@ -206,6 +219,25 @@ class SyntheticData(object):
             file.create_array('/Site','Altitude',radar.site[2])
 
 
+    def eval_vvels(self):
+
+        rv = ResolveVectors('config.ini')
+        rv.read_data()
+        rv.filter_data()
+        rv.transform()
+        rv.ion_upflow_correction()
+        rv.bin_data()
+        rv.get_integration_periods()
+        rv.compute_vector_velocity()
+        rv.compute_electric_field()
+        rv.compute_geodetic_output()
+
+        print(rv.Velocity_gd.shape)
+        print(rv.bin_glat.shape, rv.bin_glon.shape, rv.bin_galt.shape)
+
+        self.X, self.Y, self.Z = cc.geodetic_to_cartesian(rv.bin_glat, rv.bin_glon, rv.bin_galt)
+        self.Vx, self.Vy, self.Vz = cc.vector_geodetic_to_cartesian(rv.Velocity_gd[0,:,:,1], rv.Velocity_gd[0,:,:,0], rv.Velocity_gd[0,:,:,2], rv.bin_galt, rv.bin_glon, rv.bin_galt)
+
     def plot(self, field, radar):
 
         fig = plt.figure(figsize=(10,10))
@@ -217,6 +249,9 @@ class SyntheticData(object):
 
         for x, y, z, kx, ky, kz, v in zip(radar.X.ravel(), radar.Y.ravel(), radar.Z.ravel(), radar.kx.ravel(), radar.ky.ravel(), radar.kz.ravel(), self.Vlos[0].ravel()):
             ax.quiver(x, y, z, kx*v*1000, ky*v*1000, kz*v*1000, color=quiver_color(v,-500.,500.,'coolwarm'))
+
+        for x, y, z, vx, vy, vz in zip(self.X.ravel(), self.Y.ravel(), self.Z.ravel(), self.Vx.ravel(), self.Vy.ravel(), self.Vz.ravel()):
+            ax.quiver(x, y, z, vx, vy, vx, length=0.4*np.sqrt(vx**2+vy**2+vz**2))
 
         plt.show()
 
