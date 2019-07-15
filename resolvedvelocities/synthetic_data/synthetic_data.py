@@ -72,16 +72,21 @@ class Radar(object):
         # elevation - list of elevation angle for each beam (in degrees)
         # range_step - step between each range gate (in km)
 
-        self.site = site
-        if beams:
-            bc = np.loadtxt(os.path.join(os.path.dirname(__file__), 'bcotable.txt'))
+        amisr_sites = {'PFISR':[65.13,-147.47,0.213], 'RISRN':[74.72955,-94.90576,0.145], 'RISRC':[74.72955,-94.90576,0.145]}
+
+        beam_code_file = 'bcotable_{}.txt'.format(site.lower())
+
+        self.site = amisr_sites[site]
+        try:
+            # bc = np.loadtxt(os.path.join(os.path.dirname(__file__), 'bcotable.txt'))
+            bc = np.loadtxt(beam_code_file)
             idx = np.where(np.in1d(bc[:,0],beams))[0]
             self.beam_codes = bc[idx,:]
-        elif azimuth:
+        except:
             self.beam_codes = np.array([range(len(azimuth)),azimuth,elevation,np.full(len(azimuth),np.nan)]).T
 
         self.range_step = range_step
-        self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(site[0], site[1], site[2])
+        self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(self.site[0], self.site[1], self.site[2])
         self.get_gate_locations(self.beam_codes[:,1], self.beam_codes[:,2], range_step)
         self.geodetic_locations()
 
