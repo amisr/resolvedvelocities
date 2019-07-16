@@ -34,14 +34,14 @@ class Field(object):
         altitude = np.arange(50., 1000., 50.)
 
         # initialize Apex object
-        A = Apex(date=2019)
+        self.A = Apex(date=2019)
 
         # find positions at each altitude
         self.altitude = np.repeat(altitude,len(alat))
-        self.latitude, self.longitude, __ = A.apex2geo(np.tile(alat,len(altitude)), np.tile(alon,len(altitude)), self.altitude)
+        self.latitude, self.longitude, __ = self.A.apex2geo(np.tile(alat,len(altitude)), np.tile(alon,len(altitude)), self.altitude)
 
         # map field to each altitude
-        f = np.array([A.map_V_to_height(alat, alon, alt_in, a, field.T).T for a in altitude])
+        f = np.array([self.A.map_V_to_height(alat, alon, alt_in, a, field.T).T for a in altitude])
         self.field = f.reshape(-1,f.shape[-1])
 
 
@@ -151,6 +151,7 @@ class SyntheticData(object):
         self.create_dataset(field, radar)
         self.eval_vvels()
         self.plot(field, radar)
+        self.compare_components(field)
 
     def create_dataset(self,field, radar):
         # input: Field object, Radar object
@@ -221,22 +222,19 @@ class SyntheticData(object):
 
     def eval_vvels(self):
 
-        rv = ResolveVectors('config.ini')
-        rv.read_data()
-        rv.filter_data()
-        rv.transform()
-        rv.ion_upflow_correction()
-        rv.bin_data()
-        rv.get_integration_periods()
-        rv.compute_vector_velocity()
-        rv.compute_electric_field()
-        rv.compute_geodetic_output()
+        self.rv = ResolveVectors('config.ini')
+        self.rv.read_data()
+        self.rv.filter_data()
+        self.rv.transform()
+        self.rv.ion_upflow_correction()
+        self.rv.bin_data()
+        self.rv.get_integration_periods()
+        self.rv.compute_vector_velocity()
+        self.rv.compute_electric_field()
+        self.rv.compute_geodetic_output()
 
-        print(rv.Velocity_gd.shape)
-        print(rv.bin_glat.shape, rv.bin_glon.shape, rv.bin_galt.shape)
-
-        self.X, self.Y, self.Z = cc.geodetic_to_cartesian(rv.bin_glat, rv.bin_glon, rv.bin_galt)
-        self.Vx, self.Vy, self.Vz = cc.vector_geodetic_to_cartesian(rv.Velocity_gd[0,:,:,1], rv.Velocity_gd[0,:,:,0], rv.Velocity_gd[0,:,:,2], rv.bin_galt, rv.bin_glon, rv.bin_galt)
+        # print(rv.Velocity_gd.shape)
+        # print(rv.bin_glat.shape, rv.bin_glon.shape, rv.bin_galt.shape)
 
     def plot(self, field, radar):
 
@@ -250,8 +248,41 @@ class SyntheticData(object):
         for x, y, z, kx, ky, kz, v in zip(radar.X.ravel(), radar.Y.ravel(), radar.Z.ravel(), radar.kx.ravel(), radar.ky.ravel(), radar.kz.ravel(), self.Vlos[0].ravel()):
             ax.quiver(x, y, z, kx*v*1000, ky*v*1000, kz*v*1000, color=quiver_color(v,-500.,500.,'coolwarm'))
 
-        for x, y, z, vx, vy, vz in zip(self.X.ravel(), self.Y.ravel(), self.Z.ravel(), self.Vx.ravel(), self.Vy.ravel(), self.Vz.ravel()):
+        X, Y, Z = cc.geodetic_to_cartesian(self.rv.bin_glat, self.rv.bin_glon, self.rv.bin_galt)
+        Vx, Vy, Vz = cc.vector_geodetic_to_cartesian(self.rv.Velocity_gd[0,:,:,1], self.rv.Velocity_gd[0,:,:,0], self.rv.Velocity_gd[0,:,:,2], self.rv.bin_galt, self.rv.bin_glon, self.rv.bin_galt)
+
+        for x, y, z, vx, vy, vz in zip(X.ravel(), Y.ravel(), Z.ravel(), Vx.ravel(), Vy.ravel(), Vz.ravel()):
             ax.quiver(x, y, z, vx, vy, vx, length=0.4*np.sqrt(vx**2+vy**2+vz**2))
+
+        plt.show()
+
+    def compare_components(self, field):
+
+        # convert bin locations to ECEF
+        bin_glat, bin_glon, __ = field.A.apex2geo(self.rv.bin_mlat, self.rv.bin_mlon, 300.)
+        X, Y, Z = cc.geodetic_to_cartesian(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
+        # interpolate field to bin locations
+        Vx = field.interpVx(np.array([X,Y,Z]).T)
+        Vy = field.interpVy(np.array([X,Y,Z]).T)
+        Vz = field.interpVz(np.array([X,Y,Z]).T)
+        # convert field components to apex
+        Vn, Ve, Vu = cc.vector_cartesian_to_geodetic(Vx, Vy, Vz, X, Y, Z)
+        f1,f2,f3,g1,g2,g3,d1,d2,d3,e1,e2,e3 = field.A.basevectors_apex(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
+        Ve1 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d1.T)
+        Ve2 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d2.T)
+
+        fig = plt.figure(figsize=(10,10))
+        ax = fig.add_subplot(211)
+
+        ax.plot(self.rv.Velocity[0,:,0])
+        ax.plot(Ve1)
+        ax.set_title('Ve1')
+
+        ax = fig.add_subplot(212)
+
+        ax.plot(self.rv.Velocity[0,:,1])
+        ax.plot(Ve2)
+        ax.set_title('Ve2')
 
         plt.show()
 
