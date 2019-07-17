@@ -11,37 +11,68 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 
+import configparser
+
 import sys
 sys.path.append("..")
 from ResolveVectors import ResolveVectors
 
+# # PFISR
+# vvels_config = 'config.ini'
+# apex_year = 2019
+# site_coords = [65.13,-147.47,0.213]
+# beamcode_filename = 'bcotable_pfisr.txt'
+# beamcodes = [64016, 64157, 64964, 65066]
+# range_step = 50.
+# lat, lon = np.meshgrid(np.linspace(62.,70.,10), np.linspace(260.,275.,10))
+# lat, lon = np.meshgrid(np.linspace(62.,70.,10), np.linspace(200.,215.,10))
+# field_coords = np.array([lat.flatten(), lon.flatten(), np.full(lat.flatten().shape, 300.)])  # geodetic lat, lon, alt
+# field_values = np.tile([500.,0.,0.], (10*10,1))   # geodetic East, North, Up
+# print(list(field_values))
 
 class Field(object):
-    def __init__(self, lat, lon, field, alt):
+    # def __init__(self, lat, lon, field, alt):
+    def __init__(self, config):
 
-        self.map_velocity_field(lat.flatten(), lon.flatten(), field.reshape(-1,field.shape[-1]), alt)
+        self.read_config(config)
+
+        # convert list from config file to arrays
+        self.field_coords = np.array(self.field_coords)
+        self.field_values = np.array(self.field_values)
+
+        # initialize Apex object
+        self.A = Apex(date=self.apex_year)
+
+        # self.map_velocity_field(lat.flatten(), lon.flatten(), field.reshape(-1,field.shape[-1]), alt)
+        self.map_velocity_field(self.field_coords, self.field_values)
         self.convert_to_ECEF()
         self.create_interpolators()
         self.plot_ionosphere()
 
-    def map_velocity_field(self, alat, alon, field, alt_in):
-        # alat - 1D array (N,) of apex magnetic latitude
-        # alon - 1D array (N,) of apex magnetic longitude
+    def read_config(self, config_file):
+
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        self.__dict__.update(config.items('FIELD'))
+        self.__dict__.update((name,eval(value)) for name, value in self.__dict__.items())
+
+
+    def map_velocity_field(self, coords, field):
+        # coords - array (N,3) of geodetic lat, lon, alt
         # field - array (N,3) of geodetic E, N, U components of the velocity field at each position
-        # alt_in - scalar geodetic altitude of specified points
 
         # define output altitudes
         altitude = np.arange(50., 1000., 50.)
+        # create array in proper shape to be applied to every input coordinate
+        self.altitude = np.repeat(altitude,coords.shape[-1])
 
-        # initialize Apex object
-        self.A = Apex(date=2019)
-
+        # map to diffent altitudes manually - the current expected input/output arrays of apexpy.map_to_height makes this function difficult to use for this purpose
+        alat, alon = self.A.geo2apex(coords[0], coords[1], coords[2])
         # find positions at each altitude
-        self.altitude = np.repeat(altitude,len(alat))
         self.latitude, self.longitude, __ = self.A.apex2geo(np.tile(alat,len(altitude)), np.tile(alon,len(altitude)), self.altitude)
 
         # map field to each altitude
-        f = np.array([self.A.map_V_to_height(alat, alon, alt_in, a, field.T).T for a in altitude])
+        f = np.array([self.A.map_V_to_height(alat, alon, coords[2], a, field.T).T for a in altitude])
         self.field = f.reshape(-1,f.shape[-1])
 
 
@@ -70,31 +101,27 @@ class Field(object):
 
 
 class Radar(object):
-    def __init__(self, site, beams=None, azimuth=None, elevation=None, range_step=50.):
-        # beam - list of beam codes
-        # azimuth - list of azimuth angle for each beam (in degrees)
-        # elevation - list of elevation angle for each beam (in degrees)
-        # range_step - step between each range gate (in km)
+    # def __init__(self, site, beams=None, azimuth=None, elevation=None, range_step=50.):
+    def __init__(self, config):
 
-        amisr_sites = {'PFISR':[65.13,-147.47,0.213], 'RISRN':[74.72955,-94.90576,0.145], 'RISRC':[74.72955,-94.90576,0.145]}
+        self.read_config(config)
 
-        beam_code_file = 'bcotable_{}.txt'.format(site.lower())
+        bc = np.loadtxt(self.beamcode_filename)
+        idx = np.where(np.in1d(bc[:,0],self.beamcodes))[0]
+        self.beam_codes = bc[idx,:]
 
-        self.site = amisr_sites[site]
-        try:
-            # bc = np.loadtxt(os.path.join(os.path.dirname(__file__), 'bcotable.txt'))
-            bc = np.loadtxt(beam_code_file)
-            idx = np.where(np.in1d(bc[:,0],beams))[0]
-            self.beam_codes = bc[idx,:]
-        except:
-            self.beam_codes = np.array([range(len(azimuth)),azimuth,elevation,np.full(len(azimuth),np.nan)]).T
-
-        self.range_step = range_step
-        self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(self.site[0], self.site[1], self.site[2])
-        self.get_gate_locations(self.beam_codes[:,1], self.beam_codes[:,2], range_step)
+        self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(self.site_coords[0], self.site_coords[1], self.site_coords[2])
+        self.get_gate_locations(self.beam_codes[:,1], self.beam_codes[:,2], float(self.range_step))
         self.geodetic_locations()
-
         self.plot_radar()
+
+    def read_config(self, config_file):
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        self.__dict__.update(config.items('RADAR'))
+        self.__dict__.update((name,eval(value)) for name, value in self.__dict__.items())
+
+
 
     def get_gate_locations(self, az, el, rs):
 
@@ -109,7 +136,7 @@ class Radar(object):
         ku = np.sin(el)
 
         # convert geodetic k vector to ECEF
-        kx, ky, kz = cc.vector_geodetic_to_cartesian(kn, ke, ku, self.site[0], self.site[1], self.site[2])
+        kx, ky, kz = cc.vector_geodetic_to_cartesian(kn, ke, ku, self.site_coords[0], self.site_coords[1], self.site_coords[2])
 
         # calculate position of each range gate in ECEF
         self.X = kx[:,None]*ranges + self.X0
@@ -129,7 +156,6 @@ class Radar(object):
     def geodetic_locations(self):
         # calculate gate position and k vectors in geodetic coordinates
         self.lat, self.lon, self.alt = cc.cartesian_to_geodetic(self.X, self.Y, self.Z)
-        # self.kn, self.ke, self.kz = cc.vector_cartesian_to_geodetic(self.kvec[:,:,0], self.kvec[:,:,1], self.kvec[:,:,2], self.X, self.Y, self.Z)
         self.kn, self.ke, self.kz = cc.vector_cartesian_to_geodetic(self.kx, self.ky, self.kz, self.X, self.Y, self.Z)
 
     def plot_radar(self):
@@ -147,9 +173,9 @@ class Radar(object):
 
 class SyntheticData(object):
 
-    def __init__(self, field, radar):
+    def __init__(self, field, radar, config_file):
         self.create_dataset(field, radar)
-        self.eval_vvels()
+        self.eval_vvels(config_file)
         self.plot(field, radar)
         self.compare_components(field)
 
@@ -215,14 +241,14 @@ class SyntheticData(object):
 
             file.create_array('/Time','UnixTime',times)
 
-            file.create_array('/Site','Latitude',radar.site[0])
-            file.create_array('/Site','Longitude',radar.site[1])
-            file.create_array('/Site','Altitude',radar.site[2])
+            file.create_array('/Site','Latitude',radar.site_coords[0])
+            file.create_array('/Site','Longitude',radar.site_coords[1])
+            file.create_array('/Site','Altitude',radar.site_coords[2])
 
 
-    def eval_vvels(self):
+    def eval_vvels(self, config_file):
 
-        self.rv = ResolveVectors('config.ini')
+        self.rv = ResolveVectors(config_file)
         self.rv.read_data()
         self.rv.filter_data()
         self.rv.transform()
@@ -233,8 +259,6 @@ class SyntheticData(object):
         self.rv.compute_electric_field()
         self.rv.compute_geodetic_output()
 
-        # print(rv.Velocity_gd.shape)
-        # print(rv.bin_glat.shape, rv.bin_glon.shape, rv.bin_galt.shape)
 
     def plot(self, field, radar):
 
