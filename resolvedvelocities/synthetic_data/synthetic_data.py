@@ -17,21 +17,9 @@ import sys
 sys.path.append("..")
 from ResolveVectors import ResolveVectors
 
-# # PFISR
-# vvels_config = 'config.ini'
-# apex_year = 2019
-# site_coords = [65.13,-147.47,0.213]
-# beamcode_filename = 'bcotable_pfisr.txt'
-# beamcodes = [64016, 64157, 64964, 65066]
-# range_step = 50.
-# lat, lon = np.meshgrid(np.linspace(62.,70.,10), np.linspace(260.,275.,10))
-# lat, lon = np.meshgrid(np.linspace(62.,70.,10), np.linspace(200.,215.,10))
-# field_coords = np.array([lat.flatten(), lon.flatten(), np.full(lat.flatten().shape, 300.)])  # geodetic lat, lon, alt
-# field_values = np.tile([500.,0.,0.], (10*10,1))   # geodetic East, North, Up
-# print(list(field_values))
 
 class Field(object):
-    # def __init__(self, lat, lon, field, alt):
+
     def __init__(self, config):
 
         self.read_config(config)
@@ -43,11 +31,10 @@ class Field(object):
         # initialize Apex object
         self.A = Apex(date=self.apex_year)
 
-        # self.map_velocity_field(lat.flatten(), lon.flatten(), field.reshape(-1,field.shape[-1]), alt)
         self.map_velocity_field(self.field_coords, self.field_values)
         self.convert_to_ECEF()
         self.create_interpolators()
-        self.plot_ionosphere()
+        # self.plot_ionosphere()
 
     def read_config(self, config_file):
 
@@ -101,7 +88,7 @@ class Field(object):
 
 
 class Radar(object):
-    # def __init__(self, site, beams=None, azimuth=None, elevation=None, range_step=50.):
+
     def __init__(self, config):
 
         self.read_config(config)
@@ -113,7 +100,7 @@ class Radar(object):
         self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(self.site_coords[0], self.site_coords[1], self.site_coords[2])
         self.get_gate_locations(self.beam_codes[:,1], self.beam_codes[:,2], float(self.range_step))
         self.geodetic_locations()
-        self.plot_radar()
+        # self.plot_radar()
 
     def read_config(self, config_file):
         config = configparser.ConfigParser()
@@ -143,8 +130,6 @@ class Radar(object):
         self.Y = ky[:,None]*ranges + self.Y0
         self.Z = kz[:,None]*ranges + self.Z0
 
-        # print(self.kx.shape, self.X.shape)
-
         # form array of k vector at each range gate
         self.kvec = np.array([np.tile(np.array([x,y,z]), (len(ranges),1)) for x, y, z in zip(kx,ky,kz)])
 
@@ -173,11 +158,10 @@ class Radar(object):
 
 class SyntheticData(object):
 
-    def __init__(self, field, radar, config_file):
+    def __init__(self, field, radar):
         self.create_dataset(field, radar)
-        self.eval_vvels(config_file)
-        self.plot(field, radar)
-        self.compare_components(field)
+        self.save_dataset(radar)
+
 
     def create_dataset(self,field, radar):
         # input: Field object, Radar object
@@ -189,32 +173,36 @@ class SyntheticData(object):
         Vvec = np.array([Vx, Vy, Vz]).T
 
         # create unix time array
-        time0 = (dt.datetime(2019,5,28,0,0)-dt.datetime.utcfromtimestamp(0)).total_seconds()
-        times = np.array([[time0+t*60., time0+(t+1)*60.] for t in range(10)])
+        # Time array is 10 time steps (of integration period defined by the radar portion of the config file) after midnight
+        #   on January 1 of the year defined in the apex_year portion of the config file.  Because the field is defined manually
+        #   and not based on some empirical model, the time really doesn't matter and is mostly included to be consistent
+        #   with the read data file format.
+        time0 = (dt.datetime(field.apex_year,1,1)-dt.datetime.utcfromtimestamp(0)).total_seconds()
+        self.times = np.array([[time0+t*radar.integration_period, time0+(t+1)*radar.integration_period] for t in range(10)])
 
         # calculate LoS velocity for each bin by taking the dot product of the radar kvector and the interpolated field
-        Vlos = np.tile(np.einsum('...i,...i->...',radar.kvec, Vvec), (len(times),1,1))
+        Vlos = np.tile(np.einsum('...i,...i->...',radar.kvec, Vvec), (len(self.times),1,1))
         # assume constant error
-        dVlos = np.full(Vlos.shape, 10.)
-
-        self.Vlos = Vlos
+        dVlos = np.full(Vlos.shape, radar.vel_error)
 
         # create fit and error arrays that match the shape of whats in the processed fitted files
         s = Vlos.shape
-        fit_array = np.full((s[0],s[1],s[2],6,4),np.nan)
-        fit_array[:,:,:,0,3] = Vlos
-        err_array = np.full((s[0],s[1],s[2],6,4),np.nan)
-        err_array[:,:,:,0,3] = dVlos
+        self.fit_array = np.full((s[0],s[1],s[2],6,4),np.nan)
+        self.fit_array[:,:,:,0,3] = Vlos
+        self.err_array = np.full((s[0],s[1],s[2],6,4),np.nan)
+        self.err_array[:,:,:,0,3] = dVlos
 
-        chi2 = np.full(s, 1.0)
-        fitcode = np.full(s, 1)
+        self.chi2 = np.full(s, 1.0)
+        self.fitcode = np.full(s, 1)
 
         # generate dummy density array
-        ne = np.full(Vlos.shape, 1e11)
+        self.ne = np.full(s, 1e11)
+
+
+    def save_dataset(self, radar):
 
         # create output hdf5 file
-        filename = 'synthetic_data.h5'
-        with tables.open_file(filename, mode='w') as file:
+        with tables.open_file(radar.output_filename, mode='w') as file:
             file.create_group('/','FittedParams')
             file.create_group('/','Geomag')
             file.create_group('/','Time')
@@ -224,12 +212,12 @@ class SyntheticData(object):
 
             file.create_array('/','BeamCodes',radar.beam_codes)
 
-            file.create_array('/FittedParams','Fits',fit_array)
-            file.create_array('/FittedParams','Errors',err_array)
-            file.create_array('/FittedParams','Ne',ne)
+            file.create_array('/FittedParams','Fits',self.fit_array)
+            file.create_array('/FittedParams','Errors',self.err_array)
+            file.create_array('/FittedParams','Ne',self.ne)
 
-            file.create_array('/FittedParams/FitInfo', 'chi2', chi2)
-            file.create_array('/FittedParams/FitInfo', 'fitcode', fitcode)
+            file.create_array('/FittedParams/FitInfo', 'chi2', self.chi2)
+            file.create_array('/FittedParams/FitInfo', 'fitcode', self.fitcode)
 
             file.create_array('/Geomag','Latitude',radar.lat)
             file.create_array('/Geomag','Longitude',radar.lon)
@@ -239,7 +227,7 @@ class SyntheticData(object):
             file.create_array('/Geomag','kn',radar.kn)
             file.create_array('/Geomag','kz',radar.kz)
 
-            file.create_array('/Time','UnixTime',times)
+            file.create_array('/Time','UnixTime',self.times)
 
             file.create_array('/Site','Latitude',radar.site_coords[0])
             file.create_array('/Site','Longitude',radar.site_coords[1])
@@ -248,19 +236,21 @@ class SyntheticData(object):
 
     def eval_vvels(self, config_file):
 
-        self.rv = ResolveVectors(config_file)
-        self.rv.read_data()
-        self.rv.filter_data()
-        self.rv.transform()
-        self.rv.ion_upflow_correction()
-        self.rv.bin_data()
-        self.rv.get_integration_periods()
-        self.rv.compute_vector_velocity()
-        self.rv.compute_electric_field()
-        self.rv.compute_geodetic_output()
+        rv = ResolveVectors(config_file)
+        rv.read_data()
+        rv.filter_data()
+        rv.transform()
+        rv.ion_upflow_correction()
+        rv.bin_data()
+        rv.get_integration_periods()
+        rv.compute_vector_velocity()
+        rv.compute_electric_field()
+        rv.compute_geodetic_output()
+
+        return rv
 
 
-    def plot(self, field, radar):
+    def plot(self, field, radar, rv):
 
         fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot(111,projection='3d')
@@ -269,21 +259,21 @@ class SyntheticData(object):
             ax.quiver(x, y, z, vx, vy, vz, length=0.4*np.sqrt(vx**2+vy**2+vz**2), linewidths=0.5, color='lightgreen')
 
 
-        for x, y, z, kx, ky, kz, v in zip(radar.X.ravel(), radar.Y.ravel(), radar.Z.ravel(), radar.kx.ravel(), radar.ky.ravel(), radar.kz.ravel(), self.Vlos[0].ravel()):
+        for x, y, z, kx, ky, kz, v in zip(radar.X.ravel(), radar.Y.ravel(), radar.Z.ravel(), radar.kx.ravel(), radar.ky.ravel(), radar.kz.ravel(), self.fit_array[0,:,:,0,3].ravel()):
             ax.quiver(x, y, z, kx*v*1000, ky*v*1000, kz*v*1000, color=quiver_color(v,-500.,500.,'coolwarm'))
 
-        X, Y, Z = cc.geodetic_to_cartesian(self.rv.bin_glat, self.rv.bin_glon, self.rv.bin_galt)
-        Vx, Vy, Vz = cc.vector_geodetic_to_cartesian(self.rv.Velocity_gd[0,:,:,1], self.rv.Velocity_gd[0,:,:,0], self.rv.Velocity_gd[0,:,:,2], self.rv.bin_galt, self.rv.bin_glon, self.rv.bin_galt)
+        X, Y, Z = cc.geodetic_to_cartesian(rv.bin_glat, rv.bin_glon, rv.bin_galt)
+        Vx, Vy, Vz = cc.vector_geodetic_to_cartesian(rv.Velocity_gd[0,:,:,1], rv.Velocity_gd[0,:,:,0], rv.Velocity_gd[0,:,:,2], rv.bin_glat, rv.bin_glon, rv.bin_galt)
 
         for x, y, z, vx, vy, vz in zip(X.ravel(), Y.ravel(), Z.ravel(), Vx.ravel(), Vy.ravel(), Vz.ravel()):
             ax.quiver(x, y, z, vx, vy, vx, length=0.4*np.sqrt(vx**2+vy**2+vz**2))
 
         plt.show()
 
-    def compare_components(self, field):
+    def compare_components(self, field, rv):
 
         # convert bin locations to ECEF
-        bin_glat, bin_glon, __ = field.A.apex2geo(self.rv.bin_mlat, self.rv.bin_mlon, 300.)
+        bin_glat, bin_glon, __ = field.A.apex2geo(rv.bin_mlat, rv.bin_mlon, 300.)
         X, Y, Z = cc.geodetic_to_cartesian(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
         # interpolate field to bin locations
         Vx = field.interpVx(np.array([X,Y,Z]).T)
@@ -294,19 +284,24 @@ class SyntheticData(object):
         f1,f2,f3,g1,g2,g3,d1,d2,d3,e1,e2,e3 = field.A.basevectors_apex(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
         Ve1 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d1.T)
         Ve2 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d2.T)
+        Ve3 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d3.T)
 
         fig = plt.figure(figsize=(10,10))
-        ax = fig.add_subplot(211)
 
-        ax.plot(self.rv.Velocity[0,:,0])
+        ax = fig.add_subplot(311)
+        ax.errorbar(np.arange(rv.Velocity.shape[1]),rv.Velocity[0,:,0], yerr=np.sqrt(rv.VelocityCovariance[0,:,0,0]))
         ax.plot(Ve1)
         ax.set_title('Ve1')
 
-        ax = fig.add_subplot(212)
-
-        ax.plot(self.rv.Velocity[0,:,1])
+        ax = fig.add_subplot(312)
+        ax.errorbar(np.arange(rv.Velocity.shape[1]),rv.Velocity[0,:,1], yerr=np.sqrt(rv.VelocityCovariance[0,:,1,1]))
         ax.plot(Ve2)
         ax.set_title('Ve2')
+
+        ax = fig.add_subplot(313)
+        ax.errorbar(np.arange(rv.Velocity.shape[1]),rv.Velocity[0,:,2], yerr=np.sqrt(rv.VelocityCovariance[0,:,2,2]))
+        ax.plot(Ve3)
+        ax.set_title('Ve3')
 
         plt.show()
 

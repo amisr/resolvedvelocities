@@ -17,28 +17,22 @@ def main():
     args = vars(parser.parse_args())
 
 
-    # synth_grid = np.meshgrid(np.linspace(62.,70.,10), np.linspace(260.,275.,10))
-    # # synth_grid = np.meshgrid(np.linspace(82.,88.,10), np.linspace(305.,355.,10))
-    # velocity = np.tile(np.array([500.,0.,0.]), (10,10,1))
-    # synth_field = synth.Field(synth_grid[0], synth_grid[1], velocity, 300.)
-
+    # generate field object
     synth_field = synth.Field(args['synth_config_file'])
 
-
-    # with h5py.File('/Volumes/AMISR_PROCESSED/processed_data/RISR-N/2017/11/imaginglp.v04.60.risrn/20171119.001/20171119.001_lp_1min-fitcal.h5', 'r') as f:
-    #     beams = f['BeamCodes'][:,0]
-
-    # az = [14.04,-154.30,-34.69,75.03]
-    # el = [90.0, 77.5, 66.09, 65.56]
-    # site = [65.13, -147.47, 0.213]
-
-    # beams = np.array([64016, 64157, 64964, 65066])
-
-    # radar = synth.Radar('PFISR', beams=beams)
-    # # radar = synth.Radar(site, azimuth=az, elevation=el)
+    # generate radar object
     radar = synth.Radar(args['synth_config_file'])
 
-    synth.SyntheticData(synth_field, radar, args['vvels_config_file'])
+    # use field and radar objects to produce synthetic data set
+    synth_data = synth.SyntheticData(synth_field, radar)
+
+    # run resolvevectors algothrithm on synthetic data set
+    vvels = synth_data.eval_vvels(args['vvels_config_file'])
+
+    # compare output of resolvevectors algorithm with truth
+    synth_data.plot(synth_field, radar, vvels)
+    synth_data.compare_components(synth_field,vvels)
+
 
 if __name__ == '__main__':
     main()
