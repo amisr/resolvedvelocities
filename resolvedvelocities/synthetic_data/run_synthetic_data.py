@@ -1,4 +1,10 @@
-import synthetic_data as synth
+# import synthetic_data as synth
+from resolvedvelocities.synthetic_data.SyntheticData import SyntheticData
+from resolvedvelocities.synthetic_data.Field import Field
+from resolvedvelocities.synthetic_data.Radar import Radar
+# from .SyntheticData import SyntheticData
+# from .Field import Field
+# from .Radar import Radar
 import numpy as np
 import h5py
 
@@ -18,20 +24,20 @@ def main():
 
 
     # generate field object
-    synth_field = synth.Field(args['synth_config_file'])
+    field = Field(args['synth_config_file'])
 
     # generate radar object
-    radar = synth.Radar(args['synth_config_file'])
+    radar = Radar(args['synth_config_file'])
 
     # use field and radar objects to produce synthetic data set
-    synth_data = synth.SyntheticData(synth_field, radar)
+    synth_data = SyntheticData(field, radar)
 
     # run resolvevectors algothrithm on synthetic data set
     vvels = synth_data.eval_vvels(args['vvels_config_file'])
 
     # compare output of resolvevectors algorithm with truth
-    synth_data.plot(synth_field, radar, vvels)
-    synth_data.compare_components(synth_field,vvels)
+    synth_data.plot(field, radar, vvels)
+    synth_data.compare_components(field,vvels)
 
 
 if __name__ == '__main__':
