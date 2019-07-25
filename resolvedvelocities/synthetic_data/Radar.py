@@ -1,16 +1,8 @@
 # Radar.py
 import numpy as np
-# import datetime as dt
-# from apexpy import Apex
-# from scipy import interpolate
 import coord_convert as cc
-# import tables
-# import sys
-# import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-# import matplotlib.cm as cm
-# from matplotlib.colors import Normalize
 
 import configparser
 

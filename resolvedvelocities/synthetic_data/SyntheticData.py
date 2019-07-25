@@ -114,6 +114,9 @@ class SyntheticData(object):
 
 
     def plot(self, field, radar, rv):
+        # This tends to create plots that show significant disagreement between the "true" field and the resolved field, however,
+        #   numerically, both the components of both are very similar.  No sure what causes this difference - possibly some kind
+        #   of wierd plotting perspective effect?.
 
         fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot(111,projection='3d')
