@@ -149,6 +149,8 @@ class SyntheticData(object):
         Ve2 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d2.T)
         Ve3 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d3.T)
 
+        # print(Ve1, Ve2, Ve3)
+
         fig = plt.figure(figsize=(10,10))
 
         ax = fig.add_subplot(311)

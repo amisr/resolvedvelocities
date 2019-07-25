@@ -159,17 +159,16 @@ class ResolveVectors(object):
 
         # apex basis vectors in geodetic coordinates [e n u]
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
-        d1 = np.insert(d1,replace_nans,np.nan,axis=1)
-        d2 = np.insert(d2,replace_nans,np.nan,axis=1)
-        d3 = np.insert(d3,replace_nans,np.nan,axis=1)
-        d = np.array([d1,d2,d3]).T
+        e1 = np.insert(e1,replace_nans,np.nan,axis=1)
+        e2 = np.insert(e2,replace_nans,np.nan,axis=1)
+        e3 = np.insert(e3,replace_nans,np.nan,axis=1)
+        e = np.array([e1,e2,e3]).T
 
         # kvec in geodetic coordinates [e n u]
         kvec = np.array([self.ke, self.kn, self.kz]).T
-        # print kvec.shape, kvec
 
-        # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
-        self.A = np.einsum('ij,ijk->ik', kvec, d)
+        # find components of k for d1, d2, d3 base vectors (Laundal and Richmond, 2016 eqn. 60)
+        self.A = np.einsum('ij,ijk->ik', kvec, e)
 
         # calculate scaling factor D, used for ion outflow correction (Richmond, 1995 eqn. 3.15)
         d1_cross_d2 = np.cross(d1.T,d2.T).T
@@ -192,9 +191,9 @@ class ResolveVectors(object):
                 vion, dvion = ion_upflow(self.Te, self.Ti, self.ne, self.alt)
 
             # LoS velocity correction to remove ion upflow
-            self.vlos[t] = self.vlos[t] + self.D*self.A[:,2]*vion
+            self.vlos[t] = self.vlos[t] + self.A[:,2]/self.D*vion
             # corrected error in new LoS velocities
-            self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.D**2*self.A[:,2]**2*dvion**2)
+            self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.A[:,2]**2/self.D**2*dvion**2)
 
 
 
@@ -325,7 +324,8 @@ class ResolveVectors(object):
         self.bin_galt = alt.reshape((vbins,hbins))
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
+        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, alt)
 
         # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
         # To force this, set e3 = 0 and d3 = 0
