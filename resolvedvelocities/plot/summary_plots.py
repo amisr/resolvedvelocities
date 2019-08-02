@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import datetime as dt
+import os
 
-def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=None, clim=None, cmap=None):
+def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=None, clim=None, cmap=None, savedir=None):
 
     # set defaults
     defaults = {'V': {'titles':[['Ve1 (m/s)', 'Ve2 (m/s)', 'Ve3 (m/s) x 10'],
@@ -24,6 +25,8 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
         clim = defaults[param]['clim']
     if not cmap:
         cmap = defaults[param]['cmap']
+    if not savedir:
+        savedir = os.getcwd()
 
     # for electric field, multiply values by 1000 to get units of mV/m instead of V/m
     if param=='E':
@@ -75,12 +78,13 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         plt.gcf().text(0.02, 0.95, datestr, fontsize=12)
 
-        plt.savefig('{}compontents_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        filename = os.path.join(savedir,'{}compontents_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        plt.savefig(filename)
         # plt.show()
         plt.close()
 
 
-def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', titles=None, clim=None, cmap=None):
+def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', titles=None, clim=None, cmap=None, savedir=None):
 
     # set defaults
     defaults = {'V': {'titles':['V magnitude (m/s)', 'V magnitude error (m/s)', 'V direction (deg)', 'V direction error (deg)', ''],
@@ -97,6 +101,8 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         clim = defaults[param]['clim']
     if not cmap:
         cmap = defaults[param]['cmap']
+    if not savedir:
+        savedir = os.getcwd()
 
     # for electric field, multiply values by 1000 to get units of mV/m instead of V/m
     if param=='E':
@@ -152,7 +158,8 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         plt.gcf().text(0.02, 0.97, datestr, fontsize=12)
 
-        plt.savefig('{}magnitude_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        filename = os.path.join(savedir,'{}magnitude_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        plt.savefig(filename)
         # plt.show()
         plt.close()
 

@@ -39,6 +39,7 @@ class ResolveVectors(object):
         self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
         self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
+        self.plotsavedir = config.get('DEFAULT', 'PLOTSAVEDIR')
 
         if config.has_option('DEFAULT', 'UPB_BEAMCODE'):
             self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE')
@@ -565,13 +566,13 @@ class ResolveVectors(object):
 
     def create_plots(self, alt=300., vcomptitles=None, vcomplim=None, vcompcmap=None, ecomptitles=None, ecomplim=None, ecompcmap=None, vmagtitles=None, vmaglim=None, vmagcmap=None, emagtitles=None, emaglim=None, emagcmap=None):
 
-        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap)
-        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap)
+        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir)
+        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir)
 
         # find index of altitude bin that is closest to alt
         i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
-        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap)
-        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap)
+        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir)
+        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir)
 
 
 
