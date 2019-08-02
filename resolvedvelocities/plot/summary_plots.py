@@ -220,7 +220,7 @@ def timegaps(time, data_arrays):
     gaps = np.argwhere(time_diff > 2*dt).flatten()+1
 
     # if no gaps, return original arrays
-    if not gaps:
+    if not gaps.size:
         return time, data_arrays
 
     # create array of times to fill each gap
