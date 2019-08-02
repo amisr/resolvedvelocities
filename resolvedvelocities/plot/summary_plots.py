@@ -75,8 +75,9 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         plt.gcf().text(0.02, 0.95, datestr, fontsize=12)
 
-        plt.savefig('{}components.png'.format(param))
-        plt.show()
+        plt.savefig('{}compontents_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        # plt.show()
+        plt.close()
 
 
 def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', titles=None, clim=None, cmap=None):
@@ -151,8 +152,9 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         plt.gcf().text(0.02, 0.97, datestr, fontsize=12)
 
-        plt.savefig('{}magnitude.png'.format(param))
-        plt.show()
+        plt.savefig('{}magnitude_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        # plt.show()
+        plt.close()
 
 
 def get_time_ticks(utime):
