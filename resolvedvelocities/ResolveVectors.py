@@ -159,6 +159,9 @@ class ResolveVectors(object):
 
         # apex basis vectors in geodetic coordinates [e n u]
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
+        d1 = np.insert(d1,replace_nans,np.nan,axis=1)
+        d2 = np.insert(d2,replace_nans,np.nan,axis=1)
+        d3 = np.insert(d3,replace_nans,np.nan,axis=1)
         e1 = np.insert(e1,replace_nans,np.nan,axis=1)
         e2 = np.insert(e2,replace_nans,np.nan,axis=1)
         e3 = np.insert(e3,replace_nans,np.nan,axis=1)
