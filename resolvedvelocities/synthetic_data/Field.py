@@ -10,16 +10,12 @@ try:
     import ConfigParser as configparser
 except ImportError:
     import configparser
-    
+
 class Field(object):
 
     def __init__(self, config):
 
         self.read_config(config)
-
-        # convert list from config file to arrays
-        self.field_coords = np.array(self.field_coords)
-        self.field_values = np.array(self.field_values)
 
         # initialize Apex object
         self.apex = Apex(date=self.apex_year)
@@ -33,8 +29,10 @@ class Field(object):
 
         config = configparser.ConfigParser()
         config.read(config_file)
-        self.__dict__.update(config.items('FIELD'))
-        self.__dict__.update((name,eval(value)) for name, value in self.__dict__.items())
+
+        setattr(self, 'apex_year', config.getint('FIELD', 'apex_year'))
+        setattr(self, 'field_coords', np.array(eval(config.get('FIELD', 'field_coords'))))
+        setattr(self, 'field_values', np.array(eval(config.get('FIELD', 'field_values'))))
 
 
     def map_velocity_field(self, coords, field):

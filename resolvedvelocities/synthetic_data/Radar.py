@@ -8,7 +8,7 @@ try:
     import ConfigParser as configparser
 except ImportError:
     import configparser
-    
+
 class Radar(object):
 
     def __init__(self, config):
@@ -25,10 +25,21 @@ class Radar(object):
         # self.plot_radar()
 
     def read_config(self, config_file):
+
         config = configparser.ConfigParser()
         config.read(config_file)
-        self.__dict__.update(config.items('RADAR'))
-        self.__dict__.update((name,eval(value)) for name, value in self.__dict__.items())
+
+        getfloat = lambda x: config.getfloat('RADAR', x)
+        getarray = lambda x: np.array(eval(config.get('RADAR', x)))
+        getstring = lambda x: config.get('RADAR', x)
+
+        setattr(self, 'site_coords', getarray('site_coords'))
+        setattr(self, 'beamcode_filename', getstring('beamcode_filename'))
+        setattr(self, 'beamcodes', getarray('beamcodes'))
+        setattr(self, 'range_step', getfloat('range_step'))
+        setattr(self, 'output_filename', getstring('output_filename'))
+        setattr(self, 'integration_period', getfloat('integration_period'))
+        setattr(self, 'vel_error', getfloat('vel_error'))
 
 
 
