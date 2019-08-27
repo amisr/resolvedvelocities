@@ -6,8 +6,11 @@ import coord_convert as cc
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-import configparser
-
+try:
+    import ConfigParser as configparser
+except ImportError:
+    import configparser
+    
 class Field(object):
 
     def __init__(self, config):
@@ -19,7 +22,7 @@ class Field(object):
         self.field_values = np.array(self.field_values)
 
         # initialize Apex object
-        self.A = Apex(date=self.apex_year)
+        self.apex = Apex(date=self.apex_year)
 
         self.map_velocity_field(self.field_coords, self.field_values)
         self.convert_to_ECEF()
@@ -44,12 +47,12 @@ class Field(object):
         self.altitude = np.repeat(altitude,coords.shape[-1])
 
         # map to diffent altitudes manually - the current expected input/output arrays of apexpy.map_to_height makes this function difficult to use for this purpose
-        alat, alon = self.A.geo2apex(coords[0], coords[1], coords[2])
+        alat, alon = self.apex.geo2apex(coords[0], coords[1], coords[2])
         # find positions at each altitude
-        self.latitude, self.longitude, __ = self.A.apex2geo(np.tile(alat,len(altitude)), np.tile(alon,len(altitude)), self.altitude)
+        self.latitude, self.longitude, __ = self.apex.apex2geo(np.tile(alat,len(altitude)), np.tile(alon,len(altitude)), self.altitude)
 
         # map field to each altitude
-        f = np.array([self.A.map_V_to_height(alat, alon, coords[2], a, field.T).T for a in altitude])
+        f = np.array([self.apex.map_V_to_height(alat, alon, coords[2], a, field.T).T for a in altitude])
         self.field = f.reshape(-1,f.shape[-1])
 
 

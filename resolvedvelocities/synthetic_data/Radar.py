@@ -4,8 +4,11 @@ import coord_convert as cc
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-import configparser
-
+try:
+    import ConfigParser as configparser
+except ImportError:
+    import configparser
+    
 class Radar(object):
 
     def __init__(self, config):

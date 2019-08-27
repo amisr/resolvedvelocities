@@ -2,21 +2,11 @@
 
 import numpy as np
 import datetime as dt
-# from apexpy import Apex
-# from scipy import interpolate
 import coord_convert as cc
 import tables
-# import sys
-# import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-# import matplotlib.cm as cm
 from matplotlib.colors import Normalize
-
-import configparser
-
-# import sys
-# sys.path.append("..")
 from ..ResolveVectors import ResolveVectors
 
 class SyntheticData(object):
@@ -139,7 +129,7 @@ class SyntheticData(object):
     def compare_components(self, field, rv):
 
         # convert bin locations to ECEF
-        bin_glat, bin_glon, __ = field.A.apex2geo(rv.bin_mlat, rv.bin_mlon, 300.)
+        bin_glat, bin_glon, __ = field.apex.apex2geo(rv.bin_mlat, rv.bin_mlon, 300.)
         X, Y, Z = cc.geodetic_to_cartesian(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
         # interpolate field to bin locations
         Vx = field.interpVx(np.array([X,Y,Z]).T)
@@ -147,7 +137,7 @@ class SyntheticData(object):
         Vz = field.interpVz(np.array([X,Y,Z]).T)
         # convert field components to apex
         Vn, Ve, Vu = cc.vector_cartesian_to_geodetic(Vx, Vy, Vz, X, Y, Z)
-        f1,f2,f3,g1,g2,g3,d1,d2,d3,e1,e2,e3 = field.A.basevectors_apex(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
+        f1,f2,f3,g1,g2,g3,d1,d2,d3,e1,e2,e3 = field.apex.basevectors_apex(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
         Ve1 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d1.T)
         Ve2 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d2.T)
         Ve3 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d3.T)
