@@ -12,6 +12,7 @@ import platform
 import getpass
 import socket
 from apexpy import Apex
+from .marp import Marp
 from scipy.spatial import Delaunay
 
 
@@ -149,16 +150,24 @@ class ResolveVectors(object):
         glon = self.lon[np.isfinite(self.lon)]
         galt = self.alt[np.isfinite(self.alt)]/1000.
 
+        A = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        alat, alon = A.geo2apex(glat, glon, galt)
+        # print(alat, alon)
+
         # intialize apex coordinates
-        self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        # self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=66.5, phi0=-91.0)
+        # self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=66.5, phi0=0.)
 
         # find magnetic latitude and longitude
-        mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
+        # mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
+        mlat, mlon = self.marp.geo2marp(glat, glon, galt)
         self.mlat = np.insert(mlat,replace_nans,np.nan)
         self.mlon = np.insert(mlon,replace_nans,np.nan)
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
+        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
+        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, galt)
         d1 = np.insert(d1,replace_nans,np.nan,axis=1)
         d2 = np.insert(d2,replace_nans,np.nan,axis=1)
         d3 = np.insert(d3,replace_nans,np.nan,axis=1)
@@ -298,8 +307,8 @@ class ResolveVectors(object):
 
         # find Be3 value at each output bin location
         # NOTE: Be3 is constant along magnetic field lines, so the altitude chosen here doesn't matter
-        Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
-        # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+        # Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
+        Be3 = np.full(len(self.bin_mlat),1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
         R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
@@ -321,14 +330,16 @@ class ResolveVectors(object):
         alt = np.repeat(self.outalt, hbins)
 
         # calculate bin locations in geodetic coordinates
-        glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
+        # glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
+        glat, glon, err = self.marp.marp2geo(mlat, mlon, alt)
         self.bin_glat = glat.reshape((vbins,hbins))
         self.bin_glon = glon.reshape((vbins,hbins))
         self.bin_galt = alt.reshape((vbins,hbins))
 
         # apex basis vectors in geodetic coordinates [e n u]
         # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, alt)
+        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, alt)
+        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, alt)
 
         # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
         # To force this, set e3 = 0 and d3 = 0
@@ -509,10 +520,12 @@ class ResolveVectors(object):
 
             outfile.create_group('/', 'ProcessingParams')
 
-            outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
+            # outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
+            outfile.create_array('/ProcessingParams', 'ApexYear', self.marp.year)
             outfile.set_node_attr('/ProcessingParams/ApexYear', 'TITLE', 'Decimal Year used for IGRF Model')
 
-            outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
+            # outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
+            outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.marp.refh)
             outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'TITLE', 'Reference height used for Apex coordinates')
             outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'Units', 'km')
 
