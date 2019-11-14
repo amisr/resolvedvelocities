@@ -2,7 +2,7 @@ from resolvedvelocities.synthetic_data.SyntheticData import SyntheticData
 from resolvedvelocities.synthetic_data.Field import Field
 from resolvedvelocities.synthetic_data.Radar import Radar
 
-config_file_help = """Create a synthetic AMISR dataset and calculate 2D resolved 
+config_file_help = """Create a synthetic AMISR dataset and calculate 2D resolved
 plasma drift velocity vectors from the simulated LoS measurments.
 
 Requires two configuration files:
@@ -54,7 +54,7 @@ Standard vvels configuration file containing the following example format:
 DATAFILE = synthetic_data.h5
 
 # output file name
-OUTFILENAME = test_vvels.h5 
+OUTFILENAME = test_vvels.h5
 
 # chirp
 CHIRP = 0.0
@@ -125,8 +125,9 @@ def main():
     vvels = synth_data.eval_vvels(args['vvels_config_file'])
 
     # compare output of resolvevectors algorithm with truth
-    synth_data.plot(field, radar, vvels)
-    synth_data.compare_components(field,vvels)
+    # synth_data.plot(field, radar, vvels)
+    synth_data.check_assumptions(field, radar, vvels)
+    synth_data.check_components(field, vvels)
 
 
 if __name__ == '__main__':

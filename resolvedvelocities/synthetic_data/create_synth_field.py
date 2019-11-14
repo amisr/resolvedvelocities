@@ -10,9 +10,15 @@
 
 import numpy as np
 from apexpy import Apex
+import coord_convert as cc
 
-glat = np.arange(62., 71., 1.)
-glon = np.arange(200., 225., 3.)
+# # PFISR
+# glat = np.arange(62., 71., 1.)
+# glon = np.arange(200., 225., 3.)
+
+# RISRN
+glat = np.arange(73., 83., 1.)
+glon = np.arange(-110., -65., 4.)
 
 glat, glon = np.meshgrid(glat, glon)
 galt = np.full(glat.shape, 300.)
@@ -32,5 +38,13 @@ print('field_coords = ',coords)
 
 # Uniform geodetic East
 Vgd = np.tile([500., 0., 0.], (len(galt),1)).tolist()
+
+# Roughly uniform field
+x, y, z = cc.geodetic_to_cartesian(glat, glon, galt)
+vx, vy, vz = cc.vector_geodetic_to_cartesian(500., 0., 0., np.mean(glat), np.mean(glon), np.mean(galt))
+vn, ve, vu = cc.vector_cartesian_to_geodetic(np.full(galt.shape, vx), np.full(galt.shape, vy), np.full(galt.shape, vz), x, y, z)
+Vgd = np.array([ve, vn, vu]).T.tolist()
+
+
 
 print('field_values = ', Vgd)

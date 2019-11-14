@@ -152,18 +152,19 @@ class ResolveVectors(object):
 
         A = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
         alat, alon = A.geo2apex(glat, glon, galt)
-        # print(alat, alon)
+        print(np.mean(alat), np.mean(alon))
 
         # intialize apex coordinates
         # self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
-        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=66.5, phi0=-91.0)
-        # self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=66.5, phi0=0.)
+        # self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=0., phi0=0.)
+        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=np.mean(alat), phi0=np.mean(alon))
 
         # find magnetic latitude and longitude
         # mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
         mlat, mlon = self.marp.geo2marp(glat, glon, galt)
         self.mlat = np.insert(mlat,replace_nans,np.nan)
         self.mlon = np.insert(mlon,replace_nans,np.nan)
+        # print(self.mlat, self.mlon)
 
         # apex basis vectors in geodetic coordinates [e n u]
         # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
@@ -195,7 +196,7 @@ class ResolveVectors(object):
             if not self.ionup:
                 continue
             elif self.ionup == 'UPB':
-                # interpolate velocities from up B beam to all other measurements 
+                # interpolate velocities from up B beam to all other measurements
                 vion, dvion = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
             elif self.ionup == 'EMP':
                 # use empirical method to find ion upflow
@@ -261,14 +262,14 @@ class ResolveVectors(object):
 
     def compute_vector_velocity(self):
         # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-        
+
         Velocity = []
         VelocityCovariance = []
         ChiSquared = []
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
-        for tidx in self.int_idx:
+        for tidx in self.int_idx[:1]:
             Vel = []
             SigmaV = []
             Chi2 = []
@@ -284,6 +285,8 @@ class ResolveVectors(object):
                 else:
                     # if no post integraiton, k vectors do not need to be duplicated
                     A = self.A[bidx]
+
+                # print(A)
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
                 V, SigV, chi2 = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
@@ -541,7 +544,7 @@ class ResolveVectors(object):
             Hostname        = platform.node()
             if len(Hostname) == 0:
                 Hostname = socket.gethostname()
-            
+
             outfile.create_group('/ProcessingParams', 'ComputerInfo')
 
             outfile.create_array('/ProcessingParams/ComputerInfo', 'PythonVersion', PythonVersion.encode('utf-8'))
@@ -665,4 +668,3 @@ def magnitude_direction(A,Sig,e):
     dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
-
