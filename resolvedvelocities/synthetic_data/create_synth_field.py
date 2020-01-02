@@ -29,23 +29,23 @@ coords = [glat.tolist(), glon.tolist(), galt.tolist()]
 
 print('field_coords = ',coords)
 
-# Uniform field with only a Ve1 component
-Ve1 = 0.
-Ve2 = 500.
-Ve3 = 0.
-A = Apex(2019)
-f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = A.basevectors_apex(glat, glon, galt)
-Vgd = Ve1*e1.T + Ve2*e2.T + Ve3*e3.T
-Vgd = Vgd.tolist()
+# # Uniform field with only a Ve1 component
+# Ve1 = 0.
+# Ve2 = 500.
+# Ve3 = 0.
+# A = Apex(2019)
+# f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = A.basevectors_apex(glat, glon, galt)
+# Vgd = Ve1*e1.T + Ve2*e2.T + Ve3*e3.T
+# Vgd = Vgd.tolist()
 
 # # Uniform geodetic East
 # Vgd = np.tile([0., 500., 0.], (len(galt),1)).tolist()
 
-# # Roughly uniform field
-# x, y, z = cc.geodetic_to_cartesian(glat, glon, galt)
-# vx, vy, vz = cc.vector_geodetic_to_cartesian(500., 0., 0., np.mean(glat), np.mean(glon), np.mean(galt))
-# vn, ve, vu = cc.vector_cartesian_to_geodetic(np.full(galt.shape, vx), np.full(galt.shape, vy), np.full(galt.shape, vz), x, y, z)
-# Vgd = np.array([ve, vn, vu]).T.tolist()
+# Roughly uniform field
+x, y, z = cc.geodetic_to_cartesian(glat, glon, galt)
+vx, vy, vz = cc.vector_geodetic_to_cartesian(0., 500., 0., np.mean(glat), np.mean(glon), np.mean(galt))
+vn, ve, vu = cc.vector_cartesian_to_geodetic(np.full(galt.shape, vx), np.full(galt.shape, vy), np.full(galt.shape, vz), x, y, z)
+Vgd = np.array([ve, vn, vu]).T.tolist()
 
 
 
