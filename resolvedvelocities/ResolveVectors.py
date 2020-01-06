@@ -37,6 +37,7 @@ class ResolveVectors(object):
         self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
         self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
+        self.marprot = eval(config.get('DEFAULT', 'MARPROT'))
 
         if config.has_option('DEFAULT', 'UPB_BEAMCODE'):
             self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE')
@@ -150,14 +151,15 @@ class ResolveVectors(object):
         glon = self.lon[np.isfinite(self.lon)]
         galt = self.alt[np.isfinite(self.alt)]/1000.
 
-        A = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
-        alat, alon = A.geo2apex(glat, glon, galt)
-        print(np.mean(alat), np.mean(alon))
+        # A = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        # alat, alon = A.geo2apex(glat, glon, galt)
+        # print(np.mean(alat), np.mean(alon))
 
         # intialize apex coordinates
+        # print(np.mean(alat), np.mean(alon))
         # self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
         # self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=0., phi0=0.)
-        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=np.mean(alat), phi0=np.mean(alon))
+        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
 
         # find magnetic latitude and longitude
         # mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
