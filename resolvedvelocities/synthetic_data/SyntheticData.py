@@ -7,6 +7,13 @@ import tables
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import Normalize
+import matplotlib.gridspec as gridspec
+import cartopy.crs as ccrs
+
+import configparser
+
+# import sys
+# sys.path.append("..")
 from ..ResolveVectors import ResolveVectors
 
 class SyntheticData(object):
@@ -114,9 +121,12 @@ class SyntheticData(object):
         for x, y, z, vx, vy, vz in zip(field.X, field.Y, field.Z, field.Vx, field.Vy, field.Vz):
             ax.quiver(x, y, z, vx, vy, vz, length=0.4*np.sqrt(vx**2+vy**2+vz**2), linewidths=0.5, color='lightgreen')
 
+        # print(radar.Z.ravel().shape, rv.A.shape)
 
         for x, y, z, kx, ky, kz, v in zip(radar.X.ravel(), radar.Y.ravel(), radar.Z.ravel(), radar.kx.ravel(), radar.ky.ravel(), radar.kz.ravel(), self.fit_array[0,:,:,0,3].ravel()):
+        # for x, y, z, kx, ky, kz, A, v in zip(radar.X.ravel(), radar.Y.ravel(), radar.Z.ravel(), radar.kx.ravel(), radar.ky.ravel(), radar.kz.ravel(), rv.A[:,1], self.fit_array[0,:,:,0,3].ravel()):
             ax.quiver(x, y, z, kx*v*1000, ky*v*1000, kz*v*1000, color=quiver_color(v,-500.,500.,'coolwarm'))
+            # ax.quiver(x, y, z, kx*A*v*1000, ky*A*v*1000, kz*A*v*1000, color=quiver_color(A*v,-500.,500.,'coolwarm'))
 
         X, Y, Z = cc.geodetic_to_cartesian(rv.bin_glat, rv.bin_glon, rv.bin_galt)
         Vx, Vy, Vz = cc.vector_geodetic_to_cartesian(rv.Velocity_gd[0,:,:,1], rv.Velocity_gd[0,:,:,0], rv.Velocity_gd[0,:,:,2], rv.bin_glat, rv.bin_glon, rv.bin_galt)
@@ -124,44 +134,157 @@ class SyntheticData(object):
         for x, y, z, vx, vy, vz in zip(X.ravel(), Y.ravel(), Z.ravel(), Vx.ravel(), Vy.ravel(), Vz.ravel()):
             ax.quiver(x, y, z, vx, vy, vx, length=0.4*np.sqrt(vx**2+vy**2+vz**2))
 
+
+        for bn in rv.binvert:
+            # interpolate between each bin vertex
+            bin_edge = np.empty((0,2))
+            for i in range(len(bn)):
+                bin_edge = np.concatenate((bin_edge,np.linspace(bn[i-1], bn[i], 10)))
+            # convert edge from MARP to cartesian
+            glat, glon, _ = rv.marp.marp2geo(bin_edge[:,0], bin_edge[:,1], 300.)
+            x, y, z = cc.geodetic_to_cartesian(glat, glon, np.full(glat.shape, 300.))
+            ax.plot(x, y, z)
+
         plt.show()
 
-    def compare_components(self, field, rv):
+    def check_assumptions(self, field, radar, rv):
+        # check the underling assumption that Ve1, Ve2, Ve3 are consistent over the bins
+
+        X = radar.X.flatten()
+        Y = radar.Y.flatten()
+        Z = radar.Z.flatten()
+
+        glat, glon, galt = cc.cartesian_to_geodetic(X, Y, Z)
+
+        mlat, mlon = rv.marp.geo2marp(glat, glon, galt)
+        # mlat, mlon = rv.marp.geo2apex(glat, glon, galt)
+
+        # field at radar
+        Vx = field.interpVx(np.array([X, Y, Z]).T)
+        Vy = field.interpVy(np.array([X, Y, Z]).T)
+        Vz = field.interpVz(np.array([X, Y, Z]).T)
+        Vn, Ve, Vu = cc.vector_cartesian_to_geodetic(Vx, Vy, Vz, X, Y, Z)
+        Vgd = np.array([Ve, Vn, Vu])
+
+        d1, d2, d3, e1, e2, e3 = rv.marp.basevectors_marp(glat, glon, galt)
+        # f1,f2,f3,g1,g2,g3,d1, d2, d3, e1, e2, e3 = rv.marp.basevectors_apex(glat, glon, galt)
+        Ve1 = np.einsum('i...,i...->...', d1, Vgd)
+        Ve2 = np.einsum('i...,i...->...', d2, Vgd)
+        Ve3 = np.einsum('i...,i...->...', d3, Vgd)
+
+        # get base vectors at all points where the field is defined
+        d1, d2, d3, e1, e2, e3 = rv.marp.basevectors_marp(field.field_coords[0,:], field.field_coords[1,:],field.field_coords[2,:])
+        print(e1.shape)
+
+        bins = []
+        binsgd = []
+        for bn in rv.binvert:
+            # interpolate between each bin vertex
+            bin_edge = np.empty((0,2))
+            for i in range(len(bn)):
+                bin_edge = np.concatenate((bin_edge,np.linspace(bn[i-1], bn[i], 10)))
+            bins.append(bin_edge)
+            # convert edge from MARP to cartesian
+            lat, lon, _ = rv.marp.marp2geo(bin_edge[:,0], bin_edge[:,1], 300.)
+            binsgd.append(np.array([lat, lon]).T)
+
+
+        fig = plt.figure(figsize=(17,5))
+        gs = gridspec.GridSpec(1,4)
+        gs.update(left=0.01,right=0.95)
+
+        ax = plt.subplot(gs[0,0],projection=ccrs.LambertConformal(central_longitude=np.mean(glon),central_latitude=np.mean(glat)))
+        ax.coastlines()
+        ax.scatter(glon, glat, s=2, color='lightgrey', transform=ccrs.PlateCarree())
+        ax.quiver(field.field_coords[1,:], field.field_coords[0,:], field.field_values[:,0], field.field_values[:,1], width=0.005, transform=ccrs.PlateCarree())
+        ax.quiver(field.field_coords[1,:], field.field_coords[0,:], e1[0,:], e1[1,:], width=0.005, color='green', label=r'$\hat{e_1}$', transform=ccrs.PlateCarree())
+        ax.quiver(field.field_coords[1,:], field.field_coords[0,:], e2[0,:], e2[1,:], width=0.005, color='red', label=r'$\hat{e_2}$', transform=ccrs.PlateCarree())
+        for bin_edge in binsgd:
+            ax.plot(bin_edge[:,1],bin_edge[:,0],color='black', transform=ccrs.PlateCarree())
+        ax.legend()
+
+        for i, (param,title) in enumerate(zip([Ve1,Ve2,Ve3],['Ve1','Ve2','Ve3'])):
+            ax = plt.subplot(gs[0,i+1])
+            c = ax.scatter(mlon, mlat, c=param)
+            for bin_edge in bins:
+                ax.plot(bin_edge[:,1],bin_edge[:,0],color='black')
+            ax.set_title(title)
+            plt.colorbar(c)
+
+        # plt.show()
+        plt.savefig('synth_data_assumptions.png')
+
+    def check_components(self, field, rv):
+
+        targalt = 300.
+        aidx = np.argmin(np.abs(rv.bin_galt[:,0]-targalt))
 
         # convert bin locations to ECEF
-        bin_glat, bin_glon, __ = field.apex.apex2geo(rv.bin_mlat, rv.bin_mlon, 300.)
-        X, Y, Z = cc.geodetic_to_cartesian(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
+        X, Y, Z = cc.geodetic_to_cartesian(rv.bin_glat[aidx,:], rv.bin_glon[aidx,:], rv.bin_galt[aidx,:])
         # interpolate field to bin locations
         Vx = field.interpVx(np.array([X,Y,Z]).T)
         Vy = field.interpVy(np.array([X,Y,Z]).T)
         Vz = field.interpVz(np.array([X,Y,Z]).T)
         # convert field components to apex
         Vn, Ve, Vu = cc.vector_cartesian_to_geodetic(Vx, Vy, Vz, X, Y, Z)
-        f1,f2,f3,g1,g2,g3,d1,d2,d3,e1,e2,e3 = field.apex.basevectors_apex(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
+        # f1,f2,f3,g1,g2,g3,d1,d2,d3,e1,e2,e3 = field.A.basevectors_apex(bin_glat, bin_glon, np.full(bin_glat.shape,300.))
+        d1,d2,d3,e1,e2,e3 = rv.marp.basevectors_marp(rv.bin_glat[aidx,:], rv.bin_glon[aidx,:], rv.bin_galt[aidx,:])
         Ve1 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d1.T)
         Ve2 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d2.T)
         Ve3 = np.einsum('...i,...i->...',np.array([Ve, Vn, Vu]).T,d3.T)
 
-        # print(Ve1, Ve2, Ve3)
+        # get bin outlines
+        bins = []
+        binsgd = []
+        for bn in rv.binvert:
+            # interpolate between each bin vertex
+            bin_edge = np.empty((0,2))
+            for i in range(len(bn)):
+                bin_edge = np.concatenate((bin_edge,np.linspace(bn[i-1], bn[i], 10)))
+            bins.append(bin_edge)
+            # convert edge from MARP to cartesian
+            lat, lon, _ = rv.marp.marp2geo(bin_edge[:,0], bin_edge[:,1], 300.)
+            binsgd.append(np.array([lat, lon]).T)
+
 
         fig = plt.figure(figsize=(10,10))
+        gs = gridspec.GridSpec(4,2)
+        gs.update(bottom=0.05, top=0.95, left=0.1, right=0.95, hspace=0.3)
 
-        ax = fig.add_subplot(311)
-        ax.errorbar(np.arange(rv.Velocity.shape[1]),rv.Velocity[0,:,0], yerr=np.sqrt(rv.VelocityCovariance[0,:,0,0]))
-        ax.plot(Ve1)
-        ax.set_title('Ve1')
+        ax = plt.subplot(gs[0,0])
+        ax.quiver(rv.bin_mlon,rv.bin_mlat,Ve1,Ve2, scale=10000, color='blue')
+        ax.quiver(rv.bin_mlon,rv.bin_mlat,rv.Velocity[0,:,0],rv.Velocity[0,:,1], scale=10000, color='orange')
+        for bin_edge in bins:
+            ax.plot(bin_edge[:,1],bin_edge[:,0],color='black')
+        # ax.set_xlim([1.5*min(rv.bin_mlon)-0.5*max(rv.bin_mlon),1.5*max(rv.bin_mlon)-0.5*min(rv.bin_mlon)])
+        # ax.set_ylim([1.5*min(rv.bin_mlat)-0.5*max(rv.bin_mlat),1.5*max(rv.bin_mlat)-0.5*min(rv.bin_mlat)])
+        ax.set_title('Magnetic/Native')
 
-        ax = fig.add_subplot(312)
-        ax.errorbar(np.arange(rv.Velocity.shape[1]),rv.Velocity[0,:,1], yerr=np.sqrt(rv.VelocityCovariance[0,:,1,1]))
-        ax.plot(Ve2)
-        ax.set_title('Ve2')
+        for i, (param,title) in enumerate(zip([Ve1,Ve2,Ve3],['Ve1','Ve2','Ve3'])):
+            ax = plt.subplot(gs[i+1,0])
+            ax.plot(param, color='blue')
+            ax.errorbar(np.arange(rv.Velocity.shape[1]),rv.Velocity[0,:,i], yerr=np.sqrt(rv.VelocityCovariance[0,:,i,i]), color='orange')
+            ax.set_title(title)
 
-        ax = fig.add_subplot(313)
-        ax.errorbar(np.arange(rv.Velocity.shape[1]),rv.Velocity[0,:,2], yerr=np.sqrt(rv.VelocityCovariance[0,:,2,2]))
-        ax.plot(Ve3)
-        ax.set_title('Ve3')
+        ax = plt.subplot(gs[0,1],projection=ccrs.LambertConformal(central_longitude=np.mean(field.field_coords[1,:]),central_latitude=np.mean(field.field_coords[0,:])))
+        ax.coastlines()
 
-        plt.show()
+        ax.quiver(rv.bin_glon[aidx,:], rv.bin_glat[aidx,:], Ve, Vn, scale=2000, color='blue', transform=ccrs.PlateCarree())
+        ax.quiver(rv.bin_glon[aidx,:], rv.bin_glat[aidx,:], rv.Velocity_gd[0,aidx,:,0], rv.Velocity_gd[0,aidx,:,1], scale=2000, color='orange', transform=ccrs.PlateCarree())
+        for bin_edge in binsgd:
+            ax.plot(bin_edge[:,1],bin_edge[:,0],color='black', transform=ccrs.PlateCarree())
+        # ax.set_extent([min(rv.bin_glon[aidx,:]),max(rv.bin_glon[aidx,:]),min(rv.bin_glat[aidx,:]),max(rv.bin_glat[aidx,:])])
+        # ax.set_extent([1.5*min(rv.bin_glon[aidx,:])-0.5*max(rv.bin_glon[aidx,:]),1.5*max(rv.bin_glon[aidx,:])-0.5*min(rv.bin_glon[aidx,:]),1.5*min(rv.bin_glat[aidx,:])-0.5*max(rv.bin_glat[aidx,:]),1.5*max(rv.bin_glat[aidx,:])-0.5*min(rv.bin_glat[aidx,:])])
+        ax.set_title('Geodetic')
+
+        for i, (param,title) in enumerate(zip([Ve,Vn,Vu],['Ve','Vn','Vu'])):
+            ax = plt.subplot(gs[i+1,1])
+            ax.plot(param, color='blue')
+            ax.errorbar(np.arange(rv.Velocity_gd.shape[2]),rv.Velocity_gd[0,aidx,:,i], yerr=np.sqrt(rv.VelocityCovariance_gd[0,aidx,:,i,i]),color='orange')
+            ax.set_title(title)
+
+        # plt.show()
+        plt.savefig('synth_data_components.png')
 
 
 
@@ -171,4 +294,4 @@ def quiver_color(v,vmin,vmax,cmap):
     c = norm(v)
     # c = np.concatenate((c, np.repeat(c, 2)))
     c = getattr(plt.cm,cmap)(c)
-    return c    
+    return c
