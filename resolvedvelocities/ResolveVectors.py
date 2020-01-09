@@ -12,6 +12,7 @@ import platform
 import getpass
 import socket
 from apexpy import Apex
+from .marp import Marp
 from scipy.spatial import Delaunay
 
 
@@ -36,6 +37,7 @@ class ResolveVectors(object):
         self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
         self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
+        self.marprot = eval(config.get('DEFAULT', 'MARPROT'))
 
         if config.has_option('DEFAULT', 'UPB_BEAMCODE'):
             self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE')
@@ -149,27 +151,39 @@ class ResolveVectors(object):
         glon = self.lon[np.isfinite(self.lon)]
         galt = self.alt[np.isfinite(self.alt)]/1000.
 
+        # A = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        # alat, alon = A.geo2apex(glat, glon, galt)
+        # print(np.mean(alat), np.mean(alon))
+
         # intialize apex coordinates
-        self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        # print(np.mean(alat), np.mean(alon))
+        # self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
+        # self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=0., phi0=0.)
+        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
 
         # find magnetic latitude and longitude
-        mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
+        # mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
+        mlat, mlon = self.marp.geo2marp(glat, glon, galt)
         self.mlat = np.insert(mlat,replace_nans,np.nan)
         self.mlon = np.insert(mlon,replace_nans,np.nan)
+        # print(self.mlat, self.mlon)
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
+        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
+        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, galt)
         d1 = np.insert(d1,replace_nans,np.nan,axis=1)
         d2 = np.insert(d2,replace_nans,np.nan,axis=1)
         d3 = np.insert(d3,replace_nans,np.nan,axis=1)
-        d = np.array([d1,d2,d3]).T
+        e1 = np.insert(e1,replace_nans,np.nan,axis=1)
+        e2 = np.insert(e2,replace_nans,np.nan,axis=1)
+        e3 = np.insert(e3,replace_nans,np.nan,axis=1)
+        e = np.array([e1,e2,e3]).T
 
         # kvec in geodetic coordinates [e n u]
         kvec = np.array([self.ke, self.kn, self.kz]).T
-        # print kvec.shape, kvec
 
-        # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
-        self.A = np.einsum('ij,ijk->ik', kvec, d)
+        # find components of k for d1, d2, d3 base vectors (Laundal and Richmond, 2016 eqn. 60)
+        self.A = np.einsum('ij,ijk->ik', kvec, e)
 
         # calculate scaling factor D, used for ion outflow correction (Richmond, 1995 eqn. 3.15)
         d1_cross_d2 = np.cross(d1.T,d2.T).T
@@ -184,7 +198,7 @@ class ResolveVectors(object):
             if not self.ionup:
                 continue
             elif self.ionup == 'UPB':
-                # interpolate velocities from up B beam to all other measurements 
+                # interpolate velocities from up B beam to all other measurements
                 vion, dvion = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
             elif self.ionup == 'EMP':
                 # use empirical method to find ion upflow
@@ -192,9 +206,9 @@ class ResolveVectors(object):
                 vion, dvion = ion_upflow(self.Te, self.Ti, self.ne, self.alt)
 
             # LoS velocity correction to remove ion upflow
-            self.vlos[t] = self.vlos[t] + self.D*self.A[:,2]*vion
+            self.vlos[t] = self.vlos[t] + self.A[:,2]/self.D*vion
             # corrected error in new LoS velocities
-            self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.D**2*self.A[:,2]**2*dvion**2)
+            self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.A[:,2]**2/self.D**2*dvion**2)
 
 
 
@@ -250,14 +264,14 @@ class ResolveVectors(object):
 
     def compute_vector_velocity(self):
         # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-        
+
         Velocity = []
         VelocityCovariance = []
         ChiSquared = []
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
-        for tidx in self.int_idx:
+        for tidx in self.int_idx[:1]:
             Vel = []
             SigmaV = []
             Chi2 = []
@@ -273,6 +287,9 @@ class ResolveVectors(object):
                 else:
                     # if no post integraiton, k vectors do not need to be duplicated
                     A = self.A[bidx]
+
+                # print(A)
+                # print(vlos)
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
                 V, SigV, chi2 = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
@@ -296,8 +313,8 @@ class ResolveVectors(object):
 
         # find Be3 value at each output bin location
         # NOTE: Be3 is constant along magnetic field lines, so the altitude chosen here doesn't matter
-        Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
-        # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+        # Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
+        Be3 = np.full(len(self.bin_mlat),1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
         R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
@@ -319,13 +336,16 @@ class ResolveVectors(object):
         alt = np.repeat(self.outalt, hbins)
 
         # calculate bin locations in geodetic coordinates
-        glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
+        # glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
+        glat, glon, err = self.marp.marp2geo(mlat, mlon, alt)
         self.bin_glat = glat.reshape((vbins,hbins))
         self.bin_glon = glon.reshape((vbins,hbins))
         self.bin_galt = alt.reshape((vbins,hbins))
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
+        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
+        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, alt)
+        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, alt)
 
         # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
         # To force this, set e3 = 0 and d3 = 0
@@ -506,10 +526,12 @@ class ResolveVectors(object):
 
             outfile.create_group('/', 'ProcessingParams')
 
-            outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
+            # outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
+            outfile.create_array('/ProcessingParams', 'ApexYear', self.marp.year)
             outfile.set_node_attr('/ProcessingParams/ApexYear', 'TITLE', 'Decimal Year used for IGRF Model')
 
-            outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
+            # outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
+            outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.marp.refh)
             outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'TITLE', 'Reference height used for Apex coordinates')
             outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'Units', 'km')
 
@@ -525,7 +547,7 @@ class ResolveVectors(object):
             Hostname        = platform.node()
             if len(Hostname) == 0:
                 Hostname = socket.gethostname()
-            
+
             outfile.create_group('/ProcessingParams', 'ComputerInfo')
 
             outfile.create_array('/ProcessingParams/ComputerInfo', 'PythonVersion', PythonVersion.encode('utf-8'))
@@ -649,4 +671,3 @@ def magnitude_direction(A,Sig,e):
     dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
-
