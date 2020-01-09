@@ -41,7 +41,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
 
     # get y-axis (bin) tick locations and labels
     yticks = np.arange(len(mlat))+0.5
-    binloc = ['({} N,\n {} E)'.format(lat, lon) for lat, lon in zip(mlat, mlon)]
+    binmlat = ['{:.2f} N'.format(ml) for ml in mlat]
 
     xedge = np.append(utime[:,0],utime[-1,1])
     yedge = np.arange(len(mlat)+1)
@@ -66,9 +66,11 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
                 ax.set_xticks(xticks)
                 ax.set_xticklabels(time)
                 ax.set_yticks(yticks)
-                ax.set_yticklabels(binloc)
+                ax.set_yticklabels(binmlat)
                 ax.set_xlim(xlim)
                 ax.set_title(titles[i][j])
+                ax.set_xlabel('Universal Time')
+                ax.set_ylabel('Apex MLAT')
                 ax.tick_params(labelsize=8)
 
             pos = ax.get_position()
@@ -117,7 +119,8 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
 
     # get y-axis (bin) tick locations and labels
     yticks = np.arange(len(mlat))+0.5
-    binloc = ['({} N, {} E)'.format(lat, lon) for lat, lon in zip(mlat, mlon)]
+    # binloc = ['({:.1f} N, {:.1f} E)'.format(lat, lon) for lat, lon in zip(mlat, mlon)]
+    binmlat = ['{:.2f} N'.format(ml) for ml in mlat]
 
     xedge = np.append(utime[:,0],utime[-1,1])
     yedge = np.arange(len(mlat)+1)
@@ -134,9 +137,11 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
             f = ax.pcolormesh(xedge, yedge, A.T, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
             ax.set_xticks(xticks)
             ax.set_xticklabels(time)
-            ax.set_yticks(yticks)
-            ax.set_yticklabels(binloc)
+            ax.set_yticks(yticks[::2])
+            ax.set_yticklabels(binmlat[::2])
             ax.set_xlim(xlim)
+            # ax.set_xlabel('Universal Time')
+            ax.set_ylabel('Apex MLAT')
             ax.set_title(titles[i])
             pos = ax.get_position()
             cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
@@ -146,9 +151,11 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         f = ax.quiver(xedge[:-1], yedge[:-1], vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'))
         ax.set_xticks(xticks)
         ax.set_xticklabels(time)
-        ax.set_yticks(np.arange(len(mlat)))
-        ax.set_yticklabels(binloc)
+        ax.set_yticks(np.arange(len(mlat))[::2])
+        ax.set_yticklabels(binmlat[::2])
         ax.set_xlim(xlim)
+        ax.set_xlabel('Universal Time')
+        ax.set_ylabel('Apex MLAT')
         pos = ax.get_position()
         cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
         cbar = fig.colorbar(f, cax=cax, ticks=[-0.9,0,0.9])
@@ -221,7 +228,7 @@ def get_time_ticks(utime):
 
 def timegaps(time, data_arrays):
 # pad time gaps with NaNs for better pcolormesh plotting
-    
+
     # find the time between sucessive records and the cadance of the entire time series
     time_diff = np.diff(np.mean(time,axis=1))
     dt = np.median(time_diff)
