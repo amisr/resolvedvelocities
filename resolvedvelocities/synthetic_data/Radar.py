@@ -1,6 +1,7 @@
 # Radar.py
 import numpy as np
-import coord_convert as cc
+# import coord_convert as cc
+import pymap3d as pm
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -19,7 +20,7 @@ class Radar(object):
         idx = np.where(np.in1d(bc[:,0],self.beamcodes))[0]
         self.beam_codes = bc[idx,:]
 
-        self.X0, self.Y0, self.Z0 = cc.geodetic_to_cartesian(self.site_coords[0], self.site_coords[1], self.site_coords[2])
+        self.X0, self.Y0, self.Z0 = pm.geodetic2ecef(self.site_coords[0], self.site_coords[1], self.site_coords[2]*1000.)
         self.get_gate_locations(self.beam_codes[:,1], self.beam_codes[:,2], float(self.range_step))
         self.geodetic_locations()
         # self.plot_radar()
@@ -56,7 +57,7 @@ class Radar(object):
         ku = np.sin(el)
 
         # convert geodetic k vector to ECEF
-        kx, ky, kz = cc.vector_geodetic_to_cartesian(kn, ke, ku, self.site_coords[0], self.site_coords[1], self.site_coords[2])
+        kx, ky, kz = pm.enu2uvw(ke, kn, ku, self.site_coords[0], self.site_coords[1])
 
         # calculate position of each range gate in ECEF
         self.X = kx[:,None]*ranges + self.X0
@@ -73,8 +74,8 @@ class Radar(object):
 
     def geodetic_locations(self):
         # calculate gate position and k vectors in geodetic coordinates
-        self.lat, self.lon, self.alt = cc.cartesian_to_geodetic(self.X, self.Y, self.Z)
-        self.kn, self.ke, self.kz = cc.vector_cartesian_to_geodetic(self.kx, self.ky, self.kz, self.X, self.Y, self.Z)
+        self.lat, self.lon, self.alt = pm.ecef2geodetic(self.X, self.Y, self.Z)
+        self.ke, self.kn, self.ku = pm.uvw2enu(self.kx, self.ky, self.kz, self.lat, self.lon)
 
     def plot_radar(self):
 

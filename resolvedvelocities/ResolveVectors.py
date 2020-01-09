@@ -289,6 +289,7 @@ class ResolveVectors(object):
                     A = self.A[bidx]
 
                 # print(A)
+                # print(vlos)
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
                 V, SigV, chi2 = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)

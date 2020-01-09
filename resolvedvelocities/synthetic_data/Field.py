@@ -2,7 +2,7 @@
 import numpy as np
 from apexpy import Apex
 from scipy import interpolate
-import coord_convert as cc
+import pymap3d as pm
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -13,9 +13,14 @@ except ImportError:
 
 class Field(object):
 
-    def __init__(self, config):
+    def __init__(self, *args, **kwargs):
 
-        self.read_config(config)
+        if len(args) == 1:
+            self.read_config(args[0])
+        else:
+            self.apex_year = kwargs['apex_year']
+            self.field_coords = np.array(kwargs['field_coords'])
+            self.field_values = np.array(kwargs['field_values'])
 
         # initialize Apex object
         self.apex = Apex(date=self.apex_year)
@@ -23,7 +28,6 @@ class Field(object):
         self.map_velocity_field(self.field_coords, self.field_values)
         self.convert_to_ECEF()
         self.create_interpolators()
-        # self.plot_ionosphere()
 
     def read_config(self, config_file):
 
@@ -56,8 +60,8 @@ class Field(object):
 
     def convert_to_ECEF(self):
 
-        self.X, self.Y, self.Z = cc.geodetic_to_cartesian(self.latitude, self.longitude, self.altitude)
-        self.Vx, self.Vy, self.Vz = cc.vector_geodetic_to_cartesian(self.field[:,1], self.field[:,0], self.field[:,2], self.latitude, self.longitude, self.altitude)
+        self.X, self.Y, self.Z = pm.geodetic2ecef(self.latitude, self.longitude, self.altitude*1000.)
+        self.Vx, self.Vy, self.Vz = pm.enu2uvw(self.field[:,0], self.field[:,1], self.field[:,2], self.latitude, self.longitude)
 
     def create_interpolators(self):
 

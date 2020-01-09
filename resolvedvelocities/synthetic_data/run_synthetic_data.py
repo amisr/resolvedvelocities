@@ -114,6 +114,7 @@ def main():
 
     # generate field object
     field = Field(args['synth_config_file'])
+    # field.plot_ionosphere()
 
     # generate radar object
     radar = Radar(args['synth_config_file'])
@@ -125,8 +126,8 @@ def main():
     vvels = synth_data.eval_vvels(args['vvels_config_file'])
 
     # compare output of resolvevectors algorithm with truth
-    # synth_data.plot(field, radar, vvels)
-    synth_data.check_assumptions(field, radar, vvels)
+    synth_data.plot(field, radar, vvels)
+    # synth_data.check_assumptions(field, radar, vvels)
     synth_data.check_components(field, vvels)
 
 
