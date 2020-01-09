@@ -60,6 +60,9 @@ MINNUMPOINTS = 1
 # post-integration time (optional) - if omitted, the native times of the input file are used
 #INTTIME = 180.
 
+# directory output summary plots should be saved in
+PLOTSAVEDIR = /home/user/vvels/20190510.001_vvels_plots
+
 """
 
 
@@ -84,6 +87,7 @@ def main():
     rv.compute_electric_field()
     rv.compute_geodetic_output()
     rv.save_output()
+    rv.create_plots()
 
 if __name__=='__main__':
     main()

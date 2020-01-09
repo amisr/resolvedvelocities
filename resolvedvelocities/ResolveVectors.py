@@ -15,6 +15,9 @@ from apexpy import Apex
 from .marp import Marp
 from scipy.spatial import Delaunay
 
+from .plot import summary_plots
+
+# TODO: rename int_period variable to something more sensible
 
 class ResolveVectors(object):
     def __init__(self, config):
@@ -37,6 +40,7 @@ class ResolveVectors(object):
         self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
         self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
         self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
+        self.plotsavedir = config.get('DEFAULT', 'PLOTSAVEDIR')
         self.marprot = eval(config.get('DEFAULT', 'MARPROT'))
 
         if config.has_option('DEFAULT', 'UPB_BEAMCODE'):
@@ -228,6 +232,9 @@ class ResolveVectors(object):
             self.bin_mlon.append(np.nanmean(vert[:,1]))
             self.bin_idx.append(np.argwhere(hull.find_simplex(np.array([self.mlat, self.mlon]).T)>=0).flatten())
 
+        self.bin_mlat = np.array(self.bin_mlat)
+        self.bin_mlon = np.array(self.bin_mlon)
+
 
 
     def get_integration_periods(self):
@@ -322,7 +329,6 @@ class ResolveVectors(object):
         self.ElectricField = np.einsum('ijk,...ik->...ij',R,self.Velocity)
         # Calculate electric field covariance matrix (SigE = R*SigV*R.T)
         self.ElectricFieldCovariance = np.einsum('ijk,...ikl,iml->...ijm',R,self.VelocityCovariance,R)
-
 
 
     def compute_geodetic_output(self):
@@ -580,6 +586,15 @@ class ResolveVectors(object):
         return year, month, day, doy, dtime, mlt
 
 
+    def create_plots(self, alt=300., vcomptitles=None, vcomplim=None, vcompcmap=None, ecomptitles=None, ecomplim=None, ecompcmap=None, vmagtitles=None, vmaglim=None, vmagcmap=None, emagtitles=None, emaglim=None, emagcmap=None):
+
+        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir)
+        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir)
+
+        # find index of altitude bin that is closest to alt
+        i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
+        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir)
+        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir)
 
 
 
