@@ -75,6 +75,12 @@ class Marp(Apex):
             glat, glon, _ = self.apex2geo(alat, alon, height)
             mlat, mlon = self.apex2marp(alat, alon)
 
+        if coords == 'marp':
+            mlat = lat
+            mlon = lon
+            alat, alon = self.marp2apex(mlat, mlon)
+            glat, glon, _ = self.apex2geo(alat, alon, height)
+
         # lamr = mlat*np.pi/180.
         # phir = mlon*np.pi/180.
         # lam = alat*np.pi/180.

@@ -15,7 +15,7 @@ Requires a configuration file containing the following example format:
 DATAFILE = /20190328.006/20190328.006_lp_1min-fitcal.h5
 
 # output file name
-OUTFILENAME = test_vvels.h5 
+OUTFILENAME = test_vvels.h5
 
 # chirp
 CHIRP = 0.0
@@ -74,7 +74,7 @@ def main():
     parser = ArgumentParser(description=config_file_help,
                             formatter_class=RawDescriptionHelpFormatter)
     arg = parser.add_argument('config_file',help='A configuration file.')
-   
+
     args = vars(parser.parse_args())
     rv = ResolveVectors(args['config_file'])
     rv.read_data()
@@ -84,6 +84,7 @@ def main():
     rv.bin_data()
     rv.get_integration_periods()
     rv.compute_vector_velocity()
+    rv.compute_apex_velocity()
     rv.compute_electric_field()
     rv.compute_geodetic_output()
     rv.save_output()

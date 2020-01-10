@@ -278,7 +278,7 @@ class ResolveVectors(object):
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
-        for tidx in self.int_idx[:1]:
+        for tidx in self.int_idx:
             Vel = []
             SigmaV = []
             Chi2 = []
@@ -314,6 +314,22 @@ class ResolveVectors(object):
         self.VelocityCovariance = np.array(VelocityCovariance)
         self.ChiSquared = np.array(ChiSquared)
 
+    def compute_apex_velocity(self):
+
+        d1m, d2m, d3m, e1m, e2m, e3m = self.marp.basevectors_marp(self.bin_mlat,self.bin_mlon,300.,coords='marp')
+        self.bin_alat, self.bin_alon = self.marp.marp2apex(self.bin_mlat,self.bin_mlon)
+        _,_,_,_,_,_, d1a, d2a, d3a, e1a, e2a, e3a = self.marp.basevectors_apex(self.bin_alat,self.bin_alon,300.,coords='apex')
+
+        em = np.array([e1m, e2m, e3m])
+        da = np.array([d1a, d2a, d3a])
+
+        # form transformation array
+        R = np.einsum('ik...,jk...->...ij', da, em)
+
+        # transform velocity
+        self.Velocity = np.einsum('ijk,...ik->...ij',R,self.Velocity)
+        # transfom velocity covarience matrix
+        self.VelocityCovariance = np.einsum('ijk,...ikl,iml->...ijm',R,self.VelocityCovariance,R)
 
     def compute_electric_field(self):
         # calculate electric field
@@ -321,10 +337,12 @@ class ResolveVectors(object):
         # find Be3 value at each output bin location
         # NOTE: Be3 is constant along magnetic field lines, so the altitude chosen here doesn't matter
         # Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
-        Be3 = np.full(len(self.bin_mlat),1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+        Be3, __, __, __ = self.marp.bvectors_apex(self.bin_alat,self.bin_alon,300.,coords='apex')
+        # Be3 = np.full(len(self.bin_mlat),1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
         R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
+        print(R.shape, self.Velocity.shape)
         # Calculate contravarient components of electric field (Ed1, Ed2, Ed3)
         self.ElectricField = np.einsum('ijk,...ik->...ij',R,self.Velocity)
         # Calculate electric field covariance matrix (SigE = R*SigV*R.T)
@@ -335,15 +353,15 @@ class ResolveVectors(object):
         # map velocity and electric field to get an array at different altitudes
         # altitudes are defined by config file
 
-        hbins = len(self.bin_mlat)
+        hbins = len(self.bin_alat)
         vbins = len(self.outalt)
-        mlat = np.tile(self.bin_mlat,vbins)
-        mlon = np.tile(self.bin_mlon,vbins)
+        alat = np.tile(self.bin_alat,vbins)
+        alon = np.tile(self.bin_alon,vbins)
         alt = np.repeat(self.outalt, hbins)
 
         # calculate bin locations in geodetic coordinates
         # glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
-        glat, glon, err = self.marp.marp2geo(mlat, mlon, alt)
+        glat, glon, err = self.marp.apex2geo(alat, alon, alt)
         self.bin_glat = glat.reshape((vbins,hbins))
         self.bin_glon = glon.reshape((vbins,hbins))
         self.bin_galt = alt.reshape((vbins,hbins))
@@ -351,7 +369,7 @@ class ResolveVectors(object):
         # apex basis vectors in geodetic coordinates [e n u]
         # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
         # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, alt)
-        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, alt)
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.marp.basevectors_apex(glat, glon, alt)
 
         # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
         # To force this, set e3 = 0 and d3 = 0
