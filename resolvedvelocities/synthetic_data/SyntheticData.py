@@ -102,6 +102,7 @@ class SyntheticData(object):
         rv.bin_data()
         rv.get_integration_periods()
         rv.compute_vector_velocity()
+        rv.compute_apex_velocity()
         rv.compute_electric_field()
         rv.compute_geodetic_output()
 

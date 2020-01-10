@@ -34,13 +34,13 @@ class Radar(object):
         getarray = lambda x: np.array(eval(config.get('RADAR', x)))
         getstring = lambda x: config.get('RADAR', x)
 
-        setattr(self, 'site_coords', getarray('site_coords'))
-        setattr(self, 'beamcode_filename', getstring('beamcode_filename'))
-        setattr(self, 'beamcodes', getarray('beamcodes'))
-        setattr(self, 'range_step', getfloat('range_step'))
-        setattr(self, 'output_filename', getstring('output_filename'))
-        setattr(self, 'integration_period', getfloat('integration_period'))
-        setattr(self, 'vel_error', getfloat('vel_error'))
+        self.site_coords = [float(i) for i in config.get('RADAR','SITE_COORDS').split(',')]
+        self.beamcode_filename = config.get('RADAR', 'BEAMCODE_FILENAME')
+        self.beamcodes = [float(i) for i in config.get('RADAR','BEAMCODES').split(',')]
+        self.range_step = config.getfloat('RADAR','RANGE_STEP')
+        self.output_filename = config.get('RADAR','OUTPUT_FILENAME')
+        self.integration_period = config.getfloat('RADAR','INTEGRATION_PERIOD')
+        self.vel_error = config.getfloat('RADAR','VEL_ERROR')
 
 
 

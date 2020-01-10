@@ -34,9 +34,9 @@ class Field(object):
         config = configparser.ConfigParser()
         config.read(config_file)
 
-        setattr(self, 'apex_year', config.getint('FIELD', 'apex_year'))
-        setattr(self, 'field_coords', np.array(eval(config.get('FIELD', 'field_coords'))))
-        setattr(self, 'field_values', np.array(eval(config.get('FIELD', 'field_values'))))
+        self.apex_year = config.getint('FIELD', 'apex_year')
+        self.field_coords = np.array(eval(config.get('FIELD', 'field_coords')))
+        self.field_values = np.array(eval(config.get('FIELD', 'field_values')))
 
 
     def map_velocity_field(self, coords, field):

@@ -25,40 +25,32 @@ class ResolveVectors(object):
         self.read_config(self.configfile)
 
     def read_config(self, config_file):
+
         # read config file
         config = configparser.ConfigParser()
         config.read(config_file)
 
+        # Possibly could done better with converters?  This may by python3 specific though.
         self.datafile = config.get('DEFAULT', 'DATAFILE')
         self.outfilename = config.get('DEFAULT', 'OUTFILENAME')
-        self.chirp = eval(config.get('DEFAULT', 'CHIRP'))
-        self.covar = eval(config.get('DEFAULT', 'COVAR'))
-        self.altlim = eval(config.get('DEFAULT', 'ALTLIM'))
-        self.nelim = eval(config.get('DEFAULT', 'NELIM'))
-        self.chi2lim = eval(config.get('DEFAULT', 'CHI2LIM'))
-        self.goodfitcode = eval(config.get('DEFAULT', 'GOODFITCODE'))
+        self.chirp = config.getfloat('DEFAULT', 'CHIRP')
+        self.covar = [float(i) for i in config.get('DEFAULT', 'COVAR').split(',')]
+        self.altlim = [float(i) for i in config.get('DEFAULT', 'ALTLIM').split(',')]
+        self.nelim = [float(i) for i in config.get('DEFAULT', 'NELIM').split(',')]
+        self.chi2lim = [float(i) for i in config.get('DEFAULT', 'CHI2LIM').split(',')]
+        self.goodfitcode = [float(i) for i in config.get('DEFAULT', 'GOODFITCODE').split(',')]
         self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
-        self.outalt = eval(config.get('DEFAULT', 'OUTALT'))
-        self.minnumpoints = eval(config.get('DEFAULT', 'MINNUMPOINTS'))
-        self.plotsavedir = config.get('DEFAULT', 'PLOTSAVEDIR')
-        self.marprot = eval(config.get('DEFAULT', 'MARPROT'))
+        self.outalt = [float(i) for i in config.get('DEFAULT', 'OUTALT').split(',')]
+        self.minnumpoints = config.getint('DEFAULT', 'MINNUMPOINTS')
+        self.marprot = [float(i) for i in config.get('DEFAULT', 'MARPROT').split(',')]
 
-        if config.has_option('DEFAULT', 'UPB_BEAMCODE'):
-            self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE')
-        else:
-            self.upB_beamcode = None
-        if config.has_option('DEFAULT', 'IONUP'):
-            self.ionup = config.get('DEFAULT', 'IONUP')
-        else:
-            self.ionup = None
-        if config.has_option('DEFAULT', 'USE_BEAMS'):
-            self.use_beams = eval(config.get('DEFAULT', 'USE_BEAMS'))
-        else:
-            self.use_beams = None
-        if config.has_option('DEFAULT', 'INTTIME'):
-            self.integration_time = config.getfloat('DEFAULT', 'INTTIME')
-        else:
-            self.integration_time = None
+        # optional parameters
+        self.plotsavedir = config.get('DEFAULT', 'PLOTSAVEDIR') if config.has_option('DEFAULT', 'PLOTSAVEDIR') else None
+        self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE') if config.has_option('DEFAULT', 'UPB_BEAMCODE') else None
+        self.ionup = config.get('DEFAULT', 'IONUP') if config.has_option('DEFAULT', 'IONUP') else None
+        self.use_beams = [int(i) for i in config.get('DEFAULT', 'USE_BEAMS').split(',')] if config.has_option('DEFAULT', 'USE_BEAMS') else None
+        self.integration_time = config.getfloat('DEFAULT', 'INTTIME') if config.has_option('DEFAULT', 'INTTIME') else None
+
 
 
     def read_data(self):
@@ -121,28 +113,30 @@ class ResolveVectors(object):
     def filter_data(self):
         # filter and adjust data so it is appropriate for Bayesian reconstruction
 
-        # add chirp to LoS velocity
-        self.vlos = self.vlos + self.chirp
+        with np.errstate(invalid='ignore'):
 
-        # discard data with low density
-        I = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
-        self.vlos[I] = np.nan
-        self.dvlos[I] = np.nan
+            # add chirp to LoS velocity
+            self.vlos = self.vlos + self.chirp
 
-        # discard data outside of altitude range
-        I = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
-        self.vlos[:,I] = np.nan
-        self.dvlos[:,I] = np.nan
+            # discard data with low density
+            I = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
+            self.vlos[I] = np.nan
+            self.dvlos[I] = np.nan
 
-        # discard data with extremely high or extremely low chi2 values
-        I = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
-        self.vlos[I] = np.nan
-        self.dvlos[I] = np.nan
+            # discard data outside of altitude range
+            I = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
+            self.vlos[:,I] = np.nan
+            self.dvlos[:,I] = np.nan
 
-        # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
-        I = np.where(~np.isin(self.fitcode, self.goodfitcode))
-        self.vlos[I] = np.nan
-        self.vlos[I] = np.nan
+            # discard data with extremely high or extremely low chi2 values
+            I = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
+            self.vlos[I] = np.nan
+            self.dvlos[I] = np.nan
+
+            # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
+            I = np.where(~np.isin(self.fitcode, self.goodfitcode))
+            self.vlos[I] = np.nan
+            self.vlos[I] = np.nan
 
 
     def transform(self):
@@ -342,7 +336,6 @@ class ResolveVectors(object):
 
         # form rotation array
         R = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
-        print(R.shape, self.Velocity.shape)
         # Calculate contravarient components of electric field (Ed1, Ed2, Ed3)
         self.ElectricField = np.einsum('ijk,...ik->...ij',R,self.Velocity)
         # Calculate electric field covariance matrix (SigE = R*SigV*R.T)
@@ -606,13 +599,14 @@ class ResolveVectors(object):
 
     def create_plots(self, alt=300., vcomptitles=None, vcomplim=None, vcompcmap=None, ecomptitles=None, ecomplim=None, ecompcmap=None, vmagtitles=None, vmaglim=None, vmagcmap=None, emagtitles=None, emaglim=None, emagcmap=None):
 
-        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir)
-        summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir)
+        if self.plotsavedir:
+            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir)
+            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir)
 
-        # find index of altitude bin that is closest to alt
-        i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
-        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir)
-        summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir)
+            # find index of altitude bin that is closest to alt
+            i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
+            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir)
+            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir)
 
 
 
