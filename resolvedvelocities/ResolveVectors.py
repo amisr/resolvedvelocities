@@ -95,9 +95,9 @@ class ResolveVectors(object):
             self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # temperature (for ion upflow)
-            self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,5,1].reshape((len(self.time[:,0]),len(self.alt)))
-            Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,1]
-            frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,0]
+            self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,-1,1].reshape((len(self.time[:,0]),len(self.alt)))
+            Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:-1,1]
+            frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:-1,0]
             self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
 
             # get up-B beam velocities for ion outflow correction
