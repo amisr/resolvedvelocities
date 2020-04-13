@@ -439,11 +439,11 @@ class ResolveVectors(object):
 
             outfile.create_group('/', 'Magnetic')
 
-            outfile.create_array('/Magnetic', 'MagneticLatitude', self.bin_mlat)
+            outfile.create_array('/Magnetic', 'MagneticLatitude', self.bin_alat)
             outfile.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
             outfile.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
 
-            outfile.create_array('/Magnetic','MagneticLongitude', self.bin_mlon)
+            outfile.create_array('/Magnetic','MagneticLongitude', self.bin_alon)
             outfile.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
             outfile.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
 
