@@ -83,9 +83,14 @@ class ResolveVectors(object):
             self.kn = infile.get_node('/Geomag/kn')[bm_idx,:].flatten()
             self.kz = infile.get_node('/Geomag/kz')[bm_idx,:].flatten()
 
+            # ion masses
+            ion_mass = infile.get_node('/FittedParams/IonMass')[:]
+            nions = len(ion_mass)                                   # number of ions
+            ion_idx = np.argwhere(ion_mass==16.).flatten()[0]       # find index for O+
+
             # line of sight velocity and error
-            self.vlos = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
-            self.dvlos = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,0,3].reshape((len(self.time[:,0]),len(self.alt)))
+            self.vlos = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
+            self.dvlos = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
 
             # chi2 and fitcode (for filtering poor quality data)
             self.chi2 = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
@@ -95,17 +100,17 @@ class ResolveVectors(object):
             self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # temperature (for ion upflow)
-            self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,5,1].reshape((len(self.time[:,0]),len(self.alt)))
-            Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,1]
-            frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:5,0]
+            self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,-1,1].reshape((len(self.time[:,0]),len(self.alt)))
+            Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,1]
+            frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,0]
             self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
 
             # get up-B beam velocities for ion outflow correction
             if self.upB_beamcode:
                 upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
                 upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
-                upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
-                upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,0,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
                 self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
 
 
