@@ -202,16 +202,16 @@ class ResolveVectors(object):
                 continue
             elif self.ionup == 'UPB':
                 # interpolate velocities from up B beam to all other measurements
-                vion, dvion = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
+                vupflow, dvupflow = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
             elif self.ionup == 'EMP':
                 # use empirical method to find ion upflow
                 # NOTE: NOT DEVELOPED YET!!!
-                vion, dvion = ion_upflow(self.Te, self.Ti, self.ne, self.alt)
+                vupflow, dvupflow = ion_upflow(self.Te, self.Ti, self.ne, self.alt)
 
             # LoS velocity correction to remove ion upflow
-            self.vlos[t] = self.vlos[t] + self.A[:,2]/self.D*vion
+            self.vlos[t] = self.vlos[t] + self.A[:,2]/self.D*vupflow
             # corrected error in new LoS velocities
-            self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.A[:,2]**2/self.D**2*dvion**2)
+            self.dvlos[t] = np.sqrt(self.dvlos[t]**2 + self.A[:,2]**2/self.D**2*dvupflow**2)
 
 
 
