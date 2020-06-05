@@ -96,7 +96,7 @@ class ResolveVectors(object):
             self.chi2 = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
             self.fitcode = infile.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
-            # density (for filtering and ion upflow)
+            # density (for filtering and ion upflow correction)
             self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
 
             # temperature (for ion upflow)
@@ -147,7 +147,7 @@ class ResolveVectors(object):
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
-        # find indices where nans will be removed and should be inserted in new arrays
+        # find indices where nans exist in the altitude array and should be inserted in to other coordinate/component arrays
         replace_nans = np.array([r-i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())])
 
         glat = self.lat[np.isfinite(self.lat)]
@@ -217,7 +217,7 @@ class ResolveVectors(object):
 
     def bin_data(self):
         # divide data into an arbitrary number of bins
-        # bins defined in config file by a list of bin vericies in apex magnetic coordinates
+        # bins defined in config file by a list of bin verticies in apex magnetic coordinates
         # the center of ecah bin is defined as the average of the verticies
 
         self.bin_mlat = []
@@ -677,12 +677,12 @@ def magnitude_direction(A,Sig,e):
     # Sig = covariance matrix for A
     # e = vector to take the direction relative to
     # ep = e x z (vector perpendicular to e and up)
-    # This is all done with somewhat obtuse matrix algebra using einsum to prevent nested for loops
+    # This is all done with an error analysis using addition in quadrature. All calculations are done with matrix algebra using einsum to prevent nested for loops.
     # Input vectors are assumed to have orthogonal components
 
 
     AA = np.einsum('...i,...i->...', A, A)                  # dot product of A and A
-    ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)      # matrix multipy A*Sig*A
+    ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)      # matrix multipy A*Sig*transpose(A)
     ee = np.einsum('...i,...i->...', e, e)                  # dot product of e and e
     eA = np.einsum('...i,...i->...', e, A)                  # dot product of e and A
 
