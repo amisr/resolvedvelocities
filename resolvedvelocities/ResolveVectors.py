@@ -124,24 +124,24 @@ class ResolveVectors(object):
             self.vlos = self.vlos + self.chirp
 
             # discard data with low density
-            I = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
-            self.vlos[I] = np.nan
-            self.dvlos[I] = np.nan
+            inds = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
+            self.vlos[inds] = np.nan
+            self.dvlos[inds] = np.nan
 
             # discard data outside of altitude range
-            I = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
-            self.vlos[:,I] = np.nan
-            self.dvlos[:,I] = np.nan
+            inds = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
+            self.vlos[:,inds] = np.nan
+            self.dvlos[:,inds] = np.nan
 
             # discard data with extremely high or extremely low chi2 values
-            I = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
-            self.vlos[I] = np.nan
-            self.dvlos[I] = np.nan
+            inds = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
+            self.vlos[inds] = np.nan
+            self.dvlos[inds] = np.nan
 
             # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
-            I = np.where(~np.isin(self.fitcode, self.goodfitcode))
-            self.vlos[I] = np.nan
-            self.vlos[I] = np.nan
+            inds = np.where(~np.isin(self.fitcode, self.goodfitcode))
+            self.vlos[inds] = np.nan
+            self.vlos[inds] = np.nan
 
 
     def transform(self):
