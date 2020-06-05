@@ -218,7 +218,7 @@ class ResolveVectors(object):
     def bin_data(self):
         # divide data into an arbitrary number of bins
         # bins defined in config file by a list of bin verticies in apex magnetic coordinates
-        # the center of ecah bin is defined as the average of the verticies
+        # the center of each bin is defined as the average of the verticies
 
         self.bin_mlat = []
         self.bin_mlon = []
