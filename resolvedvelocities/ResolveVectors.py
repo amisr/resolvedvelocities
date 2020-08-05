@@ -108,10 +108,15 @@ class ResolveVectors(object):
             # get up-B beam velocities for ion outflow correction
             if self.upB_beamcode:
                 upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
-                upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
-                upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
-                upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
-                self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
+                if upB_idx:
+                    upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
+                    upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                    upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
+                    self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
+                else:
+                    print('Warning: upB beam %d not found. Will not perform upflow subtraction.' % self.upB_beamcode)
+                    self.upB = None
+                    self.ionup = False
 
 
 
