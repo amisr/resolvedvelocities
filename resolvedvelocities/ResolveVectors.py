@@ -24,6 +24,25 @@ class ResolveVectors(object):
         self.configfile = config
         self.read_config(self.configfile)
 
+        # check if output path exists, if not try to create it
+        # else raise exception
+        self.check_path_and_create(self.outfilepath)
+
+        # check if plotting directory exists, if not, create it
+        # else raise exception
+        if self.plotsavedir:
+            self.check_path_and_create(self.plotsavedir)
+
+
+    def check_path_and_create(self,path):
+        if not os.path.exists(path):
+            try:
+                path = os.path.abspath(path)
+                os.makedirs(path)
+            except Exception as e:
+                exception = 'Failed to create directory:\n    %s\nException: %s' % (path,str(e))
+                raise Exception(exception)
+
     def read_config(self, config_file):
 
         # read config file
@@ -32,6 +51,7 @@ class ResolveVectors(object):
 
         # Possibly could done better with converters?  This may by python3 specific though.
         self.datafile = config.get('DEFAULT', 'DATAFILE')
+        
         self.outfilename = config.get('DEFAULT', 'OUTFILENAME')
         self.chirp = config.getfloat('DEFAULT', 'CHIRP')
         self.covar = [float(i) for i in config.get('DEFAULT', 'COVAR').split(',')]
@@ -50,6 +70,7 @@ class ResolveVectors(object):
         self.ionup = config.get('DEFAULT', 'IONUP') if config.has_option('DEFAULT', 'IONUP') else None
         self.use_beams = [int(i) for i in config.get('DEFAULT', 'USE_BEAMS').split(',')] if config.has_option('DEFAULT', 'USE_BEAMS') else None
         self.integration_time = config.getfloat('DEFAULT', 'INTTIME') if config.has_option('DEFAULT', 'INTTIME') else None
+        self.outfilepath = config.get('DEFAULT', 'OUTFILEPATH') if config.has_option('DEFAULT', 'OUTFILEPATH') else '.'
 
 
 
@@ -400,7 +421,8 @@ class ResolveVectors(object):
         # TODO: come up with a better way to manage all this
 
         # save output file
-        with tables.open_file(self.outfilename,mode='w') as outfile:
+        output = os.path.join(self.outfilepath, self.outfilename) 
+        with tables.open_file(output, mode='w') as outfile:
 
             # copy some groups directly from fitted input file
             with tables.open_file(self.datafile, mode='r') as infile:
@@ -610,21 +632,14 @@ class ResolveVectors(object):
     def create_plots(self, alt=300., vcomptitles=None, vcomplim=None, vcompcmap=None, ecomptitles=None, ecomplim=None, ecompcmap=None, vmagtitles=None, vmaglim=None, vmagcmap=None, emagtitles=None, emaglim=None, emagcmap=None):
 
         if self.plotsavedir:
-            # check if plotting directory exists, if not, create it
-            if not os.path.exists(self.plotsavedir):
-                try:
-                    os.makedirs(self.plotsavedir)
-                except Exception as e:
-                    exception = 'Failed to create plotting directory:\n    %s\nException: %s' % (self.plotsavedir,str(e))
-                    raise Exception(exception)
 
-            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir)
-            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir)
+            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
+            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
 
             # find index of altitude bin that is closest to alt
             i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
-            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], self.ChiSquared, param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir)
-            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], self.ChiSquared, param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir)
+            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], self.ChiSquared, param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
+            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], self.ChiSquared, param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
 
 
 

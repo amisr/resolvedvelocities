@@ -17,6 +17,9 @@ DATAFILE = /20190328.006/20190328.006_lp_1min-fitcal.h5
 # output file name
 OUTFILENAME = test_vvels.h5
 
+# output path to save file in (optional)
+OUTFILEPATH = 
+
 # chirp
 CHIRP = 0.0
 
