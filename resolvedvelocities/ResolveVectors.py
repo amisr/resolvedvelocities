@@ -610,6 +610,14 @@ class ResolveVectors(object):
     def create_plots(self, alt=300., vcomptitles=None, vcomplim=None, vcompcmap=None, ecomptitles=None, ecomplim=None, ecompcmap=None, vmagtitles=None, vmaglim=None, vmagcmap=None, emagtitles=None, emaglim=None, emagcmap=None):
 
         if self.plotsavedir:
+            # check if plotting directory exists, if not, create it
+            if not os.path.exits(self.plotsavedir):
+                try:
+                    os.makedirs(self.plotsavedir)
+                except Exception as e:
+                    exception = 'Failed to create plotting directory:\n    %s\nException: %s' % (self.plotsavedir,str(e))
+                    raise Exception(exception)
+
             summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir)
             summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir)
 
