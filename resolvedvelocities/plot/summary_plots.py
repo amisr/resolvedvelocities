@@ -51,7 +51,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
 
         fig = plt.figure(figsize=(15,10))
         gs = gridspec.GridSpec(2,3)
-        gs.update(wspace=0.3,hspace=0.2,left=0.05,right=0.9,bottom=0.05,top=0.9)
+        gs.update(wspace=0.05,hspace=0.2,left=0.05,right=0.9,bottom=0.05,top=0.9)
 
         for i, A in enumerate([vector,np.sqrt(np.diagonal(covariance,axis1=-1,axis2=-2))]):
             for j in range(3):
@@ -65,12 +65,18 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
                 f = ax.pcolormesh(xedge, yedge, A[:,:,j].T*fac, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
                 ax.set_xticks(xticks)
                 ax.set_xticklabels(time)
-                ax.set_yticks(yticks)
-                ax.set_yticklabels(binmlat)
                 ax.set_xlim(xlim)
-                ax.set_title(titles[i][j])
                 ax.set_xlabel('Universal Time')
-                ax.set_ylabel('Apex MLAT')
+
+                ax.set_yticks(yticks)
+                if j == 0:
+                    ax.set_yticklabels(binmlat)
+                    ax.set_ylabel('Apex MLAT')
+                else:
+                    ax.set_yticklabels([])
+
+                
+                ax.set_title(titles[i][j])
                 ax.tick_params(labelsize=8)
 
             pos = ax.get_position()
@@ -78,21 +84,20 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
             cbar = fig.colorbar(f, cax=cax)
 
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
-        plt.gcf().text(0.02, 0.95, datestr, fontsize=12)
-
-        filename = os.path.join(savedir,'{}compontents_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
-        plt.savefig(filename)
-        # plt.show()
-        plt.close()
+        # fig.text(0.1, 0.95, datestr, fontsize=12)
+        fig.suptitle(datestr, fontsize=12)
+        filename = os.path.join(savedir,'{}comps_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        fig.savefig(filename,bbox_inches='tight')
+        plt.close(fig)
 
 
 def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', titles=None, clim=None, cmap=None, savedir=None):
 
     # set defaults
-    defaults = {'V': {'titles':['V magnitude (m/s)', 'V magnitude error (m/s)', 'V direction (deg)', 'V direction error (deg)', ''],
+    defaults = {'V': {'titles':['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', ''],
                       'clim':[[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]],
                       'cmap':['viridis', 'viridis', 'hsv', 'viridis']},
-                'E': {'titles':['E magnitude (mV/m)', 'V magnitude error (mV/m)', 'E direction (deg)', 'E direction error (deg)', ''],
+                'E': {'titles':['E mag. (mV/m)', 'E mag err (mV/m)', 'E dir (deg)', 'E dir err (deg)', ''],
                       'clim':[[0.,75.],[0., 15.],[-180., 180.],[0., 35.]],
                       'cmap':['viridis', 'viridis', 'hsv', 'viridis']}}
 
@@ -130,22 +135,24 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
 
         fig = plt.figure(figsize=(10,10))
         gs = gridspec.GridSpec(5,1)
-        gs.update(hspace=0.4,left=0.15,right=0.9,bottom=0.05,top=0.94)
+        gs.update(hspace=0.075,left=0.15,right=0.9,bottom=0.05,top=0.94)
 
         for i, A in enumerate([vmag, dvmag, vdir, dvdir]):
             ax = plt.subplot(gs[i])
             f = ax.pcolormesh(xedge, yedge, A.T, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
             ax.set_xticks(xticks)
-            ax.set_xticklabels(time)
+            ax.set_xticklabels([])
+            # ax.set_xticklabels(time)
             ax.set_yticks(yticks[::2])
             ax.set_yticklabels(binmlat[::2])
             ax.set_xlim(xlim)
             # ax.set_xlabel('Universal Time')
             ax.set_ylabel('Apex MLAT')
-            ax.set_title(titles[i])
+            # ax.set_title(titles[i])
             pos = ax.get_position()
             cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
             cbar = fig.colorbar(f, cax=cax)
+            cbar.set_label(titles[i])
 
         ax = plt.subplot(gs[4])
         f = ax.quiver(xedge[:-1], yedge[:-1], vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'))
@@ -160,15 +167,14 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
         cbar = fig.colorbar(f, cax=cax, ticks=[-0.9,0,0.9])
         cbar.ax.set_yticklabels(['West','','East'])
-        cbar.ax.quiverkey(f, 1.05, 1.1, clim[0][1], str(clim[0][1]))
+        cbar.ax.quiverkey(f, 1.075, 0.5, clim[0][1], str(clim[0][1]))
 
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
-        plt.gcf().text(0.02, 0.97, datestr, fontsize=12)
-
-        filename = os.path.join(savedir,'{}magnitude_{:%Y%m%d%H%M%S}_{:%Y%m%d%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
-        plt.savefig(filename)
-        # plt.show()
-        plt.close()
+        # fig.text(0.1, 0.95, datestr, fontsize=12)
+        fig.suptitle(datestr, fontsize=12)
+        filename = os.path.join(savedir,'{}magnitude_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        fig.savefig(filename,bbox_inches='tight')
+        plt.close(fig)
 
 
 def get_time_ticks(utime):
