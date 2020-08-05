@@ -658,9 +658,12 @@ class ResolveVectors(object):
                 # in the plot file names
                 if (num_chunks == 1):
                     t = None
+
+                # make vector plots
                 summary_plots.plot_components(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Velocity[start_ind:end_ind,:], self.VelocityCovariance[start_ind:end_ind,:], param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
                 summary_plots.plot_components(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.ElectricField[start_ind:end_ind,:], self.ElectricFieldCovariance[start_ind:end_ind,:], param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
 
+                # make magnitude plots
                 # find index of altitude bin that is closest to alt
                 i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
                 summary_plots.plot_magnitude(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Vgd_mag[start_ind:end_ind,i,:], self.Vgd_mag_err[start_ind:end_ind,i,:], self.Vgd_dir[start_ind:end_ind,i,:], self.Vgd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
