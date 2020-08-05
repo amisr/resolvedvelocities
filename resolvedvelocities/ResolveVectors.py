@@ -50,27 +50,27 @@ class ResolveVectors(object):
         config.read(config_file)
 
         # Possibly could done better with converters?  This may by python3 specific though.
-        self.datafile = config.get('DEFAULT', 'DATAFILE')
+        self.datafile = config.get('FILEIO', 'DATAFILE')
         
-        self.outfilename = config.get('DEFAULT', 'OUTFILENAME')
-        self.chirp = config.getfloat('DEFAULT', 'CHIRP')
-        self.covar = [float(i) for i in config.get('DEFAULT', 'COVAR').split(',')]
-        self.altlim = [float(i) for i in config.get('DEFAULT', 'ALTLIM').split(',')]
-        self.nelim = [float(i) for i in config.get('DEFAULT', 'NELIM').split(',')]
-        self.chi2lim = [float(i) for i in config.get('DEFAULT', 'CHI2LIM').split(',')]
-        self.goodfitcode = [float(i) for i in config.get('DEFAULT', 'GOODFITCODE').split(',')]
-        self.binvert = eval(config.get('DEFAULT', 'BINVERT'))
-        self.outalt = [float(i) for i in config.get('DEFAULT', 'OUTALT').split(',')]
-        self.minnumpoints = config.getint('DEFAULT', 'MINNUMPOINTS')
-        self.marprot = [float(i) for i in config.get('DEFAULT', 'MARPROT').split(',')]
+        self.outfilename = config.get('FILEIO', 'OUTFILENAME')
+        self.chirp = config.getfloat('CONFIG', 'CHIRP')
+        self.covar = [float(i) for i in config.get('CONFIG', 'COVAR').split(',')]
+        self.altlim = [float(i) for i in config.get('CONFIG', 'ALTLIM').split(',')]
+        self.nelim = [float(i) for i in config.get('CONFIG', 'NELIM').split(',')]
+        self.chi2lim = [float(i) for i in config.get('CONFIG', 'CHI2LIM').split(',')]
+        self.goodfitcode = [float(i) for i in config.get('CONFIG', 'GOODFITCODE').split(',')]
+        self.binvert = eval(config.get('CONFIG', 'BINVERT'))
+        self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
+        self.minnumpoints = config.getint('CONFIG', 'MINNUMPOINTS')
+        self.marprot = [float(i) for i in config.get('CONFIG', 'MARPROT').split(',')]
 
         # optional parameters
-        self.plotsavedir = config.get('DEFAULT', 'PLOTSAVEDIR') if config.has_option('DEFAULT', 'PLOTSAVEDIR') else None
-        self.upB_beamcode = config.getint('DEFAULT', 'UPB_BEAMCODE') if config.has_option('DEFAULT', 'UPB_BEAMCODE') else None
-        self.ionup = config.get('DEFAULT', 'IONUP') if config.has_option('DEFAULT', 'IONUP') else None
-        self.use_beams = [int(i) for i in config.get('DEFAULT', 'USE_BEAMS').split(',')] if config.has_option('DEFAULT', 'USE_BEAMS') else None
-        self.integration_time = config.getfloat('DEFAULT', 'INTTIME') if config.has_option('DEFAULT', 'INTTIME') else None
-        self.outfilepath = config.get('DEFAULT', 'OUTFILEPATH') if config.has_option('DEFAULT', 'OUTFILEPATH') else '.'
+        self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
+        self.upB_beamcode = config.getint('CONFIG', 'UPB_BEAMCODE') if config.has_option('CONFIG', 'UPB_BEAMCODE') else None
+        self.ionup = config.get('CONFIG', 'IONUP') if config.has_option('CONFIG', 'IONUP') else None
+        self.use_beams = [int(i) for i in config.get('CONFIG', 'USE_BEAMS').split(',')] if config.has_option('CONFIG', 'USE_BEAMS') else None
+        self.integration_time = config.getfloat('CONFIG', 'INTTIME') if config.has_option('CONFIG', 'INTTIME') else None
+        self.outfilepath = config.get('FILEIO', 'OUTFILEPATH') if config.has_option('FILEIO', 'OUTFILEPATH') else '.'
 
 
 

@@ -11,6 +11,7 @@ Requires a configuration file containing the following example format:
 
 [DEFAULT]
 
+[FILEIO]
 # Data file path/name
 DATAFILE = /20190328.006/20190328.006_lp_1min-fitcal.h5
 
@@ -20,6 +21,7 @@ OUTFILENAME = test_vvels.h5
 # output path to save file in (optional)
 OUTFILEPATH = 
 
+[CONFIG]
 # chirp
 CHIRP = 0.0
 
@@ -63,6 +65,7 @@ MINNUMPOINTS = 1
 # post-integration time (optional) - if omitted, the native times of the input file are used
 #INTTIME = 180.
 
+[PLOTTING]
 # directory output summary plots should be saved in
 PLOTSAVEDIR = /home/user/vvels/20190510.001_vvels_plots
 
