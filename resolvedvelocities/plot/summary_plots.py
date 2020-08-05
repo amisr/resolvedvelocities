@@ -91,7 +91,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
         plt.close(fig)
 
 
-def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', titles=None, clim=None, cmap=None, savedir=None):
+def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V', titles=None, clim=None, cmap=None, savedir=None):
 
     # set defaults
     defaults = {'V': {'titles':['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', ''],
@@ -112,7 +112,7 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         savedir = os.getcwd()
 
     # for electric field, multiply values by 1000 to get units of mV/m instead of V/m
-    if param=='E':
+    if param == 'E':
         vmag = vmag*1000.
         dvmag = dvmag*1000.
 
@@ -154,6 +154,21 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
             cbar = fig.colorbar(f, cax=cax)
             cbar.set_label(titles[i])
 
+        # filter the quivers by errors so we don't plot crazy looking vectors
+        if param == 'E':
+            err_thres = 5
+            mag_thres = 5
+        else:
+            err_thres = 100.0
+            mag_thres = 100.0
+
+        cond1 = (chi2 > 5) | (chi2 < 0.2)  # chi-squared filter
+        cond2 = ((dvmag > err_thres) & (vmag > mag_thres))  # absolute error bar filter
+        cond3 = (dvmag / vmag > 1) # relative error bar filter
+        inds = np.where(cond1 | cond2 | cond3)
+        vmag[inds] = np.nan
+
+        # plot quivers
         ax = plt.subplot(gs[4])
         f = ax.quiver(xedge[:-1], yedge[:-1], vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'))
         ax.set_xticks(xticks)
@@ -167,7 +182,21 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, param='V', title
         cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
         cbar = fig.colorbar(f, cax=cax, ticks=[-0.9,0,0.9])
         cbar.ax.set_yticklabels(['West','','East'])
-        cbar.ax.quiverkey(f, 1.075, 0.5, clim[0][1], str(clim[0][1]))
+
+        # for the quiver key, let's make a key representative of the
+        # vectors we just plotted. We'll round to the nearest power of
+        # 10 but never plot a vector bigger than rounding to nearest 100
+        # and never smaller than 10
+        max_vmag_plotted = np.nanmax(vmag)
+        max_power = int(np.round(np.log10(max_vmag_plotted),decimals=0))
+        if max_power > 2:
+            max_power = 2
+        max_vmag_plotted = np.round(max_vmag_plotted,decimals=-max_power)
+        if max_vmag_plotted < 10:
+            max_vmag_plotted = 10
+
+        # cbar.ax.quiverkey(f, 1.075, 0.5, clim[0][1], str(clim[0][1]))
+        cbar.ax.quiverkey(f, 1.075, 0.55, max_vmag_plotted, '%0.0f' % max_vmag_plotted)
 
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         # fig.text(0.1, 0.95, datestr, fontsize=12)
