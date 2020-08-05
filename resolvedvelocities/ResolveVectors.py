@@ -633,13 +633,38 @@ class ResolveVectors(object):
 
         if self.plotsavedir:
 
-            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.Velocity, self.VelocityCovariance, param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
-            summary_plots.plot_components(self.int_period, self.bin_mlat, self.bin_mlon, self.ElectricField, self.ElectricFieldCovariance, param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
+            # break up arrays into chunks of time no bigger than 24 hours
+            chunks_to_plot = list()
 
-            # find index of altitude bin that is closest to alt
-            i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
-            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Vgd_mag[:,i,:], self.Vgd_mag_err[:,i,:], self.Vgd_dir[:,i,:], self.Vgd_dir_err[:,i,:], self.ChiSquared, param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
-            summary_plots.plot_magnitude(self.int_period, self.bin_mlat, self.bin_mlon, self.Egd_mag[:,i,:], self.Egd_mag_err[:,i,:], self.Egd_dir[:,i,:], self.Egd_dir_err[:,i,:], self.ChiSquared, param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename)
+            start_time = None
+            start_ind = None
+            num_times = len(self.int_period)
+            for i,time_pair in enumerate(self.int_period):
+                temp_start_time, temp_end_time = time_pair
+                if start_time is None:
+                    start_time = temp_start_time
+                    start_ind = i
+                time_diff = temp_end_time - start_time
+
+                if (time_diff >= 24*3600) or (i == num_times -1):
+                    chunks_to_plot.append([start_ind,i])
+                    start_time = None
+                    start_ind = None
+                    continue
+
+            num_chunks = len(chunks_to_plot)
+            for t, [start_ind,end_ind] in enumerate(chunks_to_plot):
+                # if only 1 day worth of data, set t=None so we don't have a 'byDay'
+                # in the plot file names
+                if (num_chunks == 1):
+                    t = None
+                summary_plots.plot_components(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Velocity[start_ind:end_ind,:], self.VelocityCovariance[start_ind:end_ind,:], param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                summary_plots.plot_components(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.ElectricField[start_ind:end_ind,:], self.ElectricFieldCovariance[start_ind:end_ind,:], param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+
+                # find index of altitude bin that is closest to alt
+                i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
+                summary_plots.plot_magnitude(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Vgd_mag[start_ind:end_ind,i,:], self.Vgd_mag_err[start_ind:end_ind,i,:], self.Vgd_dir[start_ind:end_ind,i,:], self.Vgd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                summary_plots.plot_magnitude(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Egd_mag[start_ind:end_ind,i,:], self.Egd_mag_err[start_ind:end_ind,i,:], self.Egd_dir[start_ind:end_ind,i,:], self.Egd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
 
 
 
