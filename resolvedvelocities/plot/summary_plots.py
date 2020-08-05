@@ -6,7 +6,7 @@ import numpy as np
 import datetime as dt
 import os
 
-def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=None, clim=None, cmap=None, savedir=None):
+def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=None, clim=None, cmap=None, savedir=None,savenamebase=None):
 
     # set defaults
     defaults = {'V': {'titles':[['Ve1 (m/s)', 'Ve2 (m/s)', 'Ve3 (m/s) x 10'],
@@ -86,12 +86,14 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         # fig.text(0.1, 0.95, datestr, fontsize=12)
         fig.suptitle(datestr, fontsize=12)
-        filename = os.path.join(savedir,'{}comps_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        savename = os.path.splitext(savenamebase)[0]+'-%svec.png' % param.lower()
+        # filename = os.path.join(savedir,'{}comps_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        filename = os.path.join(savedir,savename)
         fig.savefig(filename,bbox_inches='tight')
         plt.close(fig)
 
 
-def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V', titles=None, clim=None, cmap=None, savedir=None):
+def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V', titles=None, clim=None, cmap=None, savedir=None,savenamebase=None):
 
     # set defaults
     defaults = {'V': {'titles':['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', ''],
@@ -201,7 +203,9 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V',
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         # fig.text(0.1, 0.95, datestr, fontsize=12)
         fig.suptitle(datestr, fontsize=12)
-        filename = os.path.join(savedir,'{}magnitude_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        savename = os.path.splitext(savenamebase)[0]+'-%smag.png' % param.lower()
+        # filename = os.path.join(savedir,'{}magnitude_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
+        filename = os.path.join(savedir,savename)
         fig.savefig(filename,bbox_inches='tight')
         plt.close(fig)
 
