@@ -611,7 +611,7 @@ class ResolveVectors(object):
 
         if self.plotsavedir:
             # check if plotting directory exists, if not, create it
-            if not os.path.exits(self.plotsavedir):
+            if not os.path.exists(self.plotsavedir):
                 try:
                     os.makedirs(self.plotsavedir)
                 except Exception as e:
