@@ -422,7 +422,8 @@ class ResolveVectors(object):
 
         # save output file
         output = os.path.join(self.outfilepath, self.outfilename) 
-        with tables.open_file(output, mode='w') as outfile:
+        FILTERS = tables.Filters(complib='zlib', complevel=1)
+        with tables.open_file(output, mode='w',filters=FILTERS) as outfile:
 
             # copy some groups directly from fitted input file
             with tables.open_file(self.datafile, mode='r') as infile:
@@ -433,145 +434,203 @@ class ResolveVectors(object):
                     outfile.create_group('/','Time')
                     year, month, day, doy, dtime, mlt = self.create_time_arrays()
 
-                    outfile.create_array('/Time', 'UnixTime', self.int_period)
+                    atom = tables.Atom.from_dtype(self.int_period.dtype)
+                    arr = outfile.create_carray('/Time', 'UnixTime',atom,self.int_period.shape)
+                    arr[:] = self.int_period
                     outfile.set_node_attr('/Time/UnixTime', 'TITLE', 'UnixTime')
                     outfile.set_node_attr('/Time/UnixTime', 'Size', 'Nrecords x 2 (Start and end of integration')
                     outfile.set_node_attr('/Time/UnixTime', 'Unit', 'Seconds')
 
-                    outfile.create_array('/Time', 'Year', year)
+                    atom = tables.Atom.from_dtype(year.dtype)
+                    arr = outfile.create_carray('/Time', 'Year',atom,year.shape)
+                    arr[:] = year
                     outfile.set_node_attr('/Time/Year', 'TITLE', 'Year')
                     outfile.set_node_attr('/Time/Year', 'Size', 'Nrecords x 2 (Start and end of integration')
 
-                    outfile.create_array('/Time', 'Month', month)
+                    atom = tables.Atom.from_dtype(month.dtype)
+                    arr = outfile.create_carray('/Time', 'Month',atom,month.shape)
+                    arr[:] = month
                     outfile.set_node_attr('/Time/Month', 'TITLE', 'Month')
                     outfile.set_node_attr('/Time/Month', 'Size', 'Nrecords x 2 (Start and end of integration')
 
-                    outfile.create_array('/Time', 'Day', day)
+                    atom = tables.Atom.from_dtype(day.dtype)
+                    arr = outfile.create_carray('/Time', 'Day',atom,day.shape)
+                    arr[:] = day
                     outfile.set_node_attr('/Time/Day', 'TITLE', 'Day of Month')
                     outfile.set_node_attr('/Time/Day', 'Size', 'Nrecords x 2 (Start and end of integration')
 
-                    outfile.create_array('/Time', 'doy', doy)
+                    atom = tables.Atom.from_dtype(doy.dtype)
+                    arr = outfile.create_carray('/Time', 'doy',atom,doy.shape)
+                    arr[:] = doy
                     outfile.set_node_attr('/Time/doy', 'TITLE', 'Day of Year')
                     outfile.set_node_attr('/Time/doy', 'Size', 'Nrecords x 2 (Start and end of integration')
 
-                    outfile.create_array('/Time', 'dtime', dtime)
+                    atom = tables.Atom.from_dtype(dtime.dtype)
+                    arr = outfile.create_carray('/Time', 'dtime',atom,dtime.shape)
+                    arr[:] = dtime
                     outfile.set_node_attr('/Time/dtime', 'TITLE', 'Decimal Time')
                     outfile.set_node_attr('/Time/dtime', 'Size', 'Nrecords x 2 (Start and end of integration')
                     outfile.set_node_attr('/Time/dtime', 'Unit', 'UT Hour')
 
-                    outfile.create_array('/Time', 'MagneticLocalTimeSite', mlt)
+                    atom = tables.Atom.from_dtype(mlt.dtype)
+                    arr = outfile.create_carray('/Time', 'MagneticLocalTimeSite',atom,mlt.shape)
+                    arr[:] = mlt
                     outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'TITLE', 'Magnetic Local Time')
                     outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Size', 'Nrecords x 2 (Start and end of integration')
                     outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Unit', 'UT Hour')
 
             outfile.create_group('/', 'Magnetic')
 
-            outfile.create_array('/Magnetic', 'MagneticLatitude', self.bin_alat)
-            outfile.set_node_attr('/Magnetic/MagneticLatitude', 'TITLE', 'Magnetic Latitude')
-            outfile.set_node_attr('/Magnetic/MagneticLatitude', 'Size', 'Nbins')
+            atom = tables.Atom.from_dtype(self.bin_alat.dtype)
+            arr = outfile.create_carray('/Magnetic', 'Latitude',atom,self.bin_alat.shape)
+            arr[:] = self.bin_alat
+            outfile.set_node_attr('/Magnetic/Latitude', 'TITLE', 'Magnetic Latitude')
+            outfile.set_node_attr('/Magnetic/Latitude', 'Size', 'Nbins')
 
-            outfile.create_array('/Magnetic','MagneticLongitude', self.bin_alon)
-            outfile.set_node_attr('/Magnetic/MagneticLongitude', 'TITLE', 'Magnetic Longitude')
-            outfile.set_node_attr('/Magnetic/MagneticLongitude', 'Size', 'Nbins')
+            atom = tables.Atom.from_dtype(self.bin_alon.dtype)
+            arr = outfile.create_carray('/Magnetic','Longitude',atom,self.bin_alon.shape)
+            arr[:] = self.bin_alon
+            outfile.set_node_attr('/Magnetic/Longitude', 'TITLE', 'Magnetic Longitude')
+            outfile.set_node_attr('/Magnetic/Longitude', 'Size', 'Nbins')
 
-            outfile.create_array('/Magnetic', 'Velocity', self.Velocity)
-            outfile.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plama Drift Velocity')
+            atom = tables.Atom.from_dtype(self.Velocity.dtype)
+            arr = outfile.create_carray('/Magnetic', 'Velocity',atom,self.Velocity.shape)
+            arr[:] = self.Velocity
+            outfile.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plasma Drift Velocity')
             outfile.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
             outfile.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
 
-            outfile.create_array('/Magnetic','SigmaV', self.VelocityCovariance)
-            outfile.set_node_attr('/Magnetic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
-            outfile.set_node_attr('/Magnetic/SigmaV', 'Size', 'Nrecords x Nbins x 3 x 3')
-            outfile.set_node_attr('/Magnetic/SigmaV', 'Units', 'm/s')
+            atom = tables.Atom.from_dtype(self.VelocityCovariance.dtype)
+            arr = outfile.create_carray('/Magnetic','CovarianceV',atom,self.VelocityCovariance.shape)
+            arr[:] = self.VelocityCovariance
+            outfile.set_node_attr('/Magnetic/CovarianceV', 'TITLE', 'Velocity Covariance Matrix')
+            outfile.set_node_attr('/Magnetic/CovarianceV', 'Size', 'Nrecords x Nbins x 3 x 3')
+            outfile.set_node_attr('/Magnetic/CovarianceV', 'Units', '(m/s)^2')
 
-            outfile.create_array('/Magnetic','ElectricField',self.ElectricField)
+            atom = tables.Atom.from_dtype(self.ElectricField.dtype)
+            arr = outfile.create_carray('/Magnetic','ElectricField',atom,self.ElectricField.shape)
+            arr[:] = self.ElectricField
             outfile.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
             outfile.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
             outfile.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
 
-            outfile.create_array('/Magnetic','SigmaE',self.ElectricFieldCovariance)
-            outfile.set_node_attr('/Magnetic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
-            outfile.set_node_attr('/Magnetic/SigmaE', 'Size', 'Nrecords x Nbins x 3 x 3')
-            outfile.set_node_attr('/Magnetic/SigmaE', 'Units', 'V/m')
+            atom = tables.Atom.from_dtype(self.ElectricFieldCovariance.dtype)
+            arr = outfile.create_carray('/Magnetic','CovarianceE',atom,self.ElectricFieldCovariance.shape)
+            arr[:] = self.ElectricFieldCovariance
+            outfile.set_node_attr('/Magnetic/CovarianceE', 'TITLE', 'Electric Field Covariance Matrix')
+            outfile.set_node_attr('/Magnetic/CovarianceE', 'Size', 'Nrecords x Nbins x 3 x 3')
+            outfile.set_node_attr('/Magnetic/CovarianceE', 'Units', '(V/m)^2')
 
-            outfile.create_array('/Magnetic', 'Chi2', self.ChiSquared)
+            atom = tables.Atom.from_dtype(self.ChiSquared.dtype)
+            arr = outfile.create_carray('/Magnetic', 'Chi2',atom,self.ChiSquared.shape)
+            arr[:] = self.ChiSquared
             outfile.set_node_attr('/Magnetic/Chi2', 'TITLE', 'Reduced Chi-Squared')
             outfile.set_node_attr('/Magnetic/Chi2', 'Size', 'Nrecords x Nbins')
 
-            outfile.create_group('/', 'Geographic')
+            outfile.create_group('/', 'Geodetic')
 
-            outfile.create_array('/Geographic', 'GeographicLatitude', self.bin_glat)
-            outfile.set_node_attr('/Geographic/GeographicLatitude', 'TITLE', 'Geographic Latitude')
-            outfile.set_node_attr('/Geographic/GeographicLatitude', 'Size', 'Nalt x Nbins')
+            atom = tables.Atom.from_dtype(self.bin_glat.dtype)
+            arr = outfile.create_carray('/Geodetic', 'Latitude',atom,self.bin_glat.shape)
+            arr[:] = self.bin_glat
+            outfile.set_node_attr('/Geodetic/Latitude', 'TITLE', 'Geographic Latitude')
+            outfile.set_node_attr('/Geodetic/Latitude', 'Size', 'Nalt x Nbins')
 
-            outfile.create_array('/Geographic','GeographicLongitude', self.bin_glon)
-            outfile.set_node_attr('/Geographic/GeographicLongitude', 'TITLE', 'Geographic Longitude')
-            outfile.set_node_attr('/Geographic/GeographicLongitude', 'Size', 'Nalt x Nbins')
+            atom = tables.Atom.from_dtype(self.bin_glon.dtype)
+            arr = outfile.create_carray('/Geodetic','Longitude',atom,self.bin_glon.shape)
+            arr[:] = self.bin_glon
+            outfile.set_node_attr('/Geodetic/Longitude', 'TITLE', 'Geographic Longitude')
+            outfile.set_node_attr('/Geodetic/Longitude', 'Size', 'Nalt x Nbins')
 
-            outfile.create_array('/Geographic','GeographicAltitude', self.bin_galt)
-            outfile.set_node_attr('/Geographic/GeographicAltitude', 'TITLE', 'Geographic Altitude')
-            outfile.set_node_attr('/Geographic/GeographicAltitude', 'Size', 'Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/GeographicAltitude', 'Units', 'km')
+            atom = tables.Atom.from_dtype(self.bin_galt.dtype)
+            arr = outfile.create_carray('/Geodetic','Altitude',atom,self.bin_galt.shape)
+            arr[:] = self.bin_galt
+            outfile.set_node_attr('/Geodetic/Altitude', 'TITLE', 'Geographic Altitude')
+            outfile.set_node_attr('/Geodetic/Altitude', 'Size', 'Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/Altitude', 'Units', 'km')
 
-            outfile.create_array('/Geographic', 'Velocity', self.Velocity_gd)
-            outfile.set_node_attr('/Geographic/Velocity', 'TITLE', 'Plama Drift Velocity')
-            outfile.set_node_attr('/Geographic/Velocity', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
-            outfile.set_node_attr('/Geographic/Velocity', 'Units', 'm/s')
+            atom = tables.Atom.from_dtype(self.Velocity_gd.dtype)
+            arr = outfile.create_carray('/Geodetic', 'Velocity',atom,self.Velocity_gd.shape)
+            arr[:] = self.Velocity_gd
+            outfile.set_node_attr('/Geodetic/Velocity', 'TITLE', 'Plasma Drift Velocity')
+            outfile.set_node_attr('/Geodetic/Velocity', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            outfile.set_node_attr('/Geodetic/Velocity', 'Units', 'm/s')
 
-            outfile.create_array('/Geographic','SigmaV', self.VelocityCovariance_gd)
-            outfile.set_node_attr('/Geographic/SigmaV', 'TITLE', 'Velocity Covariance Matrix')
-            outfile.set_node_attr('/Geographic/SigmaV', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
-            outfile.set_node_attr('/Geographic/SigmaV', 'Units', 'm/s')
+            atom = tables.Atom.from_dtype(self.VelocityCovariance_gd.dtype)
+            arr = outfile.create_carray('/Geodetic','CovarianceV',atom,self.VelocityCovariance_gd.shape)
+            arr[:] = self.VelocityCovariance_gd
+            outfile.set_node_attr('/Geodetic/CovarianceV', 'TITLE', 'Velocity Covariance Matrix')
+            outfile.set_node_attr('/Geodetic/CovarianceV', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            outfile.set_node_attr('/Geodetic/CovarianceV', 'Units', '(m/s)^2')
 
-            outfile.create_array('/Geographic','Vmag',self.Vgd_mag)
-            outfile.set_node_attr('/Geographic/Vmag', 'TITLE', 'Velocity Magnitude')
-            outfile.set_node_attr('/Geographic/Vmag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/Vmag', 'Units', 'm/s')
+            atom = tables.Atom.from_dtype(self.Vgd_mag.dtype)
+            arr = outfile.create_carray('/Geodetic','Vmag',atom,self.Vgd_mag.shape)
+            arr[:] = self.Vgd_mag
+            outfile.set_node_attr('/Geodetic/Vmag', 'TITLE', 'Velocity Magnitude')
+            outfile.set_node_attr('/Geodetic/Vmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/Vmag', 'Units', 'm/s')
 
-            outfile.create_array('/Geographic','errVmag',self.Vgd_mag_err)
-            outfile.set_node_attr('/Geographic/errVmag', 'TITLE', 'Velocity Magnitude Error')
-            outfile.set_node_attr('/Geographic/errVmag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/errVmag', 'Units', 'm/s')
+            atom = tables.Atom.from_dtype(self.Vgd_mag_err.dtype)
+            arr = outfile.create_carray('/Geodetic','errVmag',atom,self.Vgd_mag_err.shape)
+            arr[:] = self.Vgd_mag_err
+            outfile.set_node_attr('/Geodetic/errVmag', 'TITLE', 'Velocity Magnitude Error')
+            outfile.set_node_attr('/Geodetic/errVmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/errVmag', 'Units', 'm/s')
 
-            outfile.create_array('/Geographic','Vdir',self.Vgd_dir)
-            outfile.set_node_attr('/Geographic/Vdir', 'TITLE', 'Velocity Direction Angle East of North Magnetic Meridian (-e2)')
-            outfile.set_node_attr('/Geographic/Vdir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/Vdir', 'Units', 'Degrees')
+            atom = tables.Atom.from_dtype(self.Vgd_dir.dtype)
+            arr = outfile.create_carray('/Geodetic','Vdir',atom,self.Vgd_dir.shape)
+            arr[:] = self.Vgd_dir
+            outfile.set_node_attr('/Geodetic/Vdir', 'TITLE', 'Velocity Direction Angle East of North Magnetic Meridian (-e2)')
+            outfile.set_node_attr('/Geodetic/Vdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/Vdir', 'Units', 'Degrees')
 
-            outfile.create_array('/Geographic','errVdir',self.Vgd_dir_err)
-            outfile.set_node_attr('/Geographic/errVdir', 'TITLE', 'Error in Velocity Direction')
-            outfile.set_node_attr('/Geographic/errVdir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/errVdir', 'Units', 'Degrees')
+            atom = tables.Atom.from_dtype(self.Vgd_dir_err.dtype)
+            arr = outfile.create_carray('/Geodetic','errVdir',atom,self.Vgd_dir_err.shape)
+            arr[:] = self.Vgd_dir_err
+            outfile.set_node_attr('/Geodetic/errVdir', 'TITLE', 'Error in Velocity Direction')
+            outfile.set_node_attr('/Geodetic/errVdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/errVdir', 'Units', 'Degrees')
 
-            outfile.create_array('/Geographic','ElectricField',self.ElectricField_gd)
-            outfile.set_node_attr('/Geographic/ElectricField', 'TITLE', 'Convection Electric Field')
-            outfile.set_node_attr('/Geographic/ElectricField', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
-            outfile.set_node_attr('/Geographic/ElectricField', 'Units', 'V/m')
+            atom = tables.Atom.from_dtype(self.ElectricField_gd.dtype)
+            arr = outfile.create_carray('/Geodetic','ElectricField',atom,self.ElectricField_gd.shape)
+            arr[:] = self.ElectricField_gd
+            outfile.set_node_attr('/Geodetic/ElectricField', 'TITLE', 'Convection Electric Field')
+            outfile.set_node_attr('/Geodetic/ElectricField', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            outfile.set_node_attr('/Geodetic/ElectricField', 'Units', 'V/m')
 
-            outfile.create_array('/Geographic','SigmaE',self.ElectricFieldCovariance_gd)
-            outfile.set_node_attr('/Geographic/SigmaE', 'TITLE', 'Electric Field Covariance Matrix')
-            outfile.set_node_attr('/Geographic/SigmaE', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
-            outfile.set_node_attr('/Geographic/SigmaE', 'Units', 'V/m')
+            atom = tables.Atom.from_dtype(self.ElectricFieldCovariance_gd.dtype)
+            arr = outfile.create_carray('/Geodetic','CovarianceE',atom,self.ElectricFieldCovariance_gd.shape)
+            arr[:] = self.ElectricFieldCovariance_gd
+            outfile.set_node_attr('/Geodetic/CovarianceE', 'TITLE', 'Electric Field Covariance Matrix')
+            outfile.set_node_attr('/Geodetic/CovarianceE', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            outfile.set_node_attr('/Geodetic/CovarianceE', 'Units', '(V/m)^2')
 
-            outfile.create_array('/Geographic','Emag',self.Egd_mag)
-            outfile.set_node_attr('/Geographic/Emag', 'TITLE', 'Electric Field Magnitude')
-            outfile.set_node_attr('/Geographic/Emag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/Emag', 'Units', 'V/m')
+            atom = tables.Atom.from_dtype(self.Egd_mag.dtype)
+            arr = outfile.create_carray('/Geodetic','Emag',atom,self.Egd_mag.shape)
+            arr[:] = self.Egd_mag
+            outfile.set_node_attr('/Geodetic/Emag', 'TITLE', 'Electric Field Magnitude')
+            outfile.set_node_attr('/Geodetic/Emag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/Emag', 'Units', 'V/m')
 
-            outfile.create_array('/Geographic','errEmag',self.Egd_mag_err)
-            outfile.set_node_attr('/Geographic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
-            outfile.set_node_attr('/Geographic/errEmag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/errEmag', 'Units', 'V/m')
+            atom = tables.Atom.from_dtype(self.Egd_mag_err.dtype)
+            arr = outfile.create_carray('/Geodetic','errEmag',atom,self.Egd_mag_err.shape)
+            arr[:] = self.Egd_mag_err
+            outfile.set_node_attr('/Geodetic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
+            outfile.set_node_attr('/Geodetic/errEmag', 'Size', 'Nrecords x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/errEmag', 'Units', 'V/m')
 
-            outfile.create_array('/Geographic','Edir',self.Egd_dir)
-            outfile.set_node_attr('/Geographic/Edir', 'TITLE', 'Electric Field Direction Angle East of North Magnetic Meridian (-e2)')
-            outfile.set_node_attr('/Geographic/Edir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/Edir', 'Units', 'Degrees')
+            atom = tables.Atom.from_dtype(self.Egd_dir.dtype)
+            arr = outfile.create_carray('/Geodetic','Edir',atom,self.Egd_dir.shape)
+            arr[:] = self.Egd_dir
+            outfile.set_node_attr('/Geodetic/Edir', 'TITLE', 'Electric Field Direction Angle East of North Magnetic Meridian (-e2)')
+            outfile.set_node_attr('/Geodetic/Edir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/Edir', 'Units', 'Degrees')
 
-            outfile.create_array('/Geographic','errEdir',self.Egd_dir_err)
-            outfile.set_node_attr('/Geographic/errEdir', 'TITLE', 'Error in Electric Field Direction')
-            outfile.set_node_attr('/Geographic/errEdir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geographic/errEdir', 'Units', 'Degrees')
+            atom = tables.Atom.from_dtype(self.Egd_dir_err.dtype)
+            arr = outfile.create_carray('/Geodetic','errEdir',atom,self.Egd_dir_err.shape)
+            arr[:] = self.Egd_dir_err
+            outfile.set_node_attr('/Geodetic/errEdir', 'TITLE', 'Error in Electric Field Direction')
+            outfile.set_node_attr('/Geodetic/errEdir', 'Size', 'Nrecord x Nalt x Nbins')
+            outfile.set_node_attr('/Geodetic/errEdir', 'Units', 'Degrees')
 
             outfile.create_group('/', 'ProcessingParams')
 
@@ -580,7 +639,7 @@ class ResolveVectors(object):
             outfile.set_node_attr('/ProcessingParams/ApexYear', 'TITLE', 'Decimal Year used for IGRF Model')
 
             # outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
-            outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.marp.refh)
+            outfile.create_array('/ProcessingParams','ApexRefHeight',self.marp.refh)
             outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'TITLE', 'Reference height used for Apex coordinates')
             outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'Units', 'km')
 
