@@ -300,6 +300,7 @@ class ResolveVectors(object):
         Velocity = []
         VelocityCovariance = []
         ChiSquared = []
+        NumPoints = []
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
@@ -307,6 +308,7 @@ class ResolveVectors(object):
             Vel = []
             SigmaV = []
             Chi2 = []
+            NumP = []
             # loop over spatial bins
             for bidx in self.bin_idx:
 
@@ -324,20 +326,23 @@ class ResolveVectors(object):
                 # print(vlos)
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-                V, SigV, chi2 = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
+                V, SigV, chi2, num_points = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
 
                 # append vector and coviarience matrix
                 Vel.append(V)
                 SigmaV.append(SigV)
                 Chi2.append(chi2)
+                NumP.append(num_points)
 
             Velocity.append(Vel)
             VelocityCovariance.append(SigmaV)
             ChiSquared.append(Chi2)
+            NumPoints.append(NumP)
 
         self.Velocity = np.array(Velocity)
         self.VelocityCovariance = np.array(VelocityCovariance)
         self.ChiSquared = np.array(ChiSquared)
+        self.NumPoints = np.array(NumPoints)
 
     def compute_apex_velocity(self):
 
@@ -521,11 +526,6 @@ class ResolveVectors(object):
             outfile.set_node_attr('/Magnetic/CovarianceE', 'Size', 'Nrecords x Nbins x 3 x 3')
             outfile.set_node_attr('/Magnetic/CovarianceE', 'Units', '(V/m)^2')
 
-            atom = tables.Atom.from_dtype(self.ChiSquared.dtype)
-            arr = outfile.create_carray('/Magnetic', 'Chi2',atom,self.ChiSquared.shape)
-            arr[:] = self.ChiSquared
-            outfile.set_node_attr('/Magnetic/Chi2', 'TITLE', 'Reduced Chi-Squared')
-            outfile.set_node_attr('/Magnetic/Chi2', 'Size', 'Nrecords x Nbins')
 
             outfile.create_group('/', 'Geodetic')
 
@@ -634,6 +634,18 @@ class ResolveVectors(object):
 
             outfile.create_group('/', 'ProcessingParams')
 
+            atom = tables.Atom.from_dtype(self.ChiSquared.dtype)
+            arr = outfile.create_carray('/ProcessingParams', 'Chi2',atom,self.ChiSquared.shape)
+            arr[:] = self.ChiSquared
+            outfile.set_node_attr('/ProcessingParams/Chi2', 'TITLE', 'Reduced Chi-Squared')
+            outfile.set_node_attr('/ProcessingParams/Chi2', 'Size', 'Nrecords x Nbins')
+
+            atom = tables.Atom.from_dtype(self.NumPoints.dtype)
+            arr = outfile.create_carray('/ProcessingParams', 'NumPoints',atom,self.NumPoints.shape)
+            arr[:] = self.NumPoints
+            outfile.set_node_attr('/ProcessingParams/NumPoints', 'TITLE', 'Number of input data points used to estimate the vector')
+            outfile.set_node_attr('/ProcessingParams/NumPoints', 'Size', 'Nrecords x Nbins')
+
             # outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
             outfile.create_array('/ProcessingParams', 'ApexYear', self.marp.year)
             outfile.set_node_attr('/ProcessingParams/ApexYear', 'TITLE', 'Decimal Year used for IGRF Model')
@@ -732,10 +744,14 @@ class ResolveVectors(object):
 
 
 def vvels(vlos, dvlos, A, cov, minnumpoints=1):
-    # implimentation of Heinselman and Nicolls 2008 vector velocity algorithm
+    # Bayesian inference method described in Heinselman and Nicolls 2008 vector velocity algorithm
 
-    # remove nan data points
+    # Get indices for finite valued data points
     finite = np.isfinite(vlos)
+    num_points = np.sum(finite)
+    dof = num_points - 3 # solving for 3 components
+
+    # Filter inputs to only use finite valued data
     vlos = vlos[finite]
     dvlos = dvlos[finite]
     A = A[finite]
@@ -744,22 +760,27 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
     SigmaV = np.diagflat(cov)
 
     try:
-        I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)   # calculate I = (A*SigV*A.T + SigE)^-1
-        V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)      # calculate velocity estimate (Heinselman 2008 eqn 12)
-        SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))       # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
-        chi2 = np.sum((vlos-np.einsum('...i,i->...',A,V))**2/dvlos**2)/(sum(finite)-3)
+        # measurement errors and a priori covariance, terms in the inverse (Heinselman and Nicolls 2008 eqn 12)
+        # I = (A*SigV*A.T + SigE)^-1
+        I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)
+        # calculate velocity estimate (Heinselman and Nicolls 2008 eqn 12)
+        V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)
+        # calculate covariance of velocity estimate (Heinselman and Nicolls 2008 eqn 13)
+        SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))
+
+        # chi-squared is meaningless for an underdetermined problem
+        if dof < 1:
+            chi2 = np.nan
+        else:
+            chi2 = np.sum((vlos-np.einsum('...i,i->...',A,V))**2/dvlos**2)/dof
 
     except np.linalg.LinAlgError:
         V = np.full(3,np.nan)
         SigV = np.full((3,3),np.nan)
         chi2 = np.nan
+        num_points = 0
 
-    # # if there are too few points for a valid reconstruction, set output to NAN
-    # if sum(finite) < minnumpoints:
-    #     V = np.full(3,np.nan)
-    #     SigV = np.full((3,3),np.nan)
-
-    return V, SigV, chi2
+    return V, SigV, chi2, num_points
 
 
 def lin_interp(x, xp, fp, dfp):
