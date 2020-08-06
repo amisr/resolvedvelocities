@@ -59,9 +59,6 @@ IONUP = UPB
 # beamcodes of beams to be used (optional) - if omitted, all beams will be used
 #USE_BEAMS = [64016, 64157, 64964]
 
-# minumum number of points required to attemt to resolve a 2D vector
-MINNUMPOINTS = 1
-
 # post-integration time (optional) - if omitted, the native times of the input file are used
 #INTTIME = 180.
 

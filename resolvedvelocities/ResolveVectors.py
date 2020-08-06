@@ -9,11 +9,11 @@ import socket
 import getpass
 import platform
 
+import apexpy
 import tables
 import numpy as np
 import datetime as dt
 from scipy.spatial import Delaunay
-from apexpy import Apex
 
 from .marp import Marp
 from .plot import summary_plots
@@ -63,7 +63,6 @@ class ResolveVectors(object):
         self.goodfitcode = [float(i) for i in config.get('CONFIG', 'GOODFITCODE').split(',')]
         self.binvert = eval(config.get('CONFIG', 'BINVERT'))
         self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
-        self.minnumpoints = config.getint('CONFIG', 'MINNUMPOINTS')
         self.marprot = [float(i) for i in config.get('CONFIG', 'MARPROT').split(',')]
 
         # optional parameters
@@ -316,11 +315,13 @@ class ResolveVectors(object):
                 if self.integration_time:
                     A = np.repeat(self.A[bidx], len(tidx), axis=0)
                 else:
-                    # if no post integraiton, k vectors do not need to be duplicated
+                    # if no post integraiton, k vectors do not need to be
+                    # duplicated
                     A = self.A[bidx]
 
-                # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-                V, SigV, chi2, num_points = vvels(vlos, dvlos, A, self.covar,minnumpoints=self.minnumpoints)
+                # use Heinselman and Nicolls Bayesian reconstruction algorithm
+                # to get full vectors
+                V, SigV, chi2, num_points = vvels(vlos, dvlos, A, self.covar)
 
                 # append vector and coviarience matrix
                 Vel.append(V)

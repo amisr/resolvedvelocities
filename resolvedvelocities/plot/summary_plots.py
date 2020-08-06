@@ -167,7 +167,7 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V',
             err_thres = 100.0
             mag_thres = 100.0
 
-        cond1 = (chi2 > 5) | (chi2 < 0.2)  # chi-squared filter
+        cond1 = (~np.isfinite(chi2)) | (chi2 > 5) | (chi2 < 0.2)  # chi-squared filter
         cond2 = ((dvmag > err_thres) & (vmag > mag_thres))  # absolute error bar filter
         cond3 = (dvmag / vmag > 1) # relative error bar filter
         inds = np.where(cond1 | cond2 | cond3)
