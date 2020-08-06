@@ -747,7 +747,7 @@ class ResolveVectors(object):
                                               savedir=self.plotsavedir,
                                               savenamebase=self.outfilename,
                                               day_ind=t)
-                es = self.ElectricField[start_ind:end_ind,:],
+                es = self.ElectricField[start_ind:end_ind,:]
                 coves = self.ElectricFieldCovariance[start_ind:end_ind,:]
                 summary_plots.plot_components(times,self.bin_mlat,
                                               self.bin_mlon,es,coves,
