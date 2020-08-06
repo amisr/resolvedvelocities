@@ -702,7 +702,11 @@ class ResolveVectors(object):
         return year, month, day, doy, dtime, mlt
 
 
-    def create_plots(self, alt=300., vcomptitles=None, vcomplim=None, vcompcmap=None, ecomptitles=None, ecomplim=None, ecompcmap=None, vmagtitles=None, vmaglim=None, vmagcmap=None, emagtitles=None, emaglim=None, emagcmap=None):
+    def create_plots(self,alt=300.,vcomptitles=None,vcomplim=None,
+                     vcompcmap=None,ecomptitles=None,ecomplim=None,
+                     ecompcmap=None,vmagtitles=None,vmaglim=None,
+                     vmagcmap=None,emagtitles=None,emaglim=None,
+                     emagcmap=None):
 
         if self.plotsavedir:
 
@@ -727,26 +731,66 @@ class ResolveVectors(object):
 
             num_chunks = len(chunks_to_plot)
             for t, [start_ind,end_ind] in enumerate(chunks_to_plot):
-                # if only 1 day worth of data, set t=None so we don't have a 'byDay'
-                # in the plot file names
+                # if only 1 day worth of data, set t=None so we don't have a
+                # 'byDay' in the plot file names
                 if (num_chunks == 1):
                     t = None
 
                 # make vector plots
-                summary_plots.plot_components(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Velocity[start_ind:end_ind,:], self.VelocityCovariance[start_ind:end_ind,:], param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
-                summary_plots.plot_components(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.ElectricField[start_ind:end_ind,:], self.ElectricFieldCovariance[start_ind:end_ind,:], param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                times = self.integration_periods[start_ind:end_ind,:]
+                vels = self.Velocity[start_ind:end_ind,:]
+                covvels = self.VelocityCovariance[start_ind:end_ind,:]
+                summary_plots.plot_components(times,self.bin_mlat,
+                                              self.bin_mlon,vels,covvels,
+                                              param='V',titles=vcomptitles,
+                                              clim=vcomplim,cmap=vcompcmap,
+                                              savedir=self.plotsavedir,
+                                              savenamebase=self.outfilename,
+                                              day_ind=t)
+                es = self.ElectricField[start_ind:end_ind,:],
+                coves = self.ElectricFieldCovariance[start_ind:end_ind,:]
+                summary_plots.plot_components(times,self.bin_mlat,
+                                              self.bin_mlon,es,coves,
+                                              param='E',titles=ecomptitles,
+                                              clim=ecomplim,cmap=ecompcmap,
+                                              savedir=self.plotsavedir,
+                                              savenamebase=self.outfilename,
+                                              day_ind=t)
 
                 # make magnitude plots
                 # find index of altitude bin that is closest to alt
                 i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
-                summary_plots.plot_magnitude(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Vgd_mag[start_ind:end_ind,i,:], self.Vgd_mag_err[start_ind:end_ind,i,:], self.Vgd_dir[start_ind:end_ind,i,:], self.Vgd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
-                summary_plots.plot_magnitude(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Egd_mag[start_ind:end_ind,i,:], self.Egd_mag_err[start_ind:end_ind,i,:], self.Egd_dir[start_ind:end_ind,i,:], self.Egd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                vmag = self.Vgd_mag[start_ind:end_ind,i,:]
+                evmag = self.Vgd_mag_err[start_ind:end_ind,i,:]
+                vdir = self.Vgd_dir[start_ind:end_ind,i,:]
+                evdir = self.Vgd_dir_err[start_ind:end_ind,i,:]
+                chi2 = self.ChiSquared[start_ind:end_ind,:]
+                summary_plots.plot_magnitude(times,self.bin_mlat,self.bin_mlon,
+                                             vmag,evmag,vdir,evdir,chi2,
+                                             param='V',titles=vmagtitles,
+                                             clim=vmaglim,cmap=vmagcmap,
+                                             savedir=self.plotsavedir,
+                                             savenamebase=self.outfilename,
+                                             day_ind=t)
+
+                emag = self.Egd_mag[start_ind:end_ind,i,:]
+                eemag = self.Egd_mag_err[start_ind:end_ind,i,:]
+                edir = self.Egd_dir[start_ind:end_ind,i,:]
+                eedir = self.Egd_dir_err[start_ind:end_ind,i,:]
+                summary_plots.plot_magnitude(times,self.bin_mlat,self.bin_mlon,
+                                             emag,eemag,edir,eedir,chi2,
+                                             param='E',titles=emagtitles,
+                                             clim=emaglim,cmap=emagcmap,
+                                             savedir=self.plotsavedir,
+                                             savenamebase=self.outfilename,
+                                             day_ind=t)
 
 
 
 
 def vvels(vlos, dvlos, A, cov, minnumpoints=1):
-    # Bayesian inference method described in Heinselman and Nicolls 2008 vector velocity algorithm
+    # Bayesian inference method described in Heinselman and Nicolls 2008
+    # vector velocity algorithm
 
     # Get indices for finite valued data points
     finite = np.isfinite(vlos)
@@ -762,19 +806,24 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
     SigmaV = np.diagflat(cov)
 
     try:
-        # measurement errors and a priori covariance, terms in the inverse (Heinselman and Nicolls 2008 eqn 12)
+        # measurement errors and a priori covariance, terms in the inverse
+        # (Heinselman and Nicolls 2008 eqn 12)
         # I = (A*SigV*A.T + SigE)^-1
         I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)
         # calculate velocity estimate (Heinselman and Nicolls 2008 eqn 12)
         V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)
-        # calculate covariance of velocity estimate (Heinselman and Nicolls 2008 eqn 13)
-        SigV = np.linalg.inv(np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A) + np.linalg.inv(SigmaV))
+        # calculate covariance of velocity estimate
+        # (Heinselman and Nicolls 2008 eqn 13)
+        term1 = np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A)
+        term2 = np.linalg.inv(SigmaV)
+        SigV = np.linalg.inv(term1 + term2)
 
         # chi-squared is meaningless for an underdetermined problem
         if dof < 1:
             chi2 = np.nan
         else:
-            chi2 = np.sum((vlos-np.einsum('...i,i->...',A,V))**2/dvlos**2)/dof
+            model = np.einsum('...i,i->...',A,V)
+            chi2 = np.sum((vlos - model)**2 / dvlos**2) / dof
 
     except np.linalg.LinAlgError:
         V = np.full(3,np.nan)
@@ -786,12 +835,16 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
 
 
 def lin_interp(x, xp, fp, dfp):
-    # Piecewise linear interpolation routine that returns interpolated values and their errors
+    # Piecewise linear interpolation routine that returns interpolated values
+    # and their errors
 
     # find the indicies of xp that bound each value in x
     # Note: where x is out of range of xp, -1 is used as a place holder
-    #   This provides a valid "dummy" index for the array calculations and can be used to identify values to nan in final output
-    i = np.array([np.argwhere((xi>=xp[:-1]) & (xi<xp[1:])).flatten()[0] if ((xi>=np.nanmin(xp)) & (xi<np.nanmax(xp))) else -1 for xi in x])
+    #   This provides a valid "dummy" index for the array calculations and can
+    # be used to identify values to nan in final output
+    inds = np.argwhere((xi>=xp[:-1]) & (xi<xp[1:])).flatten()[0]
+    cond = ((xi>=np.nanmin(xp)) & (xi<np.nanmax(xp)))
+    i = np.array([inds if cond else -1 for xi in x])
     # calculate X
     X = (x-xp[i])/(xp[i+1]-xp[i])
     # calculate interpolated values
@@ -809,32 +862,49 @@ def ion_upflow(Te,Ti,ne):
     pass
 
 def magnitude_direction(A,Sig,e):
-    # Calculate the magnitude of vector A and the clockwise angle between vectors e and A
+    # Calculate the magnitude of vector A and the clockwise angle between
+    # vectors e and A
     # Also calculates corresponding errors
     # A = vector
     # Sig = covariance matrix for A
     # e = vector to take the direction relative to
     # ep = e x z (vector perpendicular to e and up)
-    # This is all done with an error analysis using addition in quadrature. All calculations are done with matrix algebra using einsum to prevent nested for loops.
+    # This is all done with an error analysis using addition in quadrature.
+    # All calculations are done with matrix algebra using einsum to prevent
+    # nested for loops.
     # Input vectors are assumed to have orthogonal components
 
+    # Calculate the Magnitude of input A
 
-    AA = np.einsum('...i,...i->...', A, A)                  # dot product of A and A
-    ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)      # matrix multipy A*Sig*transpose(A)
-    ee = np.einsum('...i,...i->...', e, e)                  # dot product of e and e
-    eA = np.einsum('...i,...i->...', e, A)                  # dot product of e and A
+    # Some helper matricies
+    # dot product of A and A
+    AA = np.einsum('...i,...i->...', A, A)
+    # matrix multipy A*Sig*transpose(A)
+    ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)
 
     # calculate magnitude and magnitude error
     magnitude = np.sqrt(AA)
     mag_err = np.sqrt(ASA/AA)
 
+
+    # Now find the angle clockwise around geodetic up in the horizontal plane
+    # that is perpendicular to geodetic up, where angle=0 is along the
+    # projection 'e' in the horizontal plane
+
+    # Some helper matricies
+    # dot product of e and e
+    ee = np.einsum('...i,...i->...', e, e)
+    # dot product of e and A
+    eA = np.einsum('...i,...i->...', e, A)
     # find ep, perpendicular to both e and geodetic up
     ep = np.cross(e,np.array([0,0,1]))
     epep = np.einsum('...i,...i->...', ep, ep)
     epA = np.einsum('...i,...i->...', ep, A)
 
-    B = np.einsum('...ij,...i->...ij',ep,eA)-np.einsum('...ij,...i->...ij',e,epA)     # B = ep(e*A)-e(ep*A) = A x (ep x e)
-    BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)      # matrix multipy B*Sig*B
+    # B = ep(e*A)-e(ep*A) = A x (ep x e)
+    B = np.einsum('...ij,...i->...ij',ep,eA)-np.einsum('...ij,...i->...ij',e,epA)
+    # matrix multipy B*Sig*B (covariance propagation)
+    BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)
 
     # calculate direction and direction error
     direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
