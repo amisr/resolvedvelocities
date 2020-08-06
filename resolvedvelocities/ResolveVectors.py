@@ -17,7 +17,6 @@ from scipy.spatial import Delaunay
 
 from .plot import summary_plots
 
-# TODO: rename int_period variable to something more sensible
 
 class ResolveVectors(object):
     def __init__(self, config):
@@ -266,13 +265,13 @@ class ResolveVectors(object):
 
         if not self.integration_time:
             # if no integration time specified, use original time periods of input files
-            self.int_period = self.time
-            self.int_idx = range(len(self.time))
+            self.integration_periods = self.time
+            self.integration_indices = range(len(self.time))
 
         else:
             # if an integration time is given, calculate new time periods
-            self.int_period = []
-            self.int_idx = []
+            self.integration_periods = []
+            self.integration_indices = []
 
             idx = []
             start_time = None
@@ -285,13 +284,13 @@ class ResolveVectors(object):
                 idx.append(i)
 
                 if (time_diff >= self.integration_time) or (i == num_times -1):
-                    self.int_period.append([start_time, temp_end_time])
-                    self.int_idx.append(np.array(idx))
+                    self.integration_periods.append([start_time, temp_end_time])
+                    self.integration_indices.append(np.array(idx))
                     idx = []
                     start_time = None
                     continue
 
-            self.int_period = np.array(self.int_period)
+            self.integration_periods = np.array(self.integration_periods)
 
 
     def compute_vector_velocity(self):
@@ -304,7 +303,7 @@ class ResolveVectors(object):
 
         # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
         # loop over integration periods
-        for tidx in self.int_idx:
+        for tidx in self.integration_indices:
             Vel = []
             SigmaV = []
             Chi2 = []
@@ -321,9 +320,6 @@ class ResolveVectors(object):
                 else:
                     # if no post integraiton, k vectors do not need to be duplicated
                     A = self.A[bidx]
-
-                # print(A)
-                # print(vlos)
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
                 V, SigV, chi2, num_points = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
@@ -439,9 +435,9 @@ class ResolveVectors(object):
                     outfile.create_group('/','Time')
                     year, month, day, doy, dtime, mlt = self.create_time_arrays()
 
-                    atom = tables.Atom.from_dtype(self.int_period.dtype)
-                    arr = outfile.create_carray('/Time', 'UnixTime',atom,self.int_period.shape)
-                    arr[:] = self.int_period
+                    atom = tables.Atom.from_dtype(self.integration_periods.dtype)
+                    arr = outfile.create_carray('/Time', 'UnixTime',atom,self.integration_periods.shape)
+                    arr[:] = self.integration_periods
                     outfile.set_node_attr('/Time/UnixTime', 'TITLE', 'UnixTime')
                     outfile.set_node_attr('/Time/UnixTime', 'Size', 'Nrecords x 2 (Start and end of integration')
                     outfile.set_node_attr('/Time/UnixTime', 'Unit', 'Seconds')
@@ -689,7 +685,7 @@ class ResolveVectors(object):
 
 
     def create_time_arrays(self):
-        time_array = np.array([[dt.datetime.utcfromtimestamp(t[0]), dt.datetime.utcfromtimestamp(t[1])] for t in self.int_period])
+        time_array = np.array([[dt.datetime.utcfromtimestamp(t[0]), dt.datetime.utcfromtimestamp(t[1])] for t in self.integration_periods])
         year = np.array([[t[0].year, t[1].year] for t in time_array])
         month = np.array([[t[0].month, t[1].month] for t in time_array])
         day = np.array([[t[0].day, t[1].day] for t in time_array])
@@ -709,8 +705,8 @@ class ResolveVectors(object):
 
             start_time = None
             start_ind = None
-            num_times = len(self.int_period)
-            for i,time_pair in enumerate(self.int_period):
+            num_times = len(self.integration_periods)
+            for i,time_pair in enumerate(self.integration_periods):
                 temp_start_time, temp_end_time = time_pair
                 if start_time is None:
                     start_time = temp_start_time
@@ -731,14 +727,14 @@ class ResolveVectors(object):
                     t = None
 
                 # make vector plots
-                summary_plots.plot_components(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Velocity[start_ind:end_ind,:], self.VelocityCovariance[start_ind:end_ind,:], param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
-                summary_plots.plot_components(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.ElectricField[start_ind:end_ind,:], self.ElectricFieldCovariance[start_ind:end_ind,:], param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                summary_plots.plot_components(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Velocity[start_ind:end_ind,:], self.VelocityCovariance[start_ind:end_ind,:], param='V', titles=vcomptitles, clim=vcomplim, cmap=vcompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                summary_plots.plot_components(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.ElectricField[start_ind:end_ind,:], self.ElectricFieldCovariance[start_ind:end_ind,:], param='E', titles=ecomptitles, clim=ecomplim, cmap=ecompcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
 
                 # make magnitude plots
                 # find index of altitude bin that is closest to alt
                 i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
-                summary_plots.plot_magnitude(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Vgd_mag[start_ind:end_ind,i,:], self.Vgd_mag_err[start_ind:end_ind,i,:], self.Vgd_dir[start_ind:end_ind,i,:], self.Vgd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
-                summary_plots.plot_magnitude(self.int_period[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Egd_mag[start_ind:end_ind,i,:], self.Egd_mag_err[start_ind:end_ind,i,:], self.Egd_dir[start_ind:end_ind,i,:], self.Egd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                summary_plots.plot_magnitude(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Vgd_mag[start_ind:end_ind,i,:], self.Vgd_mag_err[start_ind:end_ind,i,:], self.Vgd_dir[start_ind:end_ind,i,:], self.Vgd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='V', titles=vmagtitles, clim=vmaglim, cmap=vmagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
+                summary_plots.plot_magnitude(self.integration_periods[start_ind:end_ind,:], self.bin_mlat, self.bin_mlon, self.Egd_mag[start_ind:end_ind,i,:], self.Egd_mag_err[start_ind:end_ind,i,:], self.Egd_dir[start_ind:end_ind,i,:], self.Egd_dir_err[start_ind:end_ind,i,:], self.ChiSquared[start_ind:end_ind,:], param='E', titles=emagtitles, clim=emaglim, cmap=emagcmap, savedir=self.plotsavedir,savenamebase=self.outfilename,day_ind=t)
 
 
 
