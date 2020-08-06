@@ -7,12 +7,15 @@ The full license can be found in LICENSE.txt
 """
 
 import os
+import re
 import sys
 import subprocess
 from setuptools import find_packages, setup
 
+here = os.path.abspath(os.path.dirname(__file__))
+
 # Get the package requirements
-REQSFILE = os.path.join(os.path.dirname(__file__), 'requirements.txt')
+REQSFILE = os.path.join(here, 'requirements.txt')
 with open(REQSFILE, 'r') as f:
     REQUIREMENTS = f.readlines()
 REQUIREMENTS = '\n'.join(REQUIREMENTS)
@@ -29,10 +32,17 @@ except EXCEPTION:
     pass
 
 # Get the readme text
-README = os.path.join(os.path.dirname(__file__), 'README.rst')
+README = os.path.join(here, 'README.rst')
 with open(README, 'r') as f:
     READMETXT = f.readlines()
 READMETXT = '\n'.join(READMETXT)
+
+# Get version number from __init__.py
+regex = "(?<=__version__..\s)\S+"
+with open(os.path.join(here,'resolvedvelocities/__init__.py'),'r', encoding='utf-8') as f:
+    text = f.read()
+match = re.findall(regex,text)
+version = match[0].strip("'")
 
 # Package description
 DESC = "Tool for resolving 2D plasma drift from AMISR LoS velocity "
@@ -54,7 +64,7 @@ repo root directory."
 setup(name='resolvedvelocities',
       install_requires=REQUIREMENTS,
       setup_requires=REQUIREMENTS,
-      version="2.0.0",
+      version=version,
       description=DESC,
       author="AMISR",
       author_email="leslie.lamarche@sri.com",

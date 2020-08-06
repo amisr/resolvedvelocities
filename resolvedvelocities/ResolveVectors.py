@@ -1,22 +1,24 @@
 # ResolveVectors.py
 
-import tables
-import numpy as np
-import datetime as dt
 import os
 try:
     import ConfigParser as configparser
 except ImportError:
     import configparser
-import platform
-import getpass
 import socket
-from apexpy import Apex
-from .marp import Marp
-from scipy.spatial import Delaunay
+import getpass
+import platform
 
+import tables
+import numpy as np
+import datetime as dt
+from scipy.spatial import Delaunay
+from apexpy import Apex
+
+from .marp import Marp
 from .plot import summary_plots
 
+import resolvedvelocities as rv
 
 class ResolveVectors(object):
     def __init__(self, config):
@@ -642,17 +644,17 @@ class ResolveVectors(object):
             outfile.set_node_attr('/ProcessingParams/NumPoints', 'TITLE', 'Number of input data points used to estimate the vector')
             outfile.set_node_attr('/ProcessingParams/NumPoints', 'Size', 'Nrecords x Nbins')
 
-            # outfile.create_array('/ProcessingParams', 'ApexYear', self.Apex.year)
-            outfile.create_array('/ProcessingParams', 'ApexYear', self.marp.year)
-            outfile.set_node_attr('/ProcessingParams/ApexYear', 'TITLE', 'Decimal Year used for IGRF Model')
+            outfile.create_group('/ProcessingParams', 'Apexpy')
 
-            # outfile.create_array('/ProcessingParams', 'ApexRefHeight', self.Apex.refh)
-            outfile.create_array('/ProcessingParams','ApexRefHeight',self.marp.refh)
-            outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'TITLE', 'Reference height used for Apex coordinates')
-            outfile.set_node_attr('/ProcessingParams/ApexRefHeight', 'Units', 'km')
+            outfile.create_array('/ProcessingParams/Apexpy', 'Year', self.marp.year)
+            outfile.set_node_attr('/ProcessingParams/Apexpy/Year', 'TITLE', 'Decimal Year used for IGRF Model')
 
-
-            outfile.create_array('/ProcessingParams', 'InputFile', self.datafile.encode('utf-8'))
+            outfile.create_array('/ProcessingParams/Apexpy','RefHeight',self.marp.refh)
+            outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'TITLE', 'Reference height used for Apex coordinates')
+            outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'Units', 'km')
+            
+            outfile.create_array('/ProcessingParams/Apexpy','Version',apexpy.__version__.encode('utf-8'))
+            outfile.set_node_attr('/ProcessingParams/Apexpy/Version', 'TITLE', 'Apexpy version used.')
 
             # Save computer information and config file
             # Computer information:
@@ -677,11 +679,21 @@ class ResolveVectors(object):
             with open(self.configfile, 'r') as f:
                 Contents = ''.join(f.readlines())
 
+            # config file
             outfile.create_group('/ProcessingParams', 'ConfigFile')
 
             outfile.create_array('/ProcessingParams/ConfigFile', 'Name', Name.encode('utf-8'))
             outfile.create_array('/ProcessingParams/ConfigFile', 'Path', Path.encode('utf-8'))
             outfile.create_array('/ProcessingParams/ConfigFile', 'Contents', Contents.encode('utf-8'))
+
+            # resolved velocities code version
+            outfile.create_array('/ProcessingParams', 'SoftwareVersion', rv.__version__.encode('utf-8'))
+            outfile.set_node_attr('/ProcessingParams/SoftwareVersion', 'TITLE', 'Version of the resolvedvelocities software that was used.')
+
+            # input file
+            outfile.create_array('/ProcessingParams', 'InputFile', self.datafile.encode('utf-8'))
+
+
 
 
     def create_time_arrays(self):
