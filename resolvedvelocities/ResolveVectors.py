@@ -20,6 +20,7 @@ from .plot import summary_plots
 
 import resolvedvelocities as rv
 
+
 class ResolveVectors(object):
     def __init__(self, config):
         self.configfile = config
@@ -72,7 +73,6 @@ class ResolveVectors(object):
         self.use_beams = [int(i) for i in config.get('CONFIG', 'USE_BEAMS').split(',')] if config.has_option('CONFIG', 'USE_BEAMS') else None
         self.integration_time = config.getfloat('CONFIG', 'INTTIME') if config.has_option('CONFIG', 'INTTIME') else None
         self.outfilepath = config.get('FILEIO', 'OUTFILEPATH') if config.has_option('FILEIO', 'OUTFILEPATH') else '.'
-
 
 
     def read_data(self):
@@ -175,20 +175,13 @@ class ResolveVectors(object):
         # transform k vectors from geodetic to geomagnetic
 
         # find indices where nans exist in the altitude array and should be inserted in to other coordinate/component arrays
-        replace_nans = np.array([r-i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())])
+        replace_nans = np.array([r - i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())])
 
         glat = self.lat[np.isfinite(self.lat)]
         glon = self.lon[np.isfinite(self.lon)]
-        galt = self.alt[np.isfinite(self.alt)]/1000.
-
-        # A = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
-        # alat, alon = A.geo2apex(glat, glon, galt)
-        # print(np.mean(alat), np.mean(alon))
+        galt = self.alt[np.isfinite(self.alt)] / 1000.
 
         # intialize apex coordinates
-        # print(np.mean(alat), np.mean(alon))
-        # self.Apex = Apex(date=dt.datetime.utcfromtimestamp(self.time[0,0]))
-        # self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=0., phi0=0.)
         self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
 
         # find magnetic latitude and longitude
@@ -198,7 +191,7 @@ class ResolveVectors(object):
         self.mlon = np.insert(mlon,replace_nans,np.nan)
         # print(self.mlat, self.mlon)
 
-        # apex basis vectors in geodetic coordinates [e n u]
+        # Analogous to apex basis vectors in geodetic coordinates [e n u]
         # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
         d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, galt)
         d1 = np.insert(d1,replace_nans,np.nan,axis=1)
@@ -296,15 +289,16 @@ class ResolveVectors(object):
 
 
     def compute_vector_velocity(self):
-        # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
+        # Iterate over all bins at each integration period and use Heinselman
+        # and Nicolls Bayesian reconstruction algorithm to get full vectors
 
         Velocity = []
         VelocityCovariance = []
         ChiSquared = []
         NumPoints = []
 
-        # For each integration period and bin, calculate covarient components of drift velocity (Ve1, Ve2, Ve3)
-        # loop over integration periods
+        # For each integration period and bin, calculate covarient components
+        # of drift velocity (Ve1, Ve2, Ve3) loop over integration periods
         for tidx in self.integration_indices:
             Vel = []
             SigmaV = []
@@ -313,10 +307,12 @@ class ResolveVectors(object):
             # loop over spatial bins
             for bidx in self.bin_idx:
 
-                # pull out the line of slight measurements for the time period and bins
+                # pull out the line of slight measurements for the time period
+                # and bins
                 vlos = self.vlos[tidx,bidx[:,np.newaxis]].flatten()
                 dvlos = self.dvlos[tidx,bidx[:,np.newaxis]].flatten()
-                # pull out the k vectors for the bins and duplicate so they match the number of time measurements
+                # pull out the k vectors for the bins and duplicate so they 
+                # match the number of time measurements
                 if self.integration_time:
                     A = np.repeat(self.A[bidx], len(tidx), axis=0)
                 else:
@@ -324,7 +320,7 @@ class ResolveVectors(object):
                     A = self.A[bidx]
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm to get full vectors
-                V, SigV, chi2, num_points = vvels(vlos, dvlos, A, self.covar, minnumpoints=self.minnumpoints)
+                V, SigV, chi2, num_points = vvels(vlos, dvlos, A, self.covar,minnumpoints=self.minnumpoints)
 
                 # append vector and coviarience matrix
                 Vel.append(V)
@@ -387,15 +383,12 @@ class ResolveVectors(object):
         alt = np.repeat(self.outalt, hbins)
 
         # calculate bin locations in geodetic coordinates
-        # glat, glon, err = self.Apex.apex2geo(mlat, mlon, alt)
         glat, glon, err = self.marp.apex2geo(alat, alon, alt)
         self.bin_glat = glat.reshape((vbins,hbins))
         self.bin_glon = glon.reshape((vbins,hbins))
         self.bin_galt = alt.reshape((vbins,hbins))
 
         # apex basis vectors in geodetic coordinates [e n u]
-        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(mlat, mlon, alt, coords='apex')
-        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, alt)
         f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.marp.basevectors_apex(glat, glon, alt)
 
         # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
