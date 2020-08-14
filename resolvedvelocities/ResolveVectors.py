@@ -842,9 +842,10 @@ def lin_interp(x, xp, fp, dfp):
     # Note: where x is out of range of xp, -1 is used as a place holder
     #   This provides a valid "dummy" index for the array calculations and can
     # be used to identify values to nan in final output
-    inds = np.argwhere((xi>=xp[:-1]) & (xi<xp[1:])).flatten()[0]
-    cond = ((xi>=np.nanmin(xp)) & (xi<np.nanmax(xp)))
-    i = np.array([inds if cond else -1 for xi in x])
+    xpmin = np.nanmin(xp)
+    xpmax = np.nanmax(xp)
+    i = np.array([np.argwhere((xi>=xp[:-1]) & (xi<xp[1:])).flatten()[0]
+                  if ((xi>=xpmin) & (xi<xpmax)) else -1 for xi in x])
     # calculate X
     X = (x-xp[i])/(xp[i+1]-xp[i])
     # calculate interpolated values
