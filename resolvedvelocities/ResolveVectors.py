@@ -28,22 +28,17 @@ class ResolveVectors(object):
 
         # check if output path exists, if not try to create it
         # else raise exception
-        self.check_path_and_create(self.outfilepath)
+        self.create_path(self.outfilepath)
 
         # check if plotting directory exists, if not, create it
         # else raise exception
         if self.plotsavedir:
-            self.check_path_and_create(self.plotsavedir)
+            self.create_path(self.plotsavedir)
 
 
-    def check_path_and_create(self,path):
-        if not os.path.exists(path):
-            try:
-                path = os.path.abspath(path)
-                os.makedirs(path)
-            except Exception as e:
-                exception = 'Failed to create directory:\n    %s\nException: %s' % (path,str(e))
-                raise Exception(exception)
+    def create_path(self,path):
+        path = os.path.abspath(path)
+        os.makedirs(path,exist_ok=True)
 
     def read_config(self, config_file):
 
