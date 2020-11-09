@@ -75,7 +75,7 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
                 else:
                     ax.set_yticklabels([])
 
-                
+
                 ax.set_title(titles[i][j])
                 ax.tick_params(labelsize=8)
 
@@ -122,7 +122,7 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V',
         dvmag = dvmag*1000.
 
     # pad time gaps
-    utime, [vmag, dvmag, vdir, dvdir] = timegaps(utime, [vmag, dvmag, vdir, dvdir])
+    utime, [vmag, dvmag, vdir, dvdir, chi2] = timegaps(utime, [vmag, dvmag, vdir, dvdir, chi2])
 
     # get x-axis (time) tick locations and labels
     time, xticks, xlims = get_time_ticks(utime)
