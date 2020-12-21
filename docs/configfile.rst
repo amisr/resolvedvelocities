@@ -1,7 +1,7 @@
 Configuration File
 ==================
 
-The configuration file provides important specifications about how the `resolvedvelocities` code will be run.  It must contain the following categories and fields::
+The configuration file provides important specifications about how the `resolvedvelocities` code will be run.  It must contain the following categories and fields:
 
 +----------+------------------------------------+------------------------------+---------------+---------+--------------------+
 | Category | Parameter                          | Description                  | PFISR         | RISR-N  | RISR-C             |
