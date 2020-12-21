@@ -9,3 +9,4 @@ Contents
   installation
   usage
   configfile
+  bins
