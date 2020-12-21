@@ -3,45 +3,49 @@
 Configuration File
 ==================
 
-The configuration file provides important specifications about how the `resolvedvelocities` code will be run.  It must contain the following categories and fields:
+The configuration file provides important specifications about how the `resolvedvelocities` code will be run.  The following table summarizes the categories and parameters that should be in the configuration file.  Example values are provided where appropriate.
 
-+----------+------------------------------------+------------------------------+---------------+---------+--------------------+
-| Category | Parameter                          | Description                  | PFISR         | RISR-N  | RISR-C             |
-+==========+====================================+==============================+===============+=========+====================+
-| FILEIO   | :ref:`DATAFILE <datafile>`         | Input file name              | 20190328.006_lp_1min-fitcal.h5               |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`OUTFILENAME <outfilename>`   | Output file name             | 20190328.006_lp_1min-fitcal_vvels.h5         |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`OUTFILEPATH <outfilepath>`   | Output file path             | /home/users/vvels/output/                    |
-+----------+------------------------------------+------------------------------+---------------+---------+--------------------+
-| CONFIG   | :ref:`CHIRP <chirp>`               | ???                          | 0.0                                          |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`NELIM <nelim>`               | Density limits               | 2.0e9, 1.0e13                                |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`COVAR <covar>`               | A priori covariance matrix   | 9.0e6,9.0e6,2.5e3                            |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`ALTLIM <altlim>`             | Altitude limits              | 150., 400.                                   |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`CHI2LIM <chi2lim>`           | :math:`\chi^2` limits        | 0.1, 10.                                     |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`GOODFITCODE <goodfitcode>`   | Fit codes that can be used   | 1, 2, 3, 4                                   |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`BINVERT <binvert>`           | Verticies of each bin        | column 3      |         |                    |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`OUTALT <outalt>`             | Altitudes of geodetic output | 100.,150.,200.,250.,300.,350.,400.,450.,500. |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`UPB_BEAMCODE <upb_beamcode>` | Beam code of "up-B" beam     | 64157         |         |                    |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`IONUP <ionup>`               | Ion upflow correction method | UPB           |         |  UPB               |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`USE_BEAMS <use_beams>`       | Beam codes to use            | 64016, 64157, 64964                          |
-|          +------------------------------------+------------------------------+---------------+---------+--------------------+
-|          | :ref:`INTTIME <inttime>`           | Post-integration time        | 180                                          |
-+----------+------------------------------------+------------------------------+---------------+---------+--------------------+
-| PLOTTING | :ref:`PLOTSAVEDIR <plotsavedir>`   | Directory to save plots to   | /home/user/vvels/plots                       |
-+----------+------------------------------------+------------------------------+---------------+---------+--------------------+
++----------+------------------------------------+--------------------------------+---------------+---------+--------------------+
+| Category | Parameter                          | Description                    | PFISR         | RISR-N  | RISR-C             |
++==========+====================================+================================+===============+=========+====================+
+| FILEIO   | :ref:`DATAFILE <datafile>`         | Input file name                | 20190328.006_lp_1min-fitcal.h5               |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`OUTFILENAME <outfilename>`   | Output file name               | 20190328.006_lp_1min-fitcal_vvels.h5         |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`OUTFILEPATH <outfilepath>`   | Output file path               | /home/users/vvels/output/ \+                 |
++----------+------------------------------------+--------------------------------+---------------+---------+--------------------+
+| CONFIG   | :ref:`CHIRP <chirp>`               | Correction for frequency chirp | 0.0 \*                                       |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`NELIM <nelim>`               | Density limits                 | 2.0e9, 1.0e13 \*                             |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`COVAR <covar>`               | A priori covariance matrix     | 9.0e6,9.0e6,2.5e3 \*                         |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`ALTLIM <altlim>`             | Altitude limits                | 150., 400. \*                                |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`CHI2LIM <chi2lim>`           | :math:`\chi^2` limits          | 0.1, 10. \*                                  |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`GOODFITCODE <goodfitcode>`   | Fit codes that can be used     | 1, 2, 3, 4 \*                                |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`BINVERT <binvert>`           | Verticies of each bin          |                                              |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`OUTALT <outalt>`             | Altitudes of geodetic output   | 200.,250.,300.,350.,400.,450.,500.           |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`UPB_BEAMCODE <upb_beamcode>` | Beam code of "up-B" beam       | 64157 \*\+    |         | 65426 \*\+         |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`IONUP <ionup>`               | Ion upflow correction method   | UPB \*\+      |         | UPB \*\+           |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`USE_BEAMS <use_beams>`       | Beam codes to use              | 64016, 64157, 64964 \+                       |
+|          +------------------------------------+--------------------------------+---------------+---------+--------------------+
+|          | :ref:`INTTIME <inttime>`           | Post-integration time          | 180 \+                                       |
++----------+------------------------------------+--------------------------------+---------------+---------+--------------------+
+| PLOTTING | :ref:`PLOTSAVEDIR <plotsavedir>`   | Directory to save plots to     | /home/user/vvels/plots                       |
++----------+------------------------------------+--------------------------------+---------------+---------+--------------------+
 
-An example configuration file is found `here <github url>`_
+\* Value is recommended for most normal use cases
+
+\+ Optional parameter
+
+An `example configuration file <https://github.com/amisr/resolvedvelocities/blob/develop/example_config.ini>`_ is provided that can be copied and adapted as necessary.
 
 
 Detailed Descriptions
@@ -61,7 +65,7 @@ OUTFILEPATH: (Optional) The path where the output resolved velocities hdf5 data 
 
 .. _chirp:
 
-CHIRP:
+CHIRP: The line-of-sight velocity correction that should be added to the measured line-of-sight velocity to correct for a frequency chirp in the radar transmit pulse.  This correction should only be necessary for certain RISR-N experiments.
 
 .. _nelim:
 
@@ -97,7 +101,7 @@ UPB_BEAMCODE: (Optional) Beam code for the beam pointing directly up the magneti
 
 .. _ionup:
 
-IONUP: The method used to calculate and correct for any ion upflow component of the velocity.
+IONUP: (Optional) The method used to calculate and correct for any ion upflow component of the velocity.
 
 .. _use_beams:
 
