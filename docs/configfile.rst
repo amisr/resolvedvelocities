@@ -1,3 +1,5 @@
+.. _configfile:
+
 Configuration File
 ==================
 
