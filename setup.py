@@ -20,17 +20,6 @@ with open(REQSFILE, 'r') as f:
     REQUIREMENTS = f.readlines()
 REQUIREMENTS = '\n'.join(REQUIREMENTS)
 
-# Do some nice things to help users install on conda.
-if sys.version_info[:2] < (3, 0):
-    EXCEPTION = OSError
-else:
-    EXCEPTION = subprocess.builtins.FileNotFoundError
-try:
-    subprocess.call(['conda', 'install', ' '.join(REQUIREMENTS)])
-    REQUIREMENTS = []
-except EXCEPTION:
-    pass
-
 # Get the readme text
 README = os.path.join(here, 'README.rst')
 with open(README, 'r') as f:
