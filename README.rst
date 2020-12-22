@@ -23,7 +23,7 @@ The `apexpy <https://apexpy.readthedocs.io/en/latest/>`_ dependency MUST be inst
 Documentation
 -------------
 
-Full documentation is available at <readthedocs link>
+Full documentation is available at `<https://resolvedvelocities.readthedocs.io/en>`_.
 
 Source Code
 -----------

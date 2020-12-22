@@ -47,7 +47,7 @@ The configuration file provides important specifications about how the `resolved
 
 \+ Optional parameter
 
-An `example configuration file <https://github.com/amisr/resolvedvelocities/blob/develop/example_config.ini>`_ is provided that can be copied and adapted as necessary.
+An `example configuration file <https://github.com/amisr/resolvedvelocities/blob/master/example_config.ini>`_ is provided that can be copied and adapted as necessary.
 
 
 Detailed Descriptions
