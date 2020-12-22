@@ -19,7 +19,7 @@
 import os
 import sys
 
-from visuamisr import __version__
+from resolvedvelocies import __version__
 
 # sys.path.insert(0, os.path.abspath('.'))
 # mock modules for c extensions
