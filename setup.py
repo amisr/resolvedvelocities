@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-resolvedvelocities calculates the 2D plasma drift velocity
+resolvedvelocities calculates the 3D plasma drift velocity
   and convection electric field from AMISR LoS velocities
   using the algorithm described by Heinselman and Nicolls, 2008
 The full license can be found in LICENSE.txt
