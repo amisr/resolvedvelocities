@@ -3,7 +3,7 @@ resolvedvelocities
 
 Overview
 --------
-`resolvedvelocities` is the python implementation of the Heinselman and Nicolls Bayesian reconstruction algorithm [1]_ used to resolved 3D ion drift velocity and electric field vectors from AMISR line-of-sight measurements.
+`resolvedvelocities` is a Python implementation of the Heinselman and Nicolls Bayesian reconstruction algorithm [1]_ used to resolved 3D ion drift velocity and electric field vectors from AMISR line-of-sight measurements. In addition, this library uses a rotated pole transformation to avoid distorted latitude bins near the poles.
 
 Quick Start
 -----------

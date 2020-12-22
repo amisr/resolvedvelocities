@@ -67,7 +67,7 @@ OUTFILEPATH: (Optional) The path where the output resolved velocities hdf5 data 
 
 .. _chirp:
 
-CHIRP: The line-of-sight velocity correction that should be added to the measured line-of-sight velocity to correct for a frequency chirp in the radar transmit pulse.  This correction should only be necessary for certain RISR-N experiments.
+CHIRP: The line-of-sight velocity correction that should be added to the measured line-of-sight velocity to correct for a frequency chirp in the radar transmit pulse.  For the AMISRs, this correction is only necessary for some RISR-N experiments.
 
 .. _nelim:
 
@@ -95,7 +95,7 @@ BINVERT: The list of vertices that define each bin.  These should be given in ma
 
 .. _outalt:
 
-OUTALT: The list of altitudes (in kilometers) geodetic components of the output velocity and electric field should be calculated at.  The output files contain the Apex components, which are constant along magnetic field lines, but for convenience, geodetic components are also included for a discrete grid defined by the locations of the bin centers and this output altitude array.
+OUTALT: The list of altitudes (in kilometers) at which geodetic components of the output velocity and electric field should be calculated at. The output files contain the Apex components, which are constant along magnetic field lines, but for convenience, geodetic components are also included for a discrete grid defined by the locations of the bin centers and this output altitude array.
 
 .. _marprot:
 
@@ -115,7 +115,7 @@ USE_BEAMS: (Optional) A list of specific beam codes that should be used for the 
 
 .. _inttime:
 
-INTTIME: (Optional) Post-integration period (in seconds) that should be used to reconstruct vectors for a single time stamp in the output file.  Because the input processed data has discrete time stamps (usually on a cadence greater than one minute), the output file will typically not have exactly this resolution unless an integration time is selected that is an exact multiple of the cadence of the input data file.  Instead, the code with post-integrate the smallest number of input time stamps that cover a period greater than the specified integration time.  If this parameter is omitted, the native times of the input file are used (no post-integration).
+INTTIME: (Optional) Post-integration period (in seconds) that should be used to reconstruct vectors for a single time stamp in the output file.  Because the input processed data has discrete time stamps (usually on a cadence greater than one minute), the output file will typically not have exactly this resolution unless an integration time is selected that is an exact multiple of the cadence of the input data file.  Instead, the code will post-integrate the smallest number of input time stamps that cover a period greater than or equal to the specified integration time.  If this parameter is omitted, the native times of the input file are used (no post-integration).
 
 .. _plotsavedir:
 
