@@ -26,7 +26,7 @@ The configuration file provides important specifications about how the `resolved
 |          +------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`GOODFITCODE <goodfitcode>`   | Fit codes that can be used     | 1, 2, 3, 4 \*                                |
 |          +------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`BINVERT <binvert>`           | Vertices of each bin          | see :ref:`Velocity Bins <bins>`              |
+|          | :ref:`BINVERT <binvert>`           | Vertices of each bin           | see :ref:`Velocity Bins <bins>`              |
 |          +------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`OUTALT <outalt>`             | Altitudes of geodetic output   | 200.,250.,300.,350.,400.,450.,500.           |
 |          +------------------------------------+--------------------------------+---------------+--------------+---------------+
