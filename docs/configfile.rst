@@ -55,7 +55,7 @@ Detailed Descriptions
 
 .. _datafile:
 
-DATAFILE: The name of the input processed AMISR data file the algorithm should be run on.  This can include a path if the file if the file is not in the run directory.  This should be a hdf5 file output from the standard AMISR fitting routine.
+DATAFILE: The name of the input processed AMISR data file the algorithm should be run on.  This can include a path if the file is not in the run directory.  This should be a hdf5 file output from the standard AMISR fitting routine.
 
 .. _outfilename:
 
