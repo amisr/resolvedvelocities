@@ -61,5 +61,5 @@ def compute_velvec2(PLAT,AllVlos,AlldVlos,Allk,AllPlat,AllPlong,Allht,htmin=150.
                 chi2[i] = np.sum(temp**2) / Nmeas[i]
             except Exception:
                 pass
-        
+
     return plat_out, Vest, dVest, dVestAll, Nmeas, chi2

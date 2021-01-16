@@ -16,6 +16,7 @@ import ioutils
 from ioclass import OutputFileClass
 
 import numpy as np
+from apexpy import Apex
 
 
 class vvelsLatFile(OutputFileClass):
@@ -79,7 +80,7 @@ class vvelsLat:
     
     def __init__(self,inifiles,sec):
     
-        self.DefaultIni = '/home/asreimer/projects/AMISR/development/source_code/fitting_software/amisr-src/src/ISfit/AMISR_fitter_py/config/config_vvelsLat-default.ini'
+        # self.DefaultIni = '/home/asreimer/projects/AMISR/development/source_code/fitting_software/amisr-src/src/ISfit/AMISR_fitter_py/config/config_vvelsLat-default.ini'
 
         print inifiles
         print sec
@@ -104,10 +105,10 @@ class vvelsLat:
         # setup ConfigParser object
         config=ConfigParser.ConfigParser()
         
-        # read default ini file
-        fn = config.read(self.DefaultIni)
-        if len(fn)!=1 or fn[0]!=self.DefaultIni:
-            raise IOError, 'Unable to read default ini file %s' % self.DefaultIni
+        # # read default ini file
+        # fn = config.read(self.DefaultIni)
+        # if len(fn)!=1 or fn[0]!=self.DefaultIni:
+        #     raise IOError, 'Unable to read default ini file %s' % self.DefaultIni
 
         # read supplied ini file
         config.read(inifile.split(','))
@@ -119,23 +120,42 @@ class vvelsLat:
         self.config=config
 
         # set processing parameters
-        self.minAlt=eval(ioutils.ini_tool(config,sec,'minalt',required=0,defaultParm=config.get('DefaultParameters','minalt')))
-        self.maxAlt=eval(ioutils.ini_tool(config,sec,'maxalt',required=0,defaultParm=config.get('DefaultParameters','maxalt')))
-        self.ppp=eval(ioutils.ini_tool(config,sec,'ppp',required=0,defaultParm=config.get('DefaultParameters','ppp')))
-        self.covar=eval(ioutils.ini_tool(config,sec,'covar',required=0,defaultParm=config.get('DefaultParameters','covar')))
-        self.zoomWhole=eval(ioutils.ini_tool(config,sec,'zoomwhole',required=0,defaultParm=config.get('DefaultParameters','zoomwhole')))
-        self.chirp=eval(ioutils.ini_tool(config,sec,'chirp',required=0,defaultParm=config.get('DefaultParameters','chirp')))
-        self.neMin=eval(ioutils.ini_tool(config,sec,'nemin',required=0,defaultParm=config.get('DefaultParameters','nemin')))
-        self.byGeo=eval(ioutils.ini_tool(config,sec,'bygeo',required=0,defaultParm=config.get('DefaultParameters','bygeo')))
-        self.Time2Integrate=eval(ioutils.ini_tool(config,sec,'time2integrate',required=1,defaultParm=config.get('DefaultParameters','time2integrate')))
-        self.plats=eval(ioutils.ini_tool(config,sec,'plats',required=1,defaultParm=config.get('DefaultParameters','plats')))
-        self.CorrectVap=eval(ioutils.ini_tool(config,sec,'correctvap',required=0,defaultParm=config.get('DefaultParameters','correctvap')))
-        self.upBcode=eval(ioutils.ini_tool(config,sec,'upbcode',required=0,defaultParm=config.get('DefaultParameters','upbcode')))
-        self.beams2use=eval(ioutils.ini_tool(config,sec,'beams2use',required=0,defaultParm=list()))
+        # self.minAlt=eval(ioutils.ini_tool(config,sec,'minalt',required=1,defaultParm=config.get('DefaultParameters','minalt')))
+        # self.maxAlt=eval(ioutils.ini_tool(config,sec,'maxalt',required=1,defaultParm=config.get('DefaultParameters','maxalt')))
+        # self.ppp=eval(ioutils.ini_tool(config,sec,'ppp',required=1,defaultParm=config.get('DefaultParameters','ppp')))
+        # self.covar=eval(ioutils.ini_tool(config,sec,'covar',required=1,defaultParm=config.get('DefaultParameters','covar')))
+        # self.zoomWhole=eval(ioutils.ini_tool(config,sec,'zoomwhole',required=1,defaultParm=config.get('DefaultParameters','zoomwhole')))
+        # self.chirp=eval(ioutils.ini_tool(config,sec,'chirp',required=1,defaultParm=config.get('DefaultParameters','chirp')))
+        # self.neMin=eval(ioutils.ini_tool(config,sec,'nemin',required=1,defaultParm=config.get('DefaultParameters','nemin')))
+        # self.byGeo=eval(ioutils.ini_tool(config,sec,'bygeo',required=1,defaultParm=config.get('DefaultParameters','bygeo')))
+        # self.Time2Integrate=eval(ioutils.ini_tool(config,sec,'time2integrate',required=1,defaultParm=config.get('DefaultParameters','time2integrate')))
+        # self.plats=eval(ioutils.ini_tool(config,sec,'plats',required=1,defaultParm=config.get('DefaultParameters','plats')))
+        # self.CorrectVap=eval(ioutils.ini_tool(config,sec,'correctvap',required=1,defaultParm=config.get('DefaultParameters','correctvap')))
+        # self.upBcode=eval(ioutils.ini_tool(config,sec,'upbcode',required=1,defaultParm=config.get('DefaultParameters','upbcode')))
+        # self.beams2use=eval(ioutils.ini_tool(config,sec,'beams2use',required=1,defaultParm=list()))
+        # # set plotting parameters
+        # self.makeplot=eval(ioutils.ini_tool(config,sec,'makeplot',required=1,defaultParm=config.get('DefaultParameters','makeplot')))
+        # self.clim=eval(ioutils.ini_tool(config,sec,'clim',required=1,defaultParm=config.get('DefaultParameters','clim')))
+        # self.sc=eval(ioutils.ini_tool(config,sec,'sc',required=1,defaultParm=config.get('DefaultParameters','sc')))
+
+        self.minAlt=eval(ioutils.ini_tool(config,sec,'minalt',required=1))
+        self.maxAlt=eval(ioutils.ini_tool(config,sec,'maxalt',required=1))
+        self.ppp=eval(ioutils.ini_tool(config,sec,'ppp',required=1))
+        self.covar=eval(ioutils.ini_tool(config,sec,'covar',required=1))
+        self.zoomWhole=eval(ioutils.ini_tool(config,sec,'zoomwhole',required=1))
+        self.chirp=eval(ioutils.ini_tool(config,sec,'chirp',required=1))
+        self.neMin=eval(ioutils.ini_tool(config,sec,'nemin',required=1))
+        self.byGeo=eval(ioutils.ini_tool(config,sec,'bygeo',required=1))
+        self.Time2Integrate=eval(ioutils.ini_tool(config,sec,'time2integrate',required=1))
+        self.plats=eval(ioutils.ini_tool(config,sec,'plats',required=1))
+        self.CorrectVap=eval(ioutils.ini_tool(config,sec,'correctvap',required=1))
+        self.upBcode=eval(ioutils.ini_tool(config,sec,'upbcode',required=1))
+        self.beams2use=eval(ioutils.ini_tool(config,sec,'beams2use',required=1))
         # set plotting parameters
-        self.makeplot=eval(ioutils.ini_tool(config,sec,'makeplot',required=0,defaultParm=config.get('DefaultParameters','makeplot')))
-        self.clim=eval(ioutils.ini_tool(config,sec,'clim',required=0,defaultParm=config.get('DefaultParameters','clim')))
-        self.sc=eval(ioutils.ini_tool(config,sec,'sc',required=0,defaultParm=config.get('DefaultParameters','sc')))
+        self.makeplot=eval(ioutils.ini_tool(config,sec,'makeplot',required=1))
+        self.clim=eval(ioutils.ini_tool(config,sec,'clim',required=1))
+        self.sc=eval(ioutils.ini_tool(config,sec,'sc',required=1))
+
         
         # get filenames
         self.saveout=1
@@ -190,6 +210,8 @@ class vvelsLat:
             'MinimumElectronDensity' : self.neMin,\
             'VelocityOffsetCorrection': self.chirp,\
         }
+
+        self.Output = {}
 
         try: self.Params['PulseLength']=dat['/ProcessingParams']['PulseLength']
         except: self.Params['PulseLength']=0.0
@@ -475,27 +497,79 @@ class vvelsLat:
             IupB=np.where(BeamCodes[:,0]==upBcode)[0]
             InotUpB=np.where(BeamCodes[:,0]!=upBcode)[0]
 
+
+
+        # geographic k vectors and locations from hdf5 file
+        kn=dat1['/Geomag']['kn'][bm_inds,:]
+        ke=dat1['/Geomag']['ke'][bm_inds,:]
+        kz=dat1['/Geomag']['kz'][bm_inds,:]
+        glat=dat1['/Geomag']['Latitude'][bm_inds,:]
+        glon=dat1['/Geomag']['Longitude'][bm_inds,:]
+        alt=dat1['/Geomag']['Altitude'][bm_inds,:]
+
+        # find array shape and where nans will be removed
+        arr_shape = glat.shape
+        removed_nans = np.argwhere(np.isnan(glat.ravel())).flatten()
+
+        # remove nans and flatten array
+        glat = glat[np.isfinite(glat)]
+        glon = glon[np.isfinite(glon)]
+        alt = alt[np.isfinite(alt)]
+
+        # intialize apex coordinates
+        A = Apex(date=2019)     # date should be set by some information in data file
+
+        # find magnetic latitude and longitude
+        plat, plong = A.geo2apex(glat,glon,alt/1000.)
+
+        # kvec in geodetic coordinates [e n u]
+        kvec = np.array([ke[np.isfinite(ke)], kn[np.isfinite(kn)], kz[np.isfinite(kz)]])
+        # apex basis vectors in geodetic coordinates [e n u]
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = A.basevectors_apex(glat,glon,alt)
+        # find components of k for e1, e2, e3 basis vectors (Laundal and Richmond, 2016 eqn. 60)
+        ke1 = np.einsum('ij,ij->j',kvec,d1)
+        ke2 = np.einsum('ij,ij->j',kvec,d2)
+        ke3 = np.einsum('ij,ij->j',kvec,d3)
+
+        # reintroduce NANs and reshape the array
+        # find indices where nans should be inserted in new arrays
+        replace_nans = np.array([r-i for i,r in enumerate(removed_nans)])
+
+        plat = np.insert(plat,replace_nans,np.nan).reshape(arr_shape)
+        plong = np.insert(plong,replace_nans,np.nan).reshape(arr_shape)
+
+        ke1 = np.insert(ke1,replace_nans,np.nan).reshape(arr_shape)
+        ke2 = np.insert(ke2,replace_nans,np.nan).reshape(arr_shape)
+        ke3 = np.insert(ke3,replace_nans,np.nan).reshape(arr_shape)
+
+        # DON'T NEED
+        # convert to magnetic NEU (approximately)
+        kpe = ke1
+        kpn = -ke2
+        kpar = -ke3
+
+
         # geomag
-        if self.byGeo>0: # geographic
-            kpn=dat1['/Geomag']['kn'][bm_inds,:]
-            kpe=dat1['/Geomag']['ke'][bm_inds,:]
-            kpar=dat1['/Geomag']['kz'][bm_inds,:]
-            if self.byGeo==2:
-                plat=dat1['/Geomag']['Latitude'][bm_inds,:]
-                plong=dat1['/Geomag']['Longitude'][bm_inds,:]
-            else:
-                plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
-                plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
-        else: # geomagnetic
-            kpn=dat1['/Geomag']['kpn'][bm_inds,:]
-            kpe=dat1['/Geomag']['kpe'][bm_inds,:]
-            kpar=dat1['/Geomag']['kpar'][bm_inds,:]
-            try:
-                plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
-                plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
-            except:
-                plat=dat1['/Geomag']['plat']    #???
-                plong=dat1['/Geomag']['plong']  #???
+        # if self.byGeo>0: # geographic
+        #     kpn=dat1['/Geomag']['kn'][bm_inds,:]
+        #     kpe=dat1['/Geomag']['ke'][bm_inds,:]
+        #     kpar=dat1['/Geomag']['kz'][bm_inds,:]
+        #     if self.byGeo==2:
+        #         plat=dat1['/Geomag']['Latitude'][bm_inds,:]
+        #         plong=dat1['/Geomag']['Longitude'][bm_inds,:]
+        #     else:
+        #         plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
+        #         plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
+        # else: # geomagnetic
+        #     kpn=dat1['/Geomag']['kpn'][bm_inds,:]
+        #     kpe=dat1['/Geomag']['kpe'][bm_inds,:]
+        #     kpar=dat1['/Geomag']['kpar'][bm_inds,:]
+        #     try:
+        #         plat=dat1['/Geomag']['MagneticLatitude'][bm_inds,:]
+        #         plong=dat1['/Geomag']['MagneticLongitude'][bm_inds,:]
+        #     except:
+        #         plat=dat1['/Geomag']['plat']    #???
+        #         plong=dat1['/Geomag']['plong']  #???
         Bn=dat1['/Geomag']['Bx'][bm_inds,:]
         Be=dat1['/Geomag']['By'][bm_inds,:]
         Bz=dat1['/Geomag']['Bz'][bm_inds,:]
@@ -597,16 +671,20 @@ class vvelsLat:
 
                 # k vector (this is in mag coords)
                 kin=np.zeros((Nbeams,Nhts,3),dtype=kpn.dtype)
-                kin[:,:,0]=kpn
-                kin[:,:,1]=kpe
-                kin[:,:,2]=kpar
+                # kin[:,:,0]=kpn
+                # kin[:,:,1]=kpe
+                # kin[:,:,2]=kpar
+                kin[:,:,0]=ke1
+                kin[:,:,1]=ke2
+                kin[:,:,2]=ke3
                 kin=np.reshape(np.repeat(kin[np.newaxis,:,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams,3))
 
-                ekin=np.zeros((Nbeams,Nhts,3),dtype=kpn.dtype)
-                ekin[:,:,0]=(-Be*kpar-Bz*kpe)/Babs**2.0
-                ekin[:,:,1]=(Bz*kpn+Bn*kpar)/Babs**2.0
-                ekin[:,:,2]=(Bn*kpe-Be*kpn)/Babs**2.0
-                ekin=np.reshape(np.repeat(ekin[np.newaxis,:,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams,3))
+                # # DON'T NEED
+                # ekin=np.zeros((Nbeams,Nhts,3),dtype=kpn.dtype)
+                # ekin[:,:,0]=(-Be*kpar-Bz*kpe)/Babs**2.0
+                # ekin[:,:,1]=(Bz*kpn+Bn*kpar)/Babs**2.0
+                # ekin[:,:,2]=(Bn*kpe-Be*kpn)/Babs**2.0
+                # ekin=np.reshape(np.repeat(ekin[np.newaxis,:,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams,3))
                 
                 # magnetic field
                 bin=np.reshape(np.repeat(Babs[np.newaxis,:,:],len(Irecs),axis=0),(len(Irecs)*Nhts*Nbeams))
@@ -618,8 +696,27 @@ class vvelsLat:
 
                 # compute vectors
                 (plat_out1,Vest,dVest,vVestAll,Nmeas,vchi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,kin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covar,p=self.ppp)
-                (plat_out1,Eest,dEest,vEestAll,Nmeas1,echi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,ekin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covarE,p=self.ppp)
-                Eest[:,-1]*=-1
+                dVest = np.diagonal(vVestAll,axis1=1,axis2=2)
+
+                # rotate velocity to get the elecric field
+                # assume magnetic longitude of site PFISR MLON = 267.4
+                plon_out1 = np.full(plat_out1.shape, 267.4)
+
+                # find Be3 value at each output bin location
+                Be3, __, __, __ = A.bvectors_apex(plat_out1,plon_out1,300.,coords='apex')
+                # Be3 = np.full(plat_out1.shape,1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
+
+                # form rotation array
+                R_E = np.einsum('i,jk->ijk',Be3,np.array([[0,-1,0],[1,0,0],[0,0,0]]))
+                # Calculate contravarient components of electric field (Ed1, Ed2, Ed2)
+                Eest = np.einsum('ijk,ik->ij',R_E,Vest)
+                # Calculate electric field covariance matrix (SigE = R_E*SigV*R_E.T)
+                vEestAll = np.einsum('ijk,ikl,iml->ijm',R_E,vVestAll,R_E)
+                dEest = np.diagonal(vEestAll,axis1=1,axis2=2)
+
+                # # DON'T NEED
+                # (plat_out1,Eest,dEest,vEestAll,Nmeas1,echi2)=vvels.compute_velvec2(PLAT_OUT,vlosin,dvlosin,ekin,platin,plongin,htin,htmin=self.minAlt*1000,htmax=self.maxAlt*1000,covar=self.covarE,p=self.ppp)
+                # Eest[:,-1]*=-1
 
                 timeout.append([time1[Irecs[0],0],time1[Irecs[-1],1]])
                 dtimeout.append([dtime1[Irecs[0],0],dtime1[Irecs[-1],1]])
@@ -695,6 +792,13 @@ class vvelsLat:
             self.VectorVels['varEest'] = varevec1
             self.VectorVels['Emag'] = Emag; self.VectorVels['errEmag'] = dEmag
             self.VectorVels['Edir'] = Edir; self.VectorVels['errEdir'] = dEdir
+
+            self.Output['Velocity'] = vvels1
+            self.Output['ElectricField'] = evec1
+            self.Output['SigV'] = varvvels1
+            self.Output['SigE'] = varevec1
+            self.Output['MLAT'] = plat_out1
+            self.Output['MLON'] = plon_out1
             
             ### Output file
             if self.saveout:
@@ -705,7 +809,23 @@ class vvelsLat:
                 if (timeout[-1,-1]-timeout[0,0])/3600.0>36.0:
                     self.createPlots_byTime(ofname,binByDay=1)
                 else:
-                    self.createPlots(ofname)                
+                    self.createPlots(ofname)
+
+            self.create_new_output('test_vvels.h5',vvels1,varvvels1,evec1,varevec1)        
         
+        return
+
+    def create_new_output(self,filename,vel,vel_cov,E,E_cov):
+        import tables
+
+        with tables.open_file(filename,mode='w') as file:
+            file.create_array('/','UnixTime',self.Time['UnixTime'])
+            file.create_array('/','MagneticLatitude',self.Output['MLAT'])
+            file.create_array('/','MagneticLongitude',self.Output['MLON'])
+            file.create_array('/','Velocity',self.Output['Velocity'])
+            file.create_array('/','SigmaV',self.Output['SigV'])
+            file.create_array('/','ElectricField',self.Output['ElectricField'])
+            file.create_array('/','SigmaE',self.Output['SigE'])
+
         return
         
