@@ -73,6 +73,7 @@ setup(name='resolvedvelocities',
       entry_points={
           'console_scripts': [
               'resolvedvelocities=resolvedvelocities.run_resolve_vectors:main',
+              'resolvedalts=resolvedalts.ResolveVectors:main',
         ],
 }
       )
