@@ -9,7 +9,7 @@ class FittedVelocityDataHandler(object):
         if not len(filelist):
             raise Exception('File list is empty.')
         self.filelist = filelist
-        
+
         # check for FITS array in the files
         has_fits = self.__has_fits_array(self.filelist[0])
 
@@ -76,6 +76,7 @@ class FittedVelocityDataHandler(object):
             temp_shape['ne'] = h5.root.FittedParams.Ne.shape
             temp_shape['vel'] = h5.root.FittedParams.Fits.shape[0:3]
             temp_shape['altitude'] = h5.root.FittedParams.Altitude.shape
+            temp_shape['mlat'] = h5.root.Geomag.MagneticLatitude.shape
 
         self.__array_shapes = temp_shape
 
@@ -109,6 +110,7 @@ class FittedVelocityDataHandler(object):
                 temp_data['evel'] = h5.root.FittedParams.Errors[:,:,:,0,3]
                 temp_data['chi2'] = h5.root.FittedParams.FitInfo.chi2.read()
                 temp_data['ne']   = h5.root.FittedParams.Ne.read()
+                temp_data['mlat'] = h5.root.Geomag.MagneticLatitude.read()
 
                 # k-vectors
                 temp_data['kvec'] = h5.root.Geomag.kvec.read()
@@ -168,6 +170,7 @@ class FittedVelocityDataHandler(object):
 
         data['kvec']     = self.__loaded_data['kvec']
         data['altitude'] = self.__loaded_data['altitude']
+        data['mlat'] = self.__loaded_data['mlat']
 
         data['site'] = self.__loaded_data['site']
 
@@ -213,6 +216,7 @@ class FittedVelocityDataHandler(object):
                 data['altitude'] = temp['altitude']
                 data['site']     = temp['site']
                 data['bmcodes']  = temp['bmcodes']
+                data['mlat']     = temp['mlat']
 
             data['vel'][i,:]  = temp['vel']
             data['evel'][i,:] = temp['evel']
@@ -220,5 +224,3 @@ class FittedVelocityDataHandler(object):
             data['ne'][i,:]   = temp['ne']
 
         return data, temp_times
-
-

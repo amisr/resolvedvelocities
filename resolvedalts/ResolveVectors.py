@@ -295,10 +295,13 @@ class ResolveVectorsAlt(object):
                 # filter data by Ne < 10**9 and by chi2 < 10
                 bad_ne_inds = np.where(data['ne'] < 1.0e9)
                 bad_chi2_inds = np.where(data['chi2'] > 10)
+                bad_mlat_inds = np.where(data['mlat'] > 69.0)
                 data['vel'][bad_ne_inds] = np.nan
                 data['evel'][bad_ne_inds] = np.nan
                 data['vel'][bad_chi2_inds] = np.nan
                 data['evel'][bad_chi2_inds] = np.nan
+                data['vel'][:,bad_mlat_inds] = np.nan
+                data['evel'][:,bad_mlat_inds] = np.nan
 
                 kvec_xyz = data['kvec'] #np.array((neu_to_xyz * np.matrix(data['kvec']).T).T)
 
