@@ -426,7 +426,7 @@ class ResolveVectorsAlt(object):
     def run(self):
         # First check if output file is able to be created
         temp_file = tempfile.mktemp()
-        output_file = self.config['output']['output_name']
+        output_file = os.path.join(self.config['output']['output_path'],self.config['output']['output_name'])
 
         # Run the calculator and write output to a file
         output = self.do_vvels()
@@ -494,7 +494,7 @@ class ResolveVectorsAlt(object):
         # remove the temporary file
         print("Cleaning up...")
         os.remove(temp_file)
-        
+
         print("Plotting...")
         plotter = ra.ResolvedAltPlotter(output_file)
         plotter.make_plot()
@@ -538,7 +538,7 @@ class ResolveVectorsAlt(object):
             RawFiles += temp
 
         # Record the directory where fitted files can be found
-        OutputPath = os.path.abspath(self.config['output']['output_path'])
+        # OutputPath = os.path.abspath(self.config['output']['output_path'])
 
         # Open the fitted h5 file
         with tables.open_file(h5name,'r+') as h5:
@@ -547,7 +547,7 @@ class ResolveVectorsAlt(object):
             h5.create_group(node_path,'ConfigFiles',title='Config File Information',createparents=True)
             h5.create_array(node_path,'SoftwareVersion',np.array(Version),title='Version of software that made this file',createparents=True)
             h5.create_array(node_path,'RawFiles',np.array(RawFiles),title='The raw files used to produce this file',createparents=True)
-            h5.create_array(node_path,'OutputPath',np.array(OutputPath),title='Path where this file was originally made',createparents=True)
+            # h5.create_array(node_path,'OutputPath',np.array(OutputPath),title='Path where this file was originally made',createparents=True)
             node_path = '/ProcessingParams/ComputerInfo'
             h5.create_array(node_path,'PythonVersion',np.array(PythonVersion),title='Version of python used',createparents=True)
             h5.create_array(node_path,'Type',np.array(Type),title='Type of operating system',createparents=True)
@@ -599,7 +599,7 @@ class repackh5(object):
                             except AttributeError:
                                 shape = ()
                                 is_array = False
-                            
+
                             #attributes
                             output_attribs = dict()
                             input_attribs = node.attrs.__dict__
@@ -654,7 +654,7 @@ def main():
     parser = ArgumentParser(description=config_file_help,
                             formatter_class=RawDescriptionHelpFormatter)
     arg = parser.add_argument('config_file',help='A configuration file.')
-    
+
     args = vars(parser.parse_args())
     vvelsalt = ResolveVectorsAlt(args['config_file'])
     vvelsalt.run()
