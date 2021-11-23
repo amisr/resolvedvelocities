@@ -48,7 +48,7 @@ class ResolveVectors(object):
 
         # Possibly could done better with converters?  This may by python3 specific though.
         self.datafile = config.get('FILEIO', 'DATAFILE')
-        
+
         self.outfilename = config.get('FILEIO', 'OUTFILENAME')
         self.chirp = config.getfloat('CONFIG', 'CHIRP')
         self.covar = [float(i) for i in config.get('CONFIG', 'COVAR').split(',')]
@@ -57,6 +57,7 @@ class ResolveVectors(object):
         self.chi2lim = [float(i) for i in config.get('CONFIG', 'CHI2LIM').split(',')]
         self.goodfitcode = [float(i) for i in config.get('CONFIG', 'GOODFITCODE').split(',')]
         self.binvert = eval(config.get('CONFIG', 'BINVERT'))
+        # can probably change this parameter to a list of start, end, step similar to vvelsAlt
         self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
         self.marprot = [float(i) for i in config.get('CONFIG', 'MARPROT').split(',')]
 
@@ -169,7 +170,7 @@ class ResolveVectors(object):
         # transform k vectors from geodetic to geomagnetic
 
         # find indices where nans exist in the altitude array and should be inserted in to other coordinate/component arrays
-        replace_nans = np.array([r - i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())])
+        replace_nans = np.array([r - i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())], dtype=int)
 
         glat = self.lat[np.isfinite(self.lat)]
         glon = self.lon[np.isfinite(self.lon)]
@@ -222,6 +223,7 @@ class ResolveVectors(object):
                 # NOTE: NOT DEVELOPED YET!!!
                 vupflow, dvupflow = ion_upflow(self.Te, self.Ti, self.ne, self.alt)
 
+            print(vupflow)
             # LoS velocity correction to remove ion upflow
             self.vlos[t] = self.vlos[t] + self.A[:,2]/self.D*vupflow
             # corrected error in new LoS velocities
@@ -305,7 +307,7 @@ class ResolveVectors(object):
                 # and bins
                 vlos = self.vlos[tidx,bidx[:,np.newaxis]].flatten()
                 dvlos = self.dvlos[tidx,bidx[:,np.newaxis]].flatten()
-                # pull out the k vectors for the bins and duplicate so they 
+                # pull out the k vectors for the bins and duplicate so they
                 # match the number of time measurements
                 if self.integration_time:
                     A = np.repeat(self.A[bidx], len(tidx), axis=0)
@@ -413,7 +415,7 @@ class ResolveVectors(object):
         # TODO: come up with a better way to manage all this
 
         # save output file
-        output = os.path.join(self.outfilepath, self.outfilename) 
+        output = os.path.join(self.outfilepath, self.outfilename)
         FILTERS = tables.Filters(complib='zlib', complevel=1)
         with tables.open_file(output, mode='w',filters=FILTERS) as outfile:
 
@@ -641,7 +643,7 @@ class ResolveVectors(object):
             outfile.create_array('/ProcessingParams/Apexpy','RefHeight',self.marp.refh)
             outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'TITLE', 'Reference height used for Apex coordinates')
             outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'Units', 'km')
-            
+
             outfile.create_array('/ProcessingParams/Apexpy','Version',apexpy.__version__.encode('utf-8'))
             outfile.set_node_attr('/ProcessingParams/Apexpy/Version', 'TITLE', 'Apexpy version used.')
 

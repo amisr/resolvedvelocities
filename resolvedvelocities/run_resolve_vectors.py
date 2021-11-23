@@ -19,7 +19,7 @@ DATAFILE = /20190328.006/20190328.006_lp_1min-fitcal.h5
 OUTFILENAME = test_vvels.h5
 
 # output path to save file in (optional)
-OUTFILEPATH = 
+OUTFILEPATH =
 
 [CONFIG]
 # chirp
@@ -78,6 +78,7 @@ def main():
                             formatter_class=RawDescriptionHelpFormatter)
     arg = parser.add_argument('config_file',help='A configuration file.')
 
+    # this format doesn't really make a lot of sense, particularly because you can't skip most steps
     args = vars(parser.parse_args())
     rv = ResolveVectors(args['config_file'])
     rv.read_data()
