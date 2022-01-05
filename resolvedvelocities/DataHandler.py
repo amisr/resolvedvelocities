@@ -6,24 +6,24 @@ class FittedVelocityDataHandler(object):
     def __init__(self,filelist):
 
         # Input checking
-        if not len(filelist):
-            raise Exception('File list is empty.')
+        # if not len(filelist):
+        #     raise Exception('File list is empty.')
         self.filelist = filelist
 
-        # redundant error checking - consolidate
-        # check for FITS array in the files
-        has_fits = self.__has_fits_array(self.filelist[0])
-
-        if not has_fits:
-            raise Exception('Files are missing the /FittedParams/Fits array. Are you sure they are fitted data files?')
+        # # redundant error checking - consolidate
+        # # check for FITS array in the files
+        # has_fits = self.__has_fits_array(self.filelist[0])
+        #
+        # if not has_fits:
+        #     raise Exception('Files are missing the /FittedParams/Fits array. Are you sure they are fitted data files?')
 
         # read times from the files
-        self.__catalog_data()
+        # self.__catalog_data()
 
         # vvelsAlt does a lot of work checking arrays sizes
         # change to BTAFTP?
         # determine the array shapes in the files
-        self.__determine_array_sizes()
+        # self.__determine_array_sizes()
 
         # initialize file handling variables
         self.__loaded_file = None
@@ -31,17 +31,19 @@ class FittedVelocityDataHandler(object):
         self.__loaded_beamcodes = None
 
 
-    def __has_fits_array(self,filename):
-        with tables.open_file(filename,'r') as h5:
-            try:
-                node = h5.get_node('/FittedParams/Fits')
-                return True
-            except tables.NoSuchNodeError:
-                return False
+    # def __has_fits_array(self,filename):
+    #     with tables.open_file(filename,'r') as h5:
+    #         try:
+    #             node = h5.get_node('/FittedParams/Fits')
+    #             return True
+    #         except tables.NoSuchNodeError:
+    #             return False
 
 
     # This version has the ability to process multiple files together
     # Should retain this and expand it to the vvelsLat
+    # Table this for later - kind of confusing how it works/should work
+    # For now, just manage one file at a time
     def __catalog_data(self):
         # for each file in self.filelist, grab all the times and make a dictionary mapping to that file for each datetime
 
@@ -84,6 +86,112 @@ class FittedVelocityDataHandler(object):
             temp_shape['mlat'] = h5.root.Geomag.MagneticLatitude.shape
 
         self.__array_shapes = temp_shape
+
+    def read_data(self, use_beams=None):
+
+        self.data = {}
+
+        # read data from standard AMISR fit files
+        with tables.open_file(self.filelist,'r') as infile:
+
+            # time
+            self.data['time'] = infile.get_node('/Time/UnixTime')[:]
+
+            # site
+            lat = infile.get_node('/Site/Latitude').read()
+            lon = infile.get_node('/Site/Longitude').read()
+            alt = infile.get_node('/Site/Altitude').read()
+            self.data['site'] = np.array([lat, lon, alt/1000.])
+
+            # define which beams to use (default is all)
+            self.data['beam_codes'] = infile.get_node('/BeamCodes')[:,0]
+            if use_beams:
+                bm_idx = np.array([i for i,b in enumerate(self.data['beam_codes']) if b in use_beams])
+            else:
+                bm_idx = np.arange(0,len(self.data['beam_codes']))
+
+            # geodetic location of each measurement
+            self.data['alt'] = infile.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
+            self.data['lat'] = infile.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
+            self.data['lon'] = infile.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
+            self.data['mlat'] = infile.get_node('/Geomag/MagneticLatitude')[bm_idx,:].flatten()
+
+            # geodetic k vectors
+            self.data['ke'] = infile.get_node('/Geomag/ke')[bm_idx,:].flatten()
+            self.data['kn'] = infile.get_node('/Geomag/kn')[bm_idx,:].flatten()
+            self.data['kz'] = infile.get_node('/Geomag/kz')[bm_idx,:].flatten()
+
+            # ion masses
+            ion_mass = infile.get_node('/FittedParams/IonMass')[:]
+            nions = len(ion_mass)                                   # number of ions
+            ion_idx = np.argwhere(ion_mass==16.).flatten()[0]       # find index for O+
+
+            # line of sight velocity and error
+            self.data['vlos'] = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,ion_idx,3].reshape((len(self.data['time'][:,0]),len(self.data['alt'])))
+            self.data['dvlos'] = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,ion_idx,3].reshape((len(self.data['time'][:,0]),len(self.data['alt'])))
+
+            # chi2 and fitcode (for filtering poor quality data)
+            self.data['chi2'] = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.data['time'][:,0]),len(self.data['alt'])))
+            self.data['fitcode'] = infile.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.data['time'][:,0]),len(self.data['alt'])))
+
+            # density (for filtering and ion upflow correction)
+            self.data['ne'] = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.data['time'][:,0]),len(self.data['alt'])))
+
+            # # temperature (for ion upflow)
+            # self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,-1,1].reshape((len(self.time[:,0]),len(self.alt)))
+            # Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,1]
+            # frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,0]
+            # self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
+            #
+            # # get up-B beam velocities for ion outflow correction
+            # if self.upB_beamcode:
+            #     upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
+            #     if upB_idx:
+            #         upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
+            #         upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
+            #         upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
+            #         self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
+            #     else:
+            #         print('Warning: upB beam %d not found. Will not perform upflow subtraction.' % self.upB_beamcode)
+            #         self.upB = None
+            #         self.ionup = False
+
+    def filter(self, ne=None, alt=None, mlat=None, chi2=None, fitcode=None, chirp=0.):
+
+        with np.errstate(invalid='ignore'):
+
+            # add chirp to LoS velocity
+            self.data['vlos'] = self.data['vlos'] + chirp
+
+            # discard data with low density
+            if ne:
+                inds = np.where((self.data['ne'] < ne[0]) | (self.data['ne'] > ne[1]))
+                self.data['vlos'][inds] = np.nan
+                self.data['dvlos'][inds] = np.nan
+
+            # discard data outside of altitude range
+            if alt:
+                inds = np.where((self.data['alt'] < alt[0]*1000.) | (self.data['alt'] > alt[1]*1000.))
+                self.data['vlos'][:,inds] = np.nan
+                self.data['dvlos'][:,inds] = np.nan
+
+            # discard data outside of magnetic latitude range
+            if mlat:
+                inds = np.where((self.data['mlat'] < mlat[0]) | (self.data['mlat'] > mlat[1]))
+                self.data['vlos'][:,inds] = np.nan
+                self.data['dvlos'][:,inds] = np.nan
+
+            # discard data with extremely high or extremely low chi2 values
+            if chi2:
+                inds = np.where((self.data['chi2'] < chi2[0]) | (self.data['chi2'] > chi2[1]))
+                self.data['vlos'][inds] = np.nan
+                self.data['dvlos'][inds] = np.nan
+
+            # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
+            if fitcode:
+                inds = np.where(~np.isin(self.data['fitcode'], fitcode))
+                self.data['vlos'][inds] = np.nan
+                self.data['dvlos'][inds] = np.nan
 
 
     def __load_file(self,requested_time):
@@ -189,43 +297,49 @@ class FittedVelocityDataHandler(object):
         # the logic on the next line is correct, even though it seems confusing at first
         # The start time needs to be checked against the end times of each time record
         # and the e time needs to be checked against the start times of each record.
-        request_time_inds = np.where((self.times[:,0] <= end_time) & (self.times[:,1] >= start_time))[0]
-        temp_times = self.times[request_time_inds]
+        request_time_inds = np.where((self.data['time'][:,0] < end_time) & (self.data['time'][:,1] >= start_time))[0]
+        temp_times = self.data['time'][request_time_inds]
+        # print(request_time_inds, temp_times.shape, self.data['vlos'].shape, self.data['vlos'][request_time_inds].shape)
 
-        if len(temp_times) < 1:
-            print("No data for request start and end times.")
-            return None
+        data = {'vel':self.data['vlos'][request_time_inds],
+                'evel':self.data['dvlos'][request_time_inds],
+                'chi2':self.data['chi2'][request_time_inds],
+                'ne':self.data['ne'][request_time_inds]}
 
-        request_times = list()
-        epoch = datetime(1970,1,1)
-        for tup in temp_times:
-            t1 = (tup[0] - epoch).total_seconds()
-            t2 = (tup[1] - epoch).total_seconds()
-            request_times.append(datetime.utcfromtimestamp((t1 + t2) / 2.0))
-        request_times.sort()
-
-        num_times = len(request_times)
-
-        arrsh = self.__array_shapes
-        data = dict()
-        data['vel']  = np.zeros((num_times,) + arrsh['vel'][1:])
-        data['evel'] = np.zeros((num_times,) + arrsh['vel'][1:])
-        data['chi2'] = np.zeros((num_times,) + arrsh['chi2'][1:])
-        data['ne']   = np.zeros((num_times,) + arrsh['ne'][1:])
-
-        # now get the data for the requested time
-        for i,time in enumerate(request_times):
-            temp = self.get_record(time)
-            if i == 0:
-                data['kvec']     = temp['kvec']
-                data['altitude'] = temp['altitude']
-                data['site']     = temp['site']
-                data['bmcodes']  = temp['bmcodes']
-                data['mlat']     = temp['mlat']
-
-            data['vel'][i,:]  = temp['vel']
-            data['evel'][i,:] = temp['evel']
-            data['chi2'][i,:] = temp['chi2']
-            data['ne'][i,:]   = temp['ne']
+        # if len(temp_times) < 1:
+        #     print("No data for request start and end times.")
+        #     return None
+        #
+        # request_times = list()
+        # epoch = datetime(1970,1,1)
+        # for tup in temp_times:
+        #     t1 = (tup[0] - epoch).total_seconds()
+        #     t2 = (tup[1] - epoch).total_seconds()
+        #     request_times.append(datetime.utcfromtimestamp((t1 + t2) / 2.0))
+        # request_times.sort()
+        #
+        # num_times = len(request_times)
+        #
+        # arrsh = self.__array_shapes
+        # data = dict()
+        # data['vel']  = np.zeros((num_times,) + arrsh['vel'][1:])
+        # data['evel'] = np.zeros((num_times,) + arrsh['vel'][1:])
+        # data['chi2'] = np.zeros((num_times,) + arrsh['chi2'][1:])
+        # data['ne']   = np.zeros((num_times,) + arrsh['ne'][1:])
+        #
+        # # now get the data for the requested time
+        # for i,time in enumerate(request_times):
+        #     temp = self.get_record(time)
+        #     if i == 0:
+        #         data['kvec']     = temp['kvec']
+        #         data['altitude'] = temp['altitude']
+        #         data['site']     = temp['site']
+        #         data['bmcodes']  = temp['bmcodes']
+        #         data['mlat']     = temp['mlat']
+        #
+        #     data['vel'][i,:]  = temp['vel']
+        #     data['evel'][i,:] = temp['evel']
+        #     data['chi2'][i,:] = temp['chi2']
+        #     data['ne'][i,:]   = temp['ne']
 
         return data, temp_times

@@ -15,6 +15,7 @@ import numpy as np
 import datetime as dt
 from scipy.spatial import Delaunay
 
+from .DataHandler import FittedVelocityDataHandler
 from .marp import Marp
 from .plot import summary_plots
 
@@ -36,6 +37,13 @@ class ResolveVectors(object):
             self.create_path(self.plotsavedir)
 
 
+        print(self.datafile)
+        self.datahandler = FittedVelocityDataHandler(self.datafile)
+        self.datahandler.read_data(self.use_beams)
+        self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
+
+        self.integration_periods = self.get_integration_periods()
+
     def create_path(self,path):
         path = os.path.abspath(path)
         os.makedirs(path,exist_ok=True)
@@ -43,7 +51,7 @@ class ResolveVectors(object):
     def read_config(self, config_file):
 
         # read config file
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(converters={'list':self.parse_list})
         config.read(config_file)
 
         # Possibly could done better with converters?  This may by python3 specific though.
@@ -51,17 +59,23 @@ class ResolveVectors(object):
 
         self.outfilename = config.get('FILEIO', 'OUTFILENAME')
         self.chirp = config.getfloat('CONFIG', 'CHIRP')
-        self.covar = [float(i) for i in config.get('CONFIG', 'COVAR').split(',')]
-        self.altlim = [float(i) for i in config.get('CONFIG', 'ALTLIM').split(',')]
-        self.nelim = [float(i) for i in config.get('CONFIG', 'NELIM').split(',')]
-        self.chi2lim = [float(i) for i in config.get('CONFIG', 'CHI2LIM').split(',')]
-        self.goodfitcode = [float(i) for i in config.get('CONFIG', 'GOODFITCODE').split(',')]
+        self.covar = config.getlist('CONFIG', 'COVAR')
+        self.altlim = config.getlist('CONFIG', 'ALTLIM')
+        self.nelim = config.getlist('CONFIG', 'NELIM')
+        self.chi2lim = config.getlist('CONFIG', 'CHI2LIM')
+        self.goodfitcode = config.getlist('CONFIG', 'GOODFITCODE')
+        # self.covar = [float(i) for i in config.get('CONFIG', 'COVAR').split(',')]
+        # self.altlim = [float(i) for i in config.get('CONFIG', 'ALTLIM').split(',')]
+        # self.nelim = [float(i) for i in config.get('CONFIG', 'NELIM').split(',')]
+        # self.chi2lim = [float(i) for i in config.get('CONFIG', 'CHI2LIM').split(',')]
+        # self.goodfitcode = [float(i) for i in config.get('CONFIG', 'GOODFITCODE').split(',')]
         self.binvert = eval(config.get('CONFIG', 'BINVERT'))
         # can probably change this parameter to a list of start, end, step similar to vvelsAlt
         self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
-        self.marprot = [float(i) for i in config.get('CONFIG', 'MARPROT').split(',')]
+        # self.marprot = [float(i) for i in config.get('CONFIG', 'MARPROT').split(',')]
 
         # optional parameters
+        self.marprot = config.getlist('CONFIG', 'MARPROT') if config.has_option('CONFIG', 'MARPROT') else [0.,0.]
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
         self.upB_beamcode = config.getint('CONFIG', 'UPB_BEAMCODE') if config.has_option('CONFIG', 'UPB_BEAMCODE') else None
         self.ionup = config.get('CONFIG', 'IONUP') if config.has_option('CONFIG', 'IONUP') else None
@@ -69,136 +83,142 @@ class ResolveVectors(object):
         self.integration_time = config.getfloat('CONFIG', 'INTTIME') if config.has_option('CONFIG', 'INTTIME') else None
         self.outfilepath = config.get('FILEIO', 'OUTFILEPATH') if config.has_option('FILEIO', 'OUTFILEPATH') else '.'
 
+    def parse_list(self, s):
+        return [float(i) for i in s.split(',')]
 
-    def read_data(self):
-        # read data from standard AMISR fit files
-        with tables.open_file(self.datafile,'r') as infile:
+    # def read_data(self):
+    #     # read data from standard AMISR fit files
+    #     with tables.open_file(self.datafile,'r') as infile:
+    #
+    #         # time
+    #         self.time = infile.get_node('/Time/UnixTime')[:]
+    #
+    #         # site
+    #         lat = infile.get_node('/Site/Latitude').read()
+    #         lon = infile.get_node('/Site/Longitude').read()
+    #         alt = infile.get_node('/Site/Altitude').read()
+    #         self.site = np.array([lat, lon, alt/1000.])
+    #
+    #         # define which beams to use (default is all)
+    #         self.BeamCodes=infile.get_node('/BeamCodes')[:,0]
+    #         if self.use_beams:
+    #             bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
+    #         else:
+    #             bm_idx = np.arange(0,len(self.BeamCodes))
+    #
+    #         # geodetic location of each measurement
+    #         self.alt = infile.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
+    #         self.lat = infile.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
+    #         self.lon = infile.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
+    #
+    #         # geodetic k vectors
+    #         self.ke = infile.get_node('/Geomag/ke')[bm_idx,:].flatten()
+    #         self.kn = infile.get_node('/Geomag/kn')[bm_idx,:].flatten()
+    #         self.kz = infile.get_node('/Geomag/kz')[bm_idx,:].flatten()
+    #
+    #         # ion masses
+    #         ion_mass = infile.get_node('/FittedParams/IonMass')[:]
+    #         nions = len(ion_mass)                                   # number of ions
+    #         ion_idx = np.argwhere(ion_mass==16.).flatten()[0]       # find index for O+
+    #
+    #         # line of sight velocity and error
+    #         self.vlos = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
+    #         self.dvlos = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
+    #
+    #         # chi2 and fitcode (for filtering poor quality data)
+    #         self.chi2 = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+    #         self.fitcode = infile.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+    #
+    #         # density (for filtering and ion upflow correction)
+    #         self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
+    #
+    #         # temperature (for ion upflow)
+    #         self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,-1,1].reshape((len(self.time[:,0]),len(self.alt)))
+    #         Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,1]
+    #         frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,0]
+    #         self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
+    #
+    #         # get up-B beam velocities for ion outflow correction
+    #         if self.upB_beamcode:
+    #             upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
+    #             if upB_idx:
+    #                 upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
+    #                 upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
+    #                 upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
+    #                 self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
+    #             else:
+    #                 print('Warning: upB beam %d not found. Will not perform upflow subtraction.' % self.upB_beamcode)
+    #                 self.upB = None
+    #                 self.ionup = False
 
-            # time
-            self.time = infile.get_node('/Time/UnixTime')[:]
-
-            # site
-            lat = infile.get_node('/Site/Latitude').read()
-            lon = infile.get_node('/Site/Longitude').read()
-            alt = infile.get_node('/Site/Altitude').read()
-            self.site = np.array([lat, lon, alt/1000.])
-
-            # define which beams to use (default is all)
-            self.BeamCodes=infile.get_node('/BeamCodes')[:,0]
-            if self.use_beams:
-                bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
-            else:
-                bm_idx = np.arange(0,len(self.BeamCodes))
-
-            # geodetic location of each measurement
-            self.alt = infile.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
-            self.lat = infile.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
-            self.lon = infile.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
-
-            # geodetic k vectors
-            self.ke = infile.get_node('/Geomag/ke')[bm_idx,:].flatten()
-            self.kn = infile.get_node('/Geomag/kn')[bm_idx,:].flatten()
-            self.kz = infile.get_node('/Geomag/kz')[bm_idx,:].flatten()
-
-            # ion masses
-            ion_mass = infile.get_node('/FittedParams/IonMass')[:]
-            nions = len(ion_mass)                                   # number of ions
-            ion_idx = np.argwhere(ion_mass==16.).flatten()[0]       # find index for O+
-
-            # line of sight velocity and error
-            self.vlos = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
-            self.dvlos = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
-
-            # chi2 and fitcode (for filtering poor quality data)
-            self.chi2 = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
-            self.fitcode = infile.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
-
-            # density (for filtering and ion upflow correction)
-            self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
-
-            # temperature (for ion upflow)
-            self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,-1,1].reshape((len(self.time[:,0]),len(self.alt)))
-            Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,1]
-            frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,0]
-            self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
-
-            # get up-B beam velocities for ion outflow correction
-            if self.upB_beamcode:
-                upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
-                if upB_idx:
-                    upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
-                    upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
-                    upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
-                    self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
-                else:
-                    print('Warning: upB beam %d not found. Will not perform upflow subtraction.' % self.upB_beamcode)
-                    self.upB = None
-                    self.ionup = False
 
 
-
-    def filter_data(self):
-        # filter and adjust data so it is appropriate for Bayesian reconstruction
-
-        with np.errstate(invalid='ignore'):
-
-            # add chirp to LoS velocity
-            self.vlos = self.vlos + self.chirp
-
-            # discard data with low density
-            inds = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
-            self.vlos[inds] = np.nan
-            self.dvlos[inds] = np.nan
-
-            # discard data outside of altitude range
-            inds = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
-            self.vlos[:,inds] = np.nan
-            self.dvlos[:,inds] = np.nan
-
-            # discard data with extremely high or extremely low chi2 values
-            inds = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
-            self.vlos[inds] = np.nan
-            self.dvlos[inds] = np.nan
-
-            # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
-            inds = np.where(~np.isin(self.fitcode, self.goodfitcode))
-            self.vlos[inds] = np.nan
-            self.vlos[inds] = np.nan
+    # def filter_data(self):
+    #     # filter and adjust data so it is appropriate for Bayesian reconstruction
+    #
+    #     with np.errstate(invalid='ignore'):
+    #
+    #         # add chirp to LoS velocity
+    #         self.vlos = self.vlos + self.chirp
+    #
+    #         # discard data with low density
+    #         inds = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
+    #         self.vlos[inds] = np.nan
+    #         self.dvlos[inds] = np.nan
+    #
+    #         # discard data outside of altitude range
+    #         inds = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
+    #         self.vlos[:,inds] = np.nan
+    #         self.dvlos[:,inds] = np.nan
+    #
+    #         # discard data with extremely high or extremely low chi2 values
+    #         inds = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
+    #         self.vlos[inds] = np.nan
+    #         self.dvlos[inds] = np.nan
+    #
+    #         # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
+    #         inds = np.where(~np.isin(self.fitcode, self.goodfitcode))
+    #         self.vlos[inds] = np.nan
+    #         self.vlos[inds] = np.nan
 
 
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
+        # shouldn't need to do the NaN-replacement anymore - apexpy handles this now
         # find indices where nans exist in the altitude array and should be inserted in to other coordinate/component arrays
-        replace_nans = np.array([r - i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())], dtype=int)
-
-        glat = self.lat[np.isfinite(self.lat)]
-        glon = self.lon[np.isfinite(self.lon)]
-        galt = self.alt[np.isfinite(self.alt)] / 1000.
+        # replace_nans = np.array([r - i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())], dtype=int)
+        #
+        # glat = self.lat[np.isfinite(self.lat)]
+        # glon = self.lon[np.isfinite(self.lon)]
+        # galt = self.alt[np.isfinite(self.alt)] / 1000.
+        glat = self.datahandler.data['lat']
+        glon = self.datahandler.data['lon']
+        galt = self.datahandler.data['alt'] / 1000.
 
         # intialize apex coordinates
-        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.time[0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
+        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.data['time'][0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
 
         # find magnetic latitude and longitude
         # mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
-        mlat, mlon = self.marp.geo2marp(glat, glon, galt)
-        self.mlat = np.insert(mlat,replace_nans,np.nan)
-        self.mlon = np.insert(mlon,replace_nans,np.nan)
+        self.mlat, self.mlon = self.marp.geo2marp(glat, glon, galt)
+        # self.mlat = np.insert(mlat,replace_nans,np.nan)
+        # self.mlon = np.insert(mlon,replace_nans,np.nan)
         # print(self.mlat, self.mlon)
 
         # Analogous to apex basis vectors in geodetic coordinates [e n u]
         # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
         d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, galt)
-        d1 = np.insert(d1,replace_nans,np.nan,axis=1)
-        d2 = np.insert(d2,replace_nans,np.nan,axis=1)
-        d3 = np.insert(d3,replace_nans,np.nan,axis=1)
-        e1 = np.insert(e1,replace_nans,np.nan,axis=1)
-        e2 = np.insert(e2,replace_nans,np.nan,axis=1)
-        e3 = np.insert(e3,replace_nans,np.nan,axis=1)
+        # d1 = np.insert(d1,replace_nans,np.nan,axis=1)
+        # d2 = np.insert(d2,replace_nans,np.nan,axis=1)
+        # d3 = np.insert(d3,replace_nans,np.nan,axis=1)
+        # e1 = np.insert(e1,replace_nans,np.nan,axis=1)
+        # e2 = np.insert(e2,replace_nans,np.nan,axis=1)
+        # e3 = np.insert(e3,replace_nans,np.nan,axis=1)
         e = np.array([e1,e2,e3]).T
 
         # kvec in geodetic coordinates [e n u]
-        kvec = np.array([self.ke, self.kn, self.kz]).T
+        kvec = np.array([self.datahandler.data['ke'], self.datahandler.data['kn'], self.datahandler.data['kz']]).T
 
         # find components of k for d1, d2, d3 base vectors (Laundal and Richmond, 2016 eqn. 60)
         self.A = np.einsum('ij,ijk->ik', kvec, e)
@@ -251,37 +271,65 @@ class ResolveVectors(object):
         self.bin_mlon = np.array(self.bin_mlon)
 
 
-
     def get_integration_periods(self):
 
         if not self.integration_time:
-            # if no integration time specified, use original time periods of input files
-            self.integration_periods = self.time
-            self.integration_indices = range(len(self.time))
+            return self.datahandler.data['time']
 
-        else:
-            # if an integration time is given, calculate new time periods
-            self.integration_periods = []
-            self.integration_indices = []
+        integration_periods = list()
+        start_time = None
+        # integration_time = self.config['vvels_options']['recs2integrate']
+        integration_time = self.integration_time
+        num_times = len(self.datahandler.data['time'])
+        for i,time_pair in enumerate(self.datahandler.data['time']):
+            temp_start_time, temp_end_time = time_pair
+            if start_time is None:
+                start_time = temp_start_time
+            time_diff = (temp_end_time - start_time).total_seconds()
 
-            idx = []
-            start_time = None
-            num_times = len(self.time)
-            for i,time_pair in enumerate(self.time):
-                temp_start_time, temp_end_time = time_pair
-                if start_time is None:
-                    start_time = temp_start_time
-                time_diff = temp_end_time - start_time
-                idx.append(i)
+            if time_diff >= integration_time:
+                integration_periods.append([start_time,temp_end_time])
+                start_time = None
+                continue
 
-                if (time_diff >= self.integration_time) or (i == num_times -1):
-                    self.integration_periods.append([start_time, temp_end_time])
-                    self.integration_indices.append(np.array(idx))
-                    idx = []
-                    start_time = None
-                    continue
+            # Add an integration period for when we are at the end of the files
+            # but we haven't reached the requested integration time
+            if (i == num_times -1):
+                integration_periods.append([start_time,temp_end_time])
 
-            self.integration_periods = np.array(self.integration_periods)
+        return np.array(integration_periods)
+
+
+    # def get_integration_periods(self):
+    #
+    #     if not self.integration_time:
+    #         # if no integration time specified, use original time periods of input files
+    #         self.integration_periods = self.time
+    #         self.integration_indices = range(len(self.time))
+    #
+    #     else:
+    #         # if an integration time is given, calculate new time periods
+    #         self.integration_periods = []
+    #         self.integration_indices = []
+    #
+    #         idx = []
+    #         start_time = None
+    #         num_times = len(self.time)
+    #         for i,time_pair in enumerate(self.time):
+    #             temp_start_time, temp_end_time = time_pair
+    #             if start_time is None:
+    #                 start_time = temp_start_time
+    #             time_diff = temp_end_time - start_time
+    #             idx.append(i)
+    #
+    #             if (time_diff >= self.integration_time) or (i == num_times -1):
+    #                 self.integration_periods.append([start_time, temp_end_time])
+    #                 self.integration_indices.append(np.array(idx))
+    #                 idx = []
+    #                 start_time = None
+    #                 continue
+    #
+    #         self.integration_periods = np.array(self.integration_periods)
 
 
     def compute_vector_velocity(self):
@@ -295,7 +343,11 @@ class ResolveVectors(object):
 
         # For each integration period and bin, calculate covarient components
         # of drift velocity (Ve1, Ve2, Ve3) loop over integration periods
-        for tidx in self.integration_indices:
+        for integration_period in self.integration_periods:
+        # for tidx in self.integration_indices:
+
+            data, t = self.datahandler.get_records(integration_period[0],integration_period[1])
+
             Vel = []
             SigmaV = []
             Chi2 = []
@@ -305,16 +357,20 @@ class ResolveVectors(object):
 
                 # pull out the line of slight measurements for the time period
                 # and bins
-                vlos = self.vlos[tidx,bidx[:,np.newaxis]].flatten()
-                dvlos = self.dvlos[tidx,bidx[:,np.newaxis]].flatten()
+                # vlos = self.vlos[tidx,bidx[:,np.newaxis]].flatten()
+                # dvlos = self.dvlos[tidx,bidx[:,np.newaxis]].flatten()
+                vlos = data['vel'][:,bidx].flatten()
+                dvlos = data['evel'][:,bidx].flatten()
                 # pull out the k vectors for the bins and duplicate so they
                 # match the number of time measurements
-                if self.integration_time:
-                    A = np.repeat(self.A[bidx], len(tidx), axis=0)
-                else:
+                # if self.integration_time:
+                A = np.repeat(self.A[bidx], t.shape[0], axis=0)
+                # else:
                     # if no post integraiton, k vectors do not need to be
                     # duplicated
-                    A = self.A[bidx]
+                    # A = self.A[bidx]
+
+                # print(vlos.shape, A.shape, t.shape)
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm
                 # to get full vectors
@@ -428,212 +484,246 @@ class ResolveVectors(object):
                     outfile.create_group('/','Time')
                     year, month, day, doy, dtime, mlt = self.create_time_arrays()
 
-                    atom = tables.Atom.from_dtype(self.integration_periods.dtype)
-                    arr = outfile.create_carray('/Time', 'UnixTime',atom,self.integration_periods.shape)
-                    arr[:] = self.integration_periods
-                    outfile.set_node_attr('/Time/UnixTime', 'TITLE', 'UnixTime')
-                    outfile.set_node_attr('/Time/UnixTime', 'Size', 'Nrecords x 2 (Start and end of integration')
-                    outfile.set_node_attr('/Time/UnixTime', 'Unit', 'Seconds')
+                    save_carray(outfile, '/Time/UnixTime', self.integration_periods, {'TITLE':'UnixTime', 'Size':'Nrecords x 2 (Start and end of integration)', 'Units':'Seconds'})
+                    save_carray(outfile, '/Time/Year', year, {'TITLE':'Year', 'Size':'Nrecords x 2 (Start and end of integration)'})
+                    save_carray(outfile, '/Time/Month', month, {'TITLE':'Month', 'Size':'Nrecords x 2 (Start and end of integration)'})
+                    save_carray(outfile, '/Time/Day', day, {'TITLE':'Day of Month', 'Size':'Nrecords x 2 (Start and end of integration)'})
+                    save_carray(outfile, '/Time/doy', doy, {'TITLE':'Day of Year', 'Size':'Nrecords x 2 (Start and end of integration)'})
+                    save_carray(outfile, '/Time/dtime', dtime, {'TITLE':'Decimal Hour of Day', 'Size':'Nrecords x 2 (Start and end of integration)'})
+                    save_carray(outfile, '/Time/MagneticLocalTimeSite', mlt, {'TITLE':'Magnetic Local Time of Site', 'Size':'Nrecords x 2 (Start and end of integration)'})
 
-                    atom = tables.Atom.from_dtype(year.dtype)
-                    arr = outfile.create_carray('/Time', 'Year',atom,year.shape)
-                    arr[:] = year
-                    outfile.set_node_attr('/Time/Year', 'TITLE', 'Year')
-                    outfile.set_node_attr('/Time/Year', 'Size', 'Nrecords x 2 (Start and end of integration')
-
-                    atom = tables.Atom.from_dtype(month.dtype)
-                    arr = outfile.create_carray('/Time', 'Month',atom,month.shape)
-                    arr[:] = month
-                    outfile.set_node_attr('/Time/Month', 'TITLE', 'Month')
-                    outfile.set_node_attr('/Time/Month', 'Size', 'Nrecords x 2 (Start and end of integration')
-
-                    atom = tables.Atom.from_dtype(day.dtype)
-                    arr = outfile.create_carray('/Time', 'Day',atom,day.shape)
-                    arr[:] = day
-                    outfile.set_node_attr('/Time/Day', 'TITLE', 'Day of Month')
-                    outfile.set_node_attr('/Time/Day', 'Size', 'Nrecords x 2 (Start and end of integration')
-
-                    atom = tables.Atom.from_dtype(doy.dtype)
-                    arr = outfile.create_carray('/Time', 'doy',atom,doy.shape)
-                    arr[:] = doy
-                    outfile.set_node_attr('/Time/doy', 'TITLE', 'Day of Year')
-                    outfile.set_node_attr('/Time/doy', 'Size', 'Nrecords x 2 (Start and end of integration')
-
-                    atom = tables.Atom.from_dtype(dtime.dtype)
-                    arr = outfile.create_carray('/Time', 'dtime',atom,dtime.shape)
-                    arr[:] = dtime
-                    outfile.set_node_attr('/Time/dtime', 'TITLE', 'Decimal Time')
-                    outfile.set_node_attr('/Time/dtime', 'Size', 'Nrecords x 2 (Start and end of integration')
-                    outfile.set_node_attr('/Time/dtime', 'Unit', 'UT Hour')
-
-                    atom = tables.Atom.from_dtype(mlt.dtype)
-                    arr = outfile.create_carray('/Time', 'MagneticLocalTimeSite',atom,mlt.shape)
-                    arr[:] = mlt
-                    outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'TITLE', 'Magnetic Local Time')
-                    outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Size', 'Nrecords x 2 (Start and end of integration')
-                    outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Unit', 'UT Hour')
+                    # atom = tables.Atom.from_dtype(self.integration_periods.dtype)
+                    # arr = outfile.create_carray('/Time', 'UnixTime',atom,self.integration_periods.shape)
+                    # arr[:] = self.integration_periods
+                    # outfile.set_node_attr('/Time/UnixTime', 'TITLE', 'UnixTime')
+                    # outfile.set_node_attr('/Time/UnixTime', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    # outfile.set_node_attr('/Time/UnixTime', 'Unit', 'Seconds')
+                    #
+                    # atom = tables.Atom.from_dtype(year.dtype)
+                    # arr = outfile.create_carray('/Time', 'Year',atom,year.shape)
+                    # arr[:] = year
+                    # outfile.set_node_attr('/Time/Year', 'TITLE', 'Year')
+                    # outfile.set_node_attr('/Time/Year', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    #
+                    # atom = tables.Atom.from_dtype(month.dtype)
+                    # arr = outfile.create_carray('/Time', 'Month',atom,month.shape)
+                    # arr[:] = month
+                    # outfile.set_node_attr('/Time/Month', 'TITLE', 'Month')
+                    # outfile.set_node_attr('/Time/Month', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    #
+                    # atom = tables.Atom.from_dtype(day.dtype)
+                    # arr = outfile.create_carray('/Time', 'Day',atom,day.shape)
+                    # arr[:] = day
+                    # outfile.set_node_attr('/Time/Day', 'TITLE', 'Day of Month')
+                    # outfile.set_node_attr('/Time/Day', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    #
+                    # atom = tables.Atom.from_dtype(doy.dtype)
+                    # arr = outfile.create_carray('/Time', 'doy',atom,doy.shape)
+                    # arr[:] = doy
+                    # outfile.set_node_attr('/Time/doy', 'TITLE', 'Day of Year')
+                    # outfile.set_node_attr('/Time/doy', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    #
+                    # atom = tables.Atom.from_dtype(dtime.dtype)
+                    # arr = outfile.create_carray('/Time', 'dtime',atom,dtime.shape)
+                    # arr[:] = dtime
+                    # outfile.set_node_attr('/Time/dtime', 'TITLE', 'Decimal Time')
+                    # outfile.set_node_attr('/Time/dtime', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    # outfile.set_node_attr('/Time/dtime', 'Unit', 'UT Hour')
+                    #
+                    # atom = tables.Atom.from_dtype(mlt.dtype)
+                    # arr = outfile.create_carray('/Time', 'MagneticLocalTimeSite',atom,mlt.shape)
+                    # arr[:] = mlt
+                    # outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'TITLE', 'Magnetic Local Time')
+                    # outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Size', 'Nrecords x 2 (Start and end of integration')
+                    # outfile.set_node_attr('/Time/MagneticLocalTimeSite', 'Unit', 'UT Hour')
 
             outfile.create_group('/', 'Magnetic')
 
-            atom = tables.Atom.from_dtype(self.bin_alat.dtype)
-            arr = outfile.create_carray('/Magnetic', 'Latitude',atom,self.bin_alat.shape)
-            arr[:] = self.bin_alat
-            outfile.set_node_attr('/Magnetic/Latitude', 'TITLE', 'Magnetic Latitude')
-            outfile.set_node_attr('/Magnetic/Latitude', 'Size', 'Nbins')
+            save_carray(outfile, '/Magnetic/Latitude', self.bin_alat, {'TITLE':'Magnetic Latitude', 'Size':'Nbins'})
+            save_carray(outfile, '/Magnetic/Longitude', self.bin_alon, {'TITLE':'Magnetic Longitude', 'Size':'Nbins'})
+            save_carray(outfile, '/Magnetic/Velocity', self.Velocity, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)', 'Units':'m/s'})
+            save_carray(outfile, '/Magnetic/CovarianceV', self.VelocityCovariance, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nbins x 3 x 3', 'Units':'(m/s)^2'})
+            save_carray(outfile, '/Magnetic/ElectricField', self.ElectricField, {'TITLE':'Convection Electric Field', 'Size':'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)', 'Units':'V/m'})
+            save_carray(outfile, '/Magnetic/CovarianceE', self.ElectricFieldCovariance, {'TITLE':'Electric Field Covariance Matrix', 'Size':'Nrecords x Nbins x 3 x 3', 'Units':'(V/m)^2'})
 
-            atom = tables.Atom.from_dtype(self.bin_alon.dtype)
-            arr = outfile.create_carray('/Magnetic','Longitude',atom,self.bin_alon.shape)
-            arr[:] = self.bin_alon
-            outfile.set_node_attr('/Magnetic/Longitude', 'TITLE', 'Magnetic Longitude')
-            outfile.set_node_attr('/Magnetic/Longitude', 'Size', 'Nbins')
-
-            atom = tables.Atom.from_dtype(self.Velocity.dtype)
-            arr = outfile.create_carray('/Magnetic', 'Velocity',atom,self.Velocity.shape)
-            arr[:] = self.Velocity
-            outfile.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plasma Drift Velocity')
-            outfile.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
-            outfile.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
-
-            atom = tables.Atom.from_dtype(self.VelocityCovariance.dtype)
-            arr = outfile.create_carray('/Magnetic','CovarianceV',atom,self.VelocityCovariance.shape)
-            arr[:] = self.VelocityCovariance
-            outfile.set_node_attr('/Magnetic/CovarianceV', 'TITLE', 'Velocity Covariance Matrix')
-            outfile.set_node_attr('/Magnetic/CovarianceV', 'Size', 'Nrecords x Nbins x 3 x 3')
-            outfile.set_node_attr('/Magnetic/CovarianceV', 'Units', '(m/s)^2')
-
-            atom = tables.Atom.from_dtype(self.ElectricField.dtype)
-            arr = outfile.create_carray('/Magnetic','ElectricField',atom,self.ElectricField.shape)
-            arr[:] = self.ElectricField
-            outfile.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
-            outfile.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
-            outfile.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
-
-            atom = tables.Atom.from_dtype(self.ElectricFieldCovariance.dtype)
-            arr = outfile.create_carray('/Magnetic','CovarianceE',atom,self.ElectricFieldCovariance.shape)
-            arr[:] = self.ElectricFieldCovariance
-            outfile.set_node_attr('/Magnetic/CovarianceE', 'TITLE', 'Electric Field Covariance Matrix')
-            outfile.set_node_attr('/Magnetic/CovarianceE', 'Size', 'Nrecords x Nbins x 3 x 3')
-            outfile.set_node_attr('/Magnetic/CovarianceE', 'Units', '(V/m)^2')
+            # atom = tables.Atom.from_dtype(self.bin_alat.dtype)
+            # arr = outfile.create_carray('/Magnetic', 'Latitude',atom,self.bin_alat.shape)
+            # arr[:] = self.bin_alat
+            # outfile.set_node_attr('/Magnetic/Latitude', 'TITLE', 'Magnetic Latitude')
+            # outfile.set_node_attr('/Magnetic/Latitude', 'Size', 'Nbins')
+            #
+            # atom = tables.Atom.from_dtype(self.bin_alon.dtype)
+            # arr = outfile.create_carray('/Magnetic','Longitude',atom,self.bin_alon.shape)
+            # arr[:] = self.bin_alon
+            # outfile.set_node_attr('/Magnetic/Longitude', 'TITLE', 'Magnetic Longitude')
+            # outfile.set_node_attr('/Magnetic/Longitude', 'Size', 'Nbins')
+            #
+            # atom = tables.Atom.from_dtype(self.Velocity.dtype)
+            # arr = outfile.create_carray('/Magnetic', 'Velocity',atom,self.Velocity.shape)
+            # arr[:] = self.Velocity
+            # outfile.set_node_attr('/Magnetic/Velocity', 'TITLE', 'Plasma Drift Velocity')
+            # outfile.set_node_attr('/Magnetic/Velocity', 'Size', 'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)')
+            # outfile.set_node_attr('/Magnetic/Velocity', 'Units', 'm/s')
+            #
+            # atom = tables.Atom.from_dtype(self.VelocityCovariance.dtype)
+            # arr = outfile.create_carray('/Magnetic','CovarianceV',atom,self.VelocityCovariance.shape)
+            # arr[:] = self.VelocityCovariance
+            # outfile.set_node_attr('/Magnetic/CovarianceV', 'TITLE', 'Velocity Covariance Matrix')
+            # outfile.set_node_attr('/Magnetic/CovarianceV', 'Size', 'Nrecords x Nbins x 3 x 3')
+            # outfile.set_node_attr('/Magnetic/CovarianceV', 'Units', '(m/s)^2')
+            #
+            # atom = tables.Atom.from_dtype(self.ElectricField.dtype)
+            # arr = outfile.create_carray('/Magnetic','ElectricField',atom,self.ElectricField.shape)
+            # arr[:] = self.ElectricField
+            # outfile.set_node_attr('/Magnetic/ElectricField', 'TITLE', 'Convection Electric Field')
+            # outfile.set_node_attr('/Magnetic/ElectricField', 'Size', 'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)')
+            # outfile.set_node_attr('/Magnetic/ElectricField', 'Units', 'V/m')
+            #
+            # atom = tables.Atom.from_dtype(self.ElectricFieldCovariance.dtype)
+            # arr = outfile.create_carray('/Magnetic','CovarianceE',atom,self.ElectricFieldCovariance.shape)
+            # arr[:] = self.ElectricFieldCovariance
+            # outfile.set_node_attr('/Magnetic/CovarianceE', 'TITLE', 'Electric Field Covariance Matrix')
+            # outfile.set_node_attr('/Magnetic/CovarianceE', 'Size', 'Nrecords x Nbins x 3 x 3')
+            # outfile.set_node_attr('/Magnetic/CovarianceE', 'Units', '(V/m)^2')
 
 
             outfile.create_group('/', 'Geodetic')
 
-            atom = tables.Atom.from_dtype(self.bin_glat.dtype)
-            arr = outfile.create_carray('/Geodetic', 'Latitude',atom,self.bin_glat.shape)
-            arr[:] = self.bin_glat
-            outfile.set_node_attr('/Geodetic/Latitude', 'TITLE', 'Geographic Latitude')
-            outfile.set_node_attr('/Geodetic/Latitude', 'Size', 'Nalt x Nbins')
+            save_carray(outfile, '/Geodetic/Latitude', self.bin_alat, {'TITLE':'Geographic Latitude', 'Size':'Nalts x Nbins'})
+            save_carray(outfile, '/Geodetic/Longitude', self.bin_alon, {'TITLE':'Geographic Longitude', 'Size':'Nalts x Nbins'})
+            save_carray(outfile, '/Geodetic/Altitde', self.bin_alon, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
+            save_carray(outfile, '/Geodetic/Velocity', self.Velocity_gd, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nalts x Nbins x 3 (East, North, Up)', 'Units':'m/s'})
+            save_carray(outfile, '/Geodetic/CovarianceV', self.VelocityCovariance_gd, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nalts x Nbins x 3 x 3', 'Units':'(m/s)^2'})
+            save_carray(outfile, '/Geodetic/Vmag', self.Vgd_mag, {'TITLE':'Velocity Magnitude', 'Size':'Nrecords x Nalts x Nbins', 'Units':'m/s'})
+            save_carray(outfile, '/Geodetic/errVmag', self.Vgd_mag_err, {'TITLE':'Velocity Magnitude Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'m/s'})
+            save_carray(outfile, '/Geodetic/Vdir', self.Vgd_dir, {'TITLE':'Velocity Direction Angle East of North Magnetic Meridian (-e2)', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
+            save_carray(outfile, '/Geodetic/errVdir', self.Vgd_dir_err, {'TITLE':'Velocity Direction Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
+            save_carray(outfile, '/Geodetic/ElectricField', self.ElectricField_gd, {'TITLE':'Convection Electric Field', 'Size':'Nrecords x Nbins x 3 (East, North, Up)', 'Units':'V/m'})
+            save_carray(outfile, '/Geodetic/CovarianceE', self.ElectricFieldCovariance_gd, {'TITLE':'Electric Field Covariance Matrix', 'Size':'Nrecords x Nbins x 3 x 3', 'Units':'(V/m)^2'})
+            save_carray(outfile, '/Geodetic/Emag', self.Egd_mag, {'TITLE':'Electric Field Magnitude', 'Size':'Nrecords x Nalts x Nbins', 'Units':'V/m'})
+            save_carray(outfile, '/Geodetic/errEmag', self.Egd_mag_err, {'TITLE':'Electric Field Magnitude Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'V/m'})
+            save_carray(outfile, '/Geodetic/Edir', self.Egd_dir, {'TITLE':'Electric Field Direction Angle East of North Magnetic Meridian (-e2)', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
+            save_carray(outfile, '/Geodetic/errEdir', self.Egd_dir_err, {'TITLE':'Electric Field Direction Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
 
-            atom = tables.Atom.from_dtype(self.bin_glon.dtype)
-            arr = outfile.create_carray('/Geodetic','Longitude',atom,self.bin_glon.shape)
-            arr[:] = self.bin_glon
-            outfile.set_node_attr('/Geodetic/Longitude', 'TITLE', 'Geographic Longitude')
-            outfile.set_node_attr('/Geodetic/Longitude', 'Size', 'Nalt x Nbins')
-
-            atom = tables.Atom.from_dtype(self.bin_galt.dtype)
-            arr = outfile.create_carray('/Geodetic','Altitude',atom,self.bin_galt.shape)
-            arr[:] = self.bin_galt
-            outfile.set_node_attr('/Geodetic/Altitude', 'TITLE', 'Geographic Altitude')
-            outfile.set_node_attr('/Geodetic/Altitude', 'Size', 'Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/Altitude', 'Units', 'km')
-
-            atom = tables.Atom.from_dtype(self.Velocity_gd.dtype)
-            arr = outfile.create_carray('/Geodetic', 'Velocity',atom,self.Velocity_gd.shape)
-            arr[:] = self.Velocity_gd
-            outfile.set_node_attr('/Geodetic/Velocity', 'TITLE', 'Plasma Drift Velocity')
-            outfile.set_node_attr('/Geodetic/Velocity', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
-            outfile.set_node_attr('/Geodetic/Velocity', 'Units', 'm/s')
-
-            atom = tables.Atom.from_dtype(self.VelocityCovariance_gd.dtype)
-            arr = outfile.create_carray('/Geodetic','CovarianceV',atom,self.VelocityCovariance_gd.shape)
-            arr[:] = self.VelocityCovariance_gd
-            outfile.set_node_attr('/Geodetic/CovarianceV', 'TITLE', 'Velocity Covariance Matrix')
-            outfile.set_node_attr('/Geodetic/CovarianceV', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
-            outfile.set_node_attr('/Geodetic/CovarianceV', 'Units', '(m/s)^2')
-
-            atom = tables.Atom.from_dtype(self.Vgd_mag.dtype)
-            arr = outfile.create_carray('/Geodetic','Vmag',atom,self.Vgd_mag.shape)
-            arr[:] = self.Vgd_mag
-            outfile.set_node_attr('/Geodetic/Vmag', 'TITLE', 'Velocity Magnitude')
-            outfile.set_node_attr('/Geodetic/Vmag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/Vmag', 'Units', 'm/s')
-
-            atom = tables.Atom.from_dtype(self.Vgd_mag_err.dtype)
-            arr = outfile.create_carray('/Geodetic','errVmag',atom,self.Vgd_mag_err.shape)
-            arr[:] = self.Vgd_mag_err
-            outfile.set_node_attr('/Geodetic/errVmag', 'TITLE', 'Velocity Magnitude Error')
-            outfile.set_node_attr('/Geodetic/errVmag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/errVmag', 'Units', 'm/s')
-
-            atom = tables.Atom.from_dtype(self.Vgd_dir.dtype)
-            arr = outfile.create_carray('/Geodetic','Vdir',atom,self.Vgd_dir.shape)
-            arr[:] = self.Vgd_dir
-            outfile.set_node_attr('/Geodetic/Vdir', 'TITLE', 'Velocity Direction Angle East of North Magnetic Meridian (-e2)')
-            outfile.set_node_attr('/Geodetic/Vdir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/Vdir', 'Units', 'Degrees')
-
-            atom = tables.Atom.from_dtype(self.Vgd_dir_err.dtype)
-            arr = outfile.create_carray('/Geodetic','errVdir',atom,self.Vgd_dir_err.shape)
-            arr[:] = self.Vgd_dir_err
-            outfile.set_node_attr('/Geodetic/errVdir', 'TITLE', 'Error in Velocity Direction')
-            outfile.set_node_attr('/Geodetic/errVdir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/errVdir', 'Units', 'Degrees')
-
-            atom = tables.Atom.from_dtype(self.ElectricField_gd.dtype)
-            arr = outfile.create_carray('/Geodetic','ElectricField',atom,self.ElectricField_gd.shape)
-            arr[:] = self.ElectricField_gd
-            outfile.set_node_attr('/Geodetic/ElectricField', 'TITLE', 'Convection Electric Field')
-            outfile.set_node_attr('/Geodetic/ElectricField', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
-            outfile.set_node_attr('/Geodetic/ElectricField', 'Units', 'V/m')
-
-            atom = tables.Atom.from_dtype(self.ElectricFieldCovariance_gd.dtype)
-            arr = outfile.create_carray('/Geodetic','CovarianceE',atom,self.ElectricFieldCovariance_gd.shape)
-            arr[:] = self.ElectricFieldCovariance_gd
-            outfile.set_node_attr('/Geodetic/CovarianceE', 'TITLE', 'Electric Field Covariance Matrix')
-            outfile.set_node_attr('/Geodetic/CovarianceE', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
-            outfile.set_node_attr('/Geodetic/CovarianceE', 'Units', '(V/m)^2')
-
-            atom = tables.Atom.from_dtype(self.Egd_mag.dtype)
-            arr = outfile.create_carray('/Geodetic','Emag',atom,self.Egd_mag.shape)
-            arr[:] = self.Egd_mag
-            outfile.set_node_attr('/Geodetic/Emag', 'TITLE', 'Electric Field Magnitude')
-            outfile.set_node_attr('/Geodetic/Emag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/Emag', 'Units', 'V/m')
-
-            atom = tables.Atom.from_dtype(self.Egd_mag_err.dtype)
-            arr = outfile.create_carray('/Geodetic','errEmag',atom,self.Egd_mag_err.shape)
-            arr[:] = self.Egd_mag_err
-            outfile.set_node_attr('/Geodetic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
-            outfile.set_node_attr('/Geodetic/errEmag', 'Size', 'Nrecords x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/errEmag', 'Units', 'V/m')
-
-            atom = tables.Atom.from_dtype(self.Egd_dir.dtype)
-            arr = outfile.create_carray('/Geodetic','Edir',atom,self.Egd_dir.shape)
-            arr[:] = self.Egd_dir
-            outfile.set_node_attr('/Geodetic/Edir', 'TITLE', 'Electric Field Direction Angle East of North Magnetic Meridian (-e2)')
-            outfile.set_node_attr('/Geodetic/Edir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/Edir', 'Units', 'Degrees')
-
-            atom = tables.Atom.from_dtype(self.Egd_dir_err.dtype)
-            arr = outfile.create_carray('/Geodetic','errEdir',atom,self.Egd_dir_err.shape)
-            arr[:] = self.Egd_dir_err
-            outfile.set_node_attr('/Geodetic/errEdir', 'TITLE', 'Error in Electric Field Direction')
-            outfile.set_node_attr('/Geodetic/errEdir', 'Size', 'Nrecord x Nalt x Nbins')
-            outfile.set_node_attr('/Geodetic/errEdir', 'Units', 'Degrees')
+            # atom = tables.Atom.from_dtype(self.bin_glat.dtype)
+            # arr = outfile.create_carray('/Geodetic', 'Latitude',atom,self.bin_glat.shape)
+            # arr[:] = self.bin_glat
+            # outfile.set_node_attr('/Geodetic/Latitude', 'TITLE', 'Geographic Latitude')
+            # outfile.set_node_attr('/Geodetic/Latitude', 'Size', 'Nalt x Nbins')
+            #
+            # atom = tables.Atom.from_dtype(self.bin_glon.dtype)
+            # arr = outfile.create_carray('/Geodetic','Longitude',atom,self.bin_glon.shape)
+            # arr[:] = self.bin_glon
+            # outfile.set_node_attr('/Geodetic/Longitude', 'TITLE', 'Geographic Longitude')
+            # outfile.set_node_attr('/Geodetic/Longitude', 'Size', 'Nalt x Nbins')
+            #
+            # atom = tables.Atom.from_dtype(self.bin_galt.dtype)
+            # arr = outfile.create_carray('/Geodetic','Altitude',atom,self.bin_galt.shape)
+            # arr[:] = self.bin_galt
+            # outfile.set_node_attr('/Geodetic/Altitude', 'TITLE', 'Geographic Altitude')
+            # outfile.set_node_attr('/Geodetic/Altitude', 'Size', 'Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/Altitude', 'Units', 'km')
+            #
+            # atom = tables.Atom.from_dtype(self.Velocity_gd.dtype)
+            # arr = outfile.create_carray('/Geodetic', 'Velocity',atom,self.Velocity_gd.shape)
+            # arr[:] = self.Velocity_gd
+            # outfile.set_node_attr('/Geodetic/Velocity', 'TITLE', 'Plasma Drift Velocity')
+            # outfile.set_node_attr('/Geodetic/Velocity', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            # outfile.set_node_attr('/Geodetic/Velocity', 'Units', 'm/s')
+            #
+            # atom = tables.Atom.from_dtype(self.VelocityCovariance_gd.dtype)
+            # arr = outfile.create_carray('/Geodetic','CovarianceV',atom,self.VelocityCovariance_gd.shape)
+            # arr[:] = self.VelocityCovariance_gd
+            # outfile.set_node_attr('/Geodetic/CovarianceV', 'TITLE', 'Velocity Covariance Matrix')
+            # outfile.set_node_attr('/Geodetic/CovarianceV', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            # outfile.set_node_attr('/Geodetic/CovarianceV', 'Units', '(m/s)^2')
+            #
+            # atom = tables.Atom.from_dtype(self.Vgd_mag.dtype)
+            # arr = outfile.create_carray('/Geodetic','Vmag',atom,self.Vgd_mag.shape)
+            # arr[:] = self.Vgd_mag
+            # outfile.set_node_attr('/Geodetic/Vmag', 'TITLE', 'Velocity Magnitude')
+            # outfile.set_node_attr('/Geodetic/Vmag', 'Size', 'Nrecords x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/Vmag', 'Units', 'm/s')
+            #
+            # atom = tables.Atom.from_dtype(self.Vgd_mag_err.dtype)
+            # arr = outfile.create_carray('/Geodetic','errVmag',atom,self.Vgd_mag_err.shape)
+            # arr[:] = self.Vgd_mag_err
+            # outfile.set_node_attr('/Geodetic/errVmag', 'TITLE', 'Velocity Magnitude Error')
+            # outfile.set_node_attr('/Geodetic/errVmag', 'Size', 'Nrecords x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/errVmag', 'Units', 'm/s')
+            #
+            # atom = tables.Atom.from_dtype(self.Vgd_dir.dtype)
+            # arr = outfile.create_carray('/Geodetic','Vdir',atom,self.Vgd_dir.shape)
+            # arr[:] = self.Vgd_dir
+            # outfile.set_node_attr('/Geodetic/Vdir', 'TITLE', 'Velocity Direction Angle East of North Magnetic Meridian (-e2)')
+            # outfile.set_node_attr('/Geodetic/Vdir', 'Size', 'Nrecord x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/Vdir', 'Units', 'Degrees')
+            #
+            # atom = tables.Atom.from_dtype(self.Vgd_dir_err.dtype)
+            # arr = outfile.create_carray('/Geodetic','errVdir',atom,self.Vgd_dir_err.shape)
+            # arr[:] = self.Vgd_dir_err
+            # outfile.set_node_attr('/Geodetic/errVdir', 'TITLE', 'Error in Velocity Direction')
+            # outfile.set_node_attr('/Geodetic/errVdir', 'Size', 'Nrecord x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/errVdir', 'Units', 'Degrees')
+            #
+            # atom = tables.Atom.from_dtype(self.ElectricField_gd.dtype)
+            # arr = outfile.create_carray('/Geodetic','ElectricField',atom,self.ElectricField_gd.shape)
+            # arr[:] = self.ElectricField_gd
+            # outfile.set_node_attr('/Geodetic/ElectricField', 'TITLE', 'Convection Electric Field')
+            # outfile.set_node_attr('/Geodetic/ElectricField', 'Size', 'Nrecords x Nalt x Nbins x 3 (East, North, Up)')
+            # outfile.set_node_attr('/Geodetic/ElectricField', 'Units', 'V/m')
+            #
+            # atom = tables.Atom.from_dtype(self.ElectricFieldCovariance_gd.dtype)
+            # arr = outfile.create_carray('/Geodetic','CovarianceE',atom,self.ElectricFieldCovariance_gd.shape)
+            # arr[:] = self.ElectricFieldCovariance_gd
+            # outfile.set_node_attr('/Geodetic/CovarianceE', 'TITLE', 'Electric Field Covariance Matrix')
+            # outfile.set_node_attr('/Geodetic/CovarianceE', 'Size', 'Nrecords x Nalt x Nbins x 3 x 3')
+            # outfile.set_node_attr('/Geodetic/CovarianceE', 'Units', '(V/m)^2')
+            #
+            # atom = tables.Atom.from_dtype(self.Egd_mag.dtype)
+            # arr = outfile.create_carray('/Geodetic','Emag',atom,self.Egd_mag.shape)
+            # arr[:] = self.Egd_mag
+            # outfile.set_node_attr('/Geodetic/Emag', 'TITLE', 'Electric Field Magnitude')
+            # outfile.set_node_attr('/Geodetic/Emag', 'Size', 'Nrecords x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/Emag', 'Units', 'V/m')
+            #
+            # atom = tables.Atom.from_dtype(self.Egd_mag_err.dtype)
+            # arr = outfile.create_carray('/Geodetic','errEmag',atom,self.Egd_mag_err.shape)
+            # arr[:] = self.Egd_mag_err
+            # outfile.set_node_attr('/Geodetic/errEmag', 'TITLE', 'Electric Field Magnitude Error')
+            # outfile.set_node_attr('/Geodetic/errEmag', 'Size', 'Nrecords x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/errEmag', 'Units', 'V/m')
+            #
+            # atom = tables.Atom.from_dtype(self.Egd_dir.dtype)
+            # arr = outfile.create_carray('/Geodetic','Edir',atom,self.Egd_dir.shape)
+            # arr[:] = self.Egd_dir
+            # outfile.set_node_attr('/Geodetic/Edir', 'TITLE', 'Electric Field Direction Angle East of North Magnetic Meridian (-e2)')
+            # outfile.set_node_attr('/Geodetic/Edir', 'Size', 'Nrecord x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/Edir', 'Units', 'Degrees')
+            #
+            # atom = tables.Atom.from_dtype(self.Egd_dir_err.dtype)
+            # arr = outfile.create_carray('/Geodetic','errEdir',atom,self.Egd_dir_err.shape)
+            # arr[:] = self.Egd_dir_err
+            # outfile.set_node_attr('/Geodetic/errEdir', 'TITLE', 'Error in Electric Field Direction')
+            # outfile.set_node_attr('/Geodetic/errEdir', 'Size', 'Nrecord x Nalt x Nbins')
+            # outfile.set_node_attr('/Geodetic/errEdir', 'Units', 'Degrees')
 
             outfile.create_group('/', 'ProcessingParams')
 
-            atom = tables.Atom.from_dtype(self.ChiSquared.dtype)
-            arr = outfile.create_carray('/ProcessingParams', 'Chi2',atom,self.ChiSquared.shape)
-            arr[:] = self.ChiSquared
-            outfile.set_node_attr('/ProcessingParams/Chi2', 'TITLE', 'Reduced Chi-Squared')
-            outfile.set_node_attr('/ProcessingParams/Chi2', 'Size', 'Nrecords x Nbins')
+            save_carray(outfile, '/ProcessingParams/Chi2', self.ChiSquared, {'TITLE':'Reduced Chi-Squared', 'Size':'Nrecords x Nbins'})
+            save_carray(outfile, '/ProcessingParams/NumPoints', self.NumPoints, {'TITLE':'Number of input data points used to estimate the vector', 'Size':'Nrecords x Nbins'})
 
-            atom = tables.Atom.from_dtype(self.NumPoints.dtype)
-            arr = outfile.create_carray('/ProcessingParams', 'NumPoints',atom,self.NumPoints.shape)
-            arr[:] = self.NumPoints
-            outfile.set_node_attr('/ProcessingParams/NumPoints', 'TITLE', 'Number of input data points used to estimate the vector')
-            outfile.set_node_attr('/ProcessingParams/NumPoints', 'Size', 'Nrecords x Nbins')
+            # atom = tables.Atom.from_dtype(self.ChiSquared.dtype)
+            # arr = outfile.create_carray('/ProcessingParams', 'Chi2',atom,self.ChiSquared.shape)
+            # arr[:] = self.ChiSquared
+            # outfile.set_node_attr('/ProcessingParams/Chi2', 'TITLE', 'Reduced Chi-Squared')
+            # outfile.set_node_attr('/ProcessingParams/Chi2', 'Size', 'Nrecords x Nbins')
+            #
+            # atom = tables.Atom.from_dtype(self.NumPoints.dtype)
+            # arr = outfile.create_carray('/ProcessingParams', 'NumPoints',atom,self.NumPoints.shape)
+            # arr[:] = self.NumPoints
+            # outfile.set_node_attr('/ProcessingParams/NumPoints', 'TITLE', 'Number of input data points used to estimate the vector')
+            # outfile.set_node_attr('/ProcessingParams/NumPoints', 'Size', 'Nrecords x Nbins')
 
             outfile.create_group('/ProcessingParams', 'Apexpy')
 
@@ -854,6 +944,14 @@ def lin_interp(x, xp, fp, dfp):
     df[i<0] = np.nan
 
     return f, df
+
+def save_carray(h5, node, data, attributes):
+    group, name = os.path.split(node)
+    atom = tables.Atom.from_dtype(data.dtype)
+    arr = h5.create_carray(group, name, atom, data.shape)
+    arr[:] = data
+    for k, v in attributes.items():
+        h5.set_node_attr(node, k, v)
 
 def ion_upflow(Te,Ti,ne):
     # calculate ion upflow empirically using the Lu/Zou method (not published yet?)

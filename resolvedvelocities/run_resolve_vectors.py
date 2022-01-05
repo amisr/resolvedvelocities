@@ -2,7 +2,7 @@
 
 import os
 import sys
-from .ResolveVectors import ResolveVectors
+from .ResolveVectorsLat import ResolveVectors
 
 config_file_help = """Calculate 2D resolved plasma drift velocity and electric
 field vectors from the LoS measurments in a fitted AMISR file.
@@ -81,10 +81,10 @@ def main():
     # this format doesn't really make a lot of sense, particularly because you can't skip most steps
     args = vars(parser.parse_args())
     rv = ResolveVectors(args['config_file'])
-    rv.read_data()
-    rv.filter_data()
+    # rv.read_data()
+    # rv.filter_data()
     rv.transform()
-    rv.ion_upflow_correction()
+    # rv.ion_upflow_correction()
     rv.bin_data()
     rv.get_integration_periods()
     rv.compute_vector_velocity()

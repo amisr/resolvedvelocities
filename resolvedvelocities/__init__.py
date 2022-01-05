@@ -14,6 +14,6 @@ Modules
 
 """
 
-from .ResolveVectors import ResolveVectors
+from .ResolveVectorsLat import ResolveVectors
 
 __version__ = '1.0.0-alpha'
