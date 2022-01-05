@@ -33,32 +33,32 @@ import resolvedalts as ra
 from resolvedvelocities.DataHandler import FittedVelocityDataHandler
 import resolvedvelocities as rv
 
-# output file definition
-h5paths = [['/ProcessingParams','Processing Parameters'],
-           ['/VectorVels','Velocity Vector Reconstructed From LOS'],
-           ['/Site','Site Parameters'],
-           ['/Time','Time Information'],
-          ]
-
-h5attribs = {'/VectorVels/AltitudeBins' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
-             '/VectorVels/Altitudes' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
-             '/VectorVels/Vest' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
-             '/VectorVels/covVest' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
-             '/VectorVels/errVest' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
-             '/VectorVels/Nmeas' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
-             '/VectorVels/chi2' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
-             '/ProcessingParams/ProcessingTimeStamp' : [('TITLE','Processing Time Stamp')],
-             '/Site/Altitude' : [('TITLE','Altitude'),('Description','Altitude of site'),('Unit','Meters')],
-             '/Site/Code' : [('TITLE','Site Code')],
-             '/Site/Latitude' : [('TITLE','Latitude'),('Description','Latitude of site'),('Unit','Degrees North')],
-             '/Site/Longitude' : [('TITLE','Longitude'),('Description','Longitude of site'),('Unit','Degrees East')],
-             '/Site/Name' : [('TITLE','Name'),('Description','Site Name')],
-             '/Time/Day' : [('TITLE','Day of Month'),('Size','Nrecords x 2 (Start and end of integration')],
-             '/Time/Month' : [('TITLE','Month'),('Size','Nrecords x 2 (Start and end of integration')],
-             '/Time/Year' : [('TITLE','Year'),('Size','Nrecords x 2 (Start and end of integration')],
-             '/Time/doy' : [('TITLE','Day of Year'),('Size','Nrecords x 2 (Start and end of integration')],
-             '/Time/UnixTime' : [('TITLE','Unix Time'),('Size','Nrecords x 2 (Start and end of integration'),('Unit','Seconds')],
-            }
+# # output file definition
+# h5paths = [['/ProcessingParams','Processing Parameters'],
+#            ['/VectorVels','Velocity Vector Reconstructed From LOS'],
+#            ['/Site','Site Parameters'],
+#            ['/Time','Time Information'],
+#           ]
+#
+# h5attribs = {'/VectorVels/AltitudeBins' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
+#              '/VectorVels/Altitudes' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
+#              '/VectorVels/Vest' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
+#              '/VectorVels/covVest' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
+#              '/VectorVels/errVest' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
+#              '/VectorVels/Nmeas' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
+#              '/VectorVels/chi2' : [('TITLE','Altitude'),('Unit','Meters'),('Description','Altitude assuming local flat Earth.')],
+#              '/ProcessingParams/ProcessingTimeStamp' : [('TITLE','Processing Time Stamp')],
+#              '/Site/Altitude' : [('TITLE','Altitude'),('Description','Altitude of site'),('Unit','Meters')],
+#              '/Site/Code' : [('TITLE','Site Code')],
+#              '/Site/Latitude' : [('TITLE','Latitude'),('Description','Latitude of site'),('Unit','Degrees North')],
+#              '/Site/Longitude' : [('TITLE','Longitude'),('Description','Longitude of site'),('Unit','Degrees East')],
+#              '/Site/Name' : [('TITLE','Name'),('Description','Site Name')],
+#              '/Time/Day' : [('TITLE','Day of Month'),('Size','Nrecords x 2 (Start and end of integration')],
+#              '/Time/Month' : [('TITLE','Month'),('Size','Nrecords x 2 (Start and end of integration')],
+#              '/Time/Year' : [('TITLE','Year'),('Size','Nrecords x 2 (Start and end of integration')],
+#              '/Time/doy' : [('TITLE','Day of Year'),('Size','Nrecords x 2 (Start and end of integration')],
+#              '/Time/UnixTime' : [('TITLE','Unix Time'),('Size','Nrecords x 2 (Start and end of integration'),('Unit','Seconds')],
+#             }
 
 
 class ResolveVectorsAlt(object):
@@ -66,38 +66,17 @@ class ResolveVectorsAlt(object):
 
         # read the config file
         print("Reading configuration file...")
-        # self.configfile = configfile
-        # self.config = self.parse_config()
         self.configfile = configfile
         self.read_config(configfile)
 
-        # move to config file
-        # self.aprior_covar = np.array([3000.0**2,3000.0**2,100.0**2])
-
-        # # find files using config information
-        # print("Checking input files...")
-        # self.filelists = self.get_files()
-        #
-        # # initialize the data handlers
-        # print("Checking available data...")
-        # self.num_pulsetypes = len(self.filelists)
-        # # self.datahandlers = [FittedVelocityDataHandler(self.filelists[i]) for i in range(self.num_pulsetypes)]
-
         print(self.datafile)
+
         self.datahandler = FittedVelocityDataHandler(self.datafile)
-        self.datahandler.read_data(self.use_beams)
+        self.datahandler.load_data(self.use_beams)
         self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
 
-
-        # set up the bins
-        print("Forming altitude bins...")
-        self.altitude_bins = self.get_bins()
-
-        # find all unique times from the data handlers and then
-        # determine the integration periods to calculate Ne_NoTr for
-        print("Calculating integration periods...")
-        # self.times = self.get_unique_times()
         self.integration_periods = self.get_integration_periods()
+
 
         # make sure output directory is available and if not create it
         print("Validating output directory...")
@@ -109,10 +88,40 @@ class ResolveVectorsAlt(object):
             os.makedirs(self.output_path)
 
 
+    def run(self):
+
+        # add overwrite flag to config file?
+        # First check if output file is able to be created
+        # temp_file = tempfile.mktemp()
+        # output_file = os.path.join(self.config['output']['output_path'],self.config['output']['output_name'])
+        output_file = os.path.join(self.output_path,self.output_name)
+
+        # set up the bins
+        print("Forming altitude bins...")
+        self.altitude_bins = self.get_bins()
+
+        self.transform()
+
+        # Run the calculator and write output to a file
+        self.do_vvels()
+        self.compute_geodetic_velocity()
+        # i = np.array([0,1,2])
+        # errvvels = np.sqrt(np.squeeze(output['vvels_cov'][:,:,i,i]))
+        #
+        # self.save_output(output, errvvels)
+
+
+        print("Plotting...")
+        plotter = ra.ResolvedAltPlotter(output_file)
+        plotter.make_plot()
+
+        print("Done!")
+
+
     def read_config(self, config_file):
 
         # read config file
-        config = configparser.ConfigParser(converters={'list':self.parse_list})
+        config = configparser.ConfigParser(converters={'list':parse_list})
         config.read(config_file)
 
         # Possibly could done better with converters?  This may by python3 specific though.
@@ -130,80 +139,10 @@ class ResolveVectorsAlt(object):
         self.integration_time = config.getfloat('VVELS_OPTIONS', 'INTTIME') if config.has_option('VVELS_OPTIONS', 'INTTIME') else None
         self.use_beams = config.getlist('VVELS_OPTIONS', 'USE_BEAMS') if config.has_option('VVELS_OPTIONS', 'USE_BEAMS') else None
 
-        # self.outfilename = config.get('FILEIO', 'OUTFILENAME')
-        # self.chirp = config.getfloat('CONFIG', 'CHIRP')
-        # self.covar = [float(i) for i in config.get('CONFIG', 'COVAR').split(',')]
-        # self.altlim = [float(i) for i in config.get('CONFIG', 'ALTLIM').split(',')]
-        # self.nelim = [float(i) for i in config.get('CONFIG', 'NELIM').split(',')]
-        # self.chi2lim = [float(i) for i in config.get('CONFIG', 'CHI2LIM').split(',')]
-        # self.goodfitcode = [float(i) for i in config.get('CONFIG', 'GOODFITCODE').split(',')]
-        # self.binvert = eval(config.get('CONFIG', 'BINVERT'))
-        # # can probably change this parameter to a list of start, end, step similar to vvelsAlt
-        # self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
-        # self.marprot = [float(i) for i in config.get('CONFIG', 'MARPROT').split(',')]
-        #
-        # # optional parameters
-        # self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
-        # self.upB_beamcode = config.getint('CONFIG', 'UPB_BEAMCODE') if config.has_option('CONFIG', 'UPB_BEAMCODE') else None
-        # self.ionup = config.get('CONFIG', 'IONUP') if config.has_option('CONFIG', 'IONUP') else None
-        # self.use_beams = [int(i) for i in config.get('CONFIG', 'USE_BEAMS').split(',')] if config.has_option('CONFIG', 'USE_BEAMS') else None
-        # self.integration_time = config.getfloat('CONFIG', 'INTTIME') if config.has_option('CONFIG', 'INTTIME') else None
-        # self.outfilepath = config.get('FILEIO', 'OUTFILEPATH') if config.has_option('FILEIO', 'OUTFILEPATH') else '.'
 
-    def parse_list(self, s):
-        return [float(i) for i in s.split(',')]
+    # def parse_list(self, s):
+    #     return [float(i) for i in s.split(',')]
 
-    # def parse_config(self):
-    #     # Use ALLCAPS convection for config file
-    #     required_sections_options = {'input': {'files': str},
-    #                                  'output': {'output_name':str,
-    #                                             'output_path': str,
-    #                                            },
-    #                                  'vvels_options': {'recs2integrate': int,
-    #                                                    'altitude_bins':str},
-    #                                 }
-    #
-    #     optional_sections_options = {'input': {'amb_path': str,
-    #                                            'ksys_file': str
-    #                                           },
-    #                                 }
-    #
-    #
-    #     # read the config file and convert to dictionary
-    #     parser = ConfigParser.ConfigParser()
-    #     parser.read(self.configfile)
-    #     parsed_config = self.__config_to_dict_helper(parser)
-    #
-    #     # check the config file to make sure we have all required information
-    #     # This checking + error statements handled by configparser?
-    #     for section in required_sections_options.keys():
-    #         if parsed_config.get(section,None) is None:
-    #             msg = 'Required section: "%s" is missing from config.' % section
-    #             raise AttributeError(msg)
-    #         for option in required_sections_options[section].keys():
-    #             if parsed_config[section].get(option,None) is None:
-    #                 msg = 'Required option: "%s" is missing' % option
-    #                 msg += ' from the "%s" section in the config.' % section
-    #                 raise AttributeError(msg)
-    #
-    #             # potentially useful way to solve conversion/typing issues
-    #             # convert the input config data to the required format
-    #             type_func = required_sections_options[section][option]
-    #             converted = type_func(parsed_config[section][option])
-    #             parsed_config[section][option] = converted
-    #
-    #     # make sure optional options are formatted as required
-    #     for section in optional_sections_options.keys():
-    #         for option in optional_sections_options[section].keys():
-    #             # convert the input config data to the required format
-    #             type_func = optional_sections_options[section][option]
-    #             try:
-    #                 converted = type_func(parsed_config[section][option])
-    #                 parsed_config[section][option] = converted
-    #             except KeyError:
-    #                 pass
-    #
-    #     return parsed_config
 
 
     # def get_files(self):
@@ -263,35 +202,18 @@ class ResolveVectorsAlt(object):
         self.bin_centers = bin_centers
 
 
-    # def get_unique_times(self):
-    #     all_times = list()
-    #     for i in range(self.num_pulsetypes):
-    #         all_times.extend(list(self.datahandlers[i].times))
-    #     all_times = [tuple(x) for x in all_times]
-    #     unique_times = np.array(sorted(list(set(list(all_times)))))
-    #
-    #     # now detect time pairs that have 0 difference in start or end time
-    #     # sometimes fitted files don't have exactly the same time windows...
-    #     if self.num_pulsetypes > 1:
-    #         diffs = np.diff(unique_times,axis=0)   # diff the start and end times
-    #         diffs = np.array([[x[0].total_seconds(),x[1].total_seconds()] for x in diffs])
-    #         inds = np.where(~((diffs[:,0] == 0) | (diffs[:,1] == 0)))[0]  # exclude times where start or end diffs are 0
-    #         unique_times = unique_times[inds,:]
-    #
-    #     return unique_times
-
 
     def get_integration_periods(self):
 
         if not self.integration_time:
-            return self.datahandler.data['time']
+            return self.datahandler.utime
 
         integration_periods = list()
         start_time = None
         # integration_time = self.config['vvels_options']['recs2integrate']
         integration_time = self.integration_time
-        num_times = len(self.datahandler.data['time'])
-        for i,time_pair in enumerate(self.datahandler.data['time']):
+        num_times = len(self.datahandler.utime)
+        for i,time_pair in enumerate(self.datahandler.utime):
         # integration_time = self.integration_time
         # num_times = len(self.times)
         # for i,time_pair in enumerate(self.times):
@@ -313,62 +235,32 @@ class ResolveVectorsAlt(object):
         return np.array(integration_periods)
 
 
-    # @staticmethod
-    # # configparser objects can basically be treated as a dictionary
-    # # this may be outdated?
-    # def __config_to_dict_helper(configparserclass):
-    #     # based on https://gist.github.com/amitsaha/3065184
-    #     # converts a config parser object to a dictionary
-    #     config = dict()
-    #     defaults = configparserclass.defaults()
-    #     sections = configparserclass.sections()
-    #
-    #     temp = dict()
-    #     for key in defaults:
-    #         temp[key] = defaults[key]
-    #     config['default'] = temp
-    #     default_options = temp.keys()
-    #
-    #     for section in sections:
-    #         opts = configparserclass.options(section)
-    #         options = [x for x in opts if not x in default_options]
-    #         temp = dict()
-    #         for option in options:
-    #             temp[option] = configparserclass.get(section,option)
-    #         config[section.lower()] = temp
-    #
-    #     return config
-
-    def transform(self):
-        # lon = data['site']['lon']*np.pi/180.
-        # neu_to_xyz = np.matrix([[np.cos(lon), -np.sin(lon), 0],[np.sin(lon),np.cos(lon),0],[0,0,1]])
-        # xyz_to_neu = np.linalg.inv(neu_to_xyz)
-        #
-        # kvec_xyz = data['kvec'] #np.array((neu_to_xyz * np.matrix(data['kvec']).T).T)
-
-        lam = self.datahandler.data['lat']*np.pi/180.
-        phi = self.datahandler.data['lon']*np.pi/180.
+    def rotation_matrices(self, lat, lon):
+        lam = lat*np.pi/180.
+        phi = lon*np.pi/180.
 
         R_enu2uvw = np.array([[-np.sin(phi), -np.sin(lam)*np.cos(phi), np.cos(lam)*np.cos(phi)],
                     [np.cos(phi), -np.sin(lam)*np.sin(phi), np.cos(lam)*np.sin(phi)],
-                    [np.cos(lam), np.zeros(lam.shape), np.sin(lam)]]).transpose((2,0,1))
+                    [np.cos(lam), np.zeros(lam.shape), np.sin(lam)]])
 
         R_uvw2enu = np.array([[-np.sin(phi), np.cos(phi), np.zeros(lam.shape)],
                    [-np.sin(lam)*np.cos(phi), -np.sin(lam)*np.sin(phi), np.cos(lam)],
-                   [np.cos(lam)*np.cos(phi), np.cos(lam)*np.sin(phi), np.sin(lam)]]).transpose((2,0,1))
+                   [np.cos(lam)*np.cos(phi), np.cos(lam)*np.sin(phi), np.sin(lam)]])
 
+        if np.ndim(lat)>0:
+            R_enu2uvw = R_enu2uvw.transpose((2,0,1))
+            R_uvw2enu = R_uvw2enu.transpose((2,0,1))
 
-        # glat = self.datahandler.data['lat']
-        # glon = self.datahandler.data['lon']
-        # galt = self.datahandler.data['alt'] / 1000.
+        return R_enu2uvw, R_uvw2enu
+
+    def transform(self):
+
+        R_enu2uvw, R_uvw2enu = self.rotation_matrices(self.datahandler.lat, self.datahandler.lon)
 
         # kvec in geodetic coordinates [e n u]
-        kvec = np.array([self.datahandler.data['ke'], self.datahandler.data['kn'], self.datahandler.data['kz']]).T
+        kvec = np.array([self.datahandler.ke, self.datahandler.kn, self.datahandler.kz]).T
         self.A = np.einsum('mij,...mj->...mi', R_enu2uvw, kvec)
 
-        # u, v, w = enu2uvw(self.datahandler.data['ke'], self.datahandler.data['kn'], self.datahandler.data['kz'], glat, glon)
-        #
-        # self.A = np.array([u, v, w]).T
 
 
     # For each integration period, bin the los velocity data by altitude
@@ -379,19 +271,17 @@ class ResolveVectorsAlt(object):
         num_integrations = len(self.integration_periods)
         num_bins = len(self.bins)
 
-        vvels = np.zeros((num_integrations,num_bins,3))*np.nan
-        chi2s = np.zeros((num_integrations,num_bins))*np.nan
-        num_points = np.zeros((num_integrations,num_bins))*np.nan
-        vvels_cov = np.zeros((num_integrations,num_bins,3,3))*np.nan
-        for i,integration_period in enumerate(self.integration_periods):
-            print("Integration period %s/%s" % (str(i+1),str(num_integrations)))
+        self.Velocity = np.full((num_integrations,num_bins,3), np.nan)
+        self.VelocityCovariance = np.full((num_integrations,num_bins,3,3), np.nan)
+        self.ChiSquared = np.full((num_integrations,num_bins), np.nan)
+        self.NumPoints = np.full((num_integrations,num_bins), np.nan)
 
-            kvecs = list()
-            vels = list()
-            evels = list()
+
+        for i,integration_period in enumerate(self.integration_periods):
 
             # for j,datahandler in enumerate(self.datahandlers):
-            data, _ = self.datahandler.get_records(integration_period[0],integration_period[1])
+            # data, _ = self.datahandler.get_records(integration_period[0],integration_period[1])
+            tidx = self.datahandler.get_record_indices(integration_period[0],integration_period[1])
 
                 # can probably use pymap3d here
                 # to prevent distortion due to lat/lon grid, we want to convert
@@ -447,69 +337,70 @@ class ResolveVectorsAlt(object):
             # do vvels for each altitude bin
             for k, (bin_start, bin_end) in enumerate(self.bins):
 
-                alt_inds = np.where((self.datahandler.data['alt'] >= bin_start) & (self.datahandler.data['alt'] <= bin_end))[0]
-                if len(alt_inds) == 0:
+                aidx = np.where((self.datahandler.alt >= bin_start) & (self.datahandler.alt <= bin_end))[0]
+                if len(aidx) == 0:
                     continue
-                input_vlos = data['vels'][alt_inds].T
-                input_dvlos = data['evels'][alt_inds]
+                # input_vlos = data['vels'][alt_inds].T
+                # input_dvlos = data['evels'][alt_inds]
                 # A = kvecs[alt_inds,:]
+                vlos = self.datahandler.vlos[tidx,aidx[:,np.newaxis]].flatten()
+                dvlos = self.datahandler.dvlos[tidx,aidx[:,np.newaxis]].flatten()
 
-                v, sigv, chi2, N = self.vvels(input_vlos, input_dvlos, self.A, self.aprior_covar, minnumpoints=3)
+                A = np.repeat(self.A[aidx], len(tidx), axis=0)
 
-                # now transform from local x,y,z to N,E,U
-                # np.array((neu_to_xyz * np.matrix(data['kvec']).T).T)
-                # THIS CONVERSION OF COVARIANCE MATRIX (ECEF->GD) YOU HAD TO DO FOR AGU POSTER
-                # LOOK UP FROM GRADIENT CALCULATION WORK
-                vvels[i,k,:] = np.einsum('mij,...mj->...mi', R_uvw2enu, v)
-                vvels_cov[i,k,:] = np.einsum('mij,...mjk,mlk->...mil',R_uvw2enu, sigv, R_uvw2enu)
+                V, SigV, chi2, N = self.vvels(vlos, dvlos, A, self.aprior_covar, minnumpoints=3)
 
-                # vvels[i,k,:]     = (xyz_to_neu * np.matrix(v).T).T
-                # vvels_cov[i,k,:] = xyz_to_neu * sigv * xyz_to_neu.T
-                chi2s[i,k]       = chi2
-                num_points[i,k]  = N
-
-        data = dict()
-        data['vvels'] = vvels
-        data['chi2s'] = chi2s
-        data['num_points'] = num_points
-        data['vvels_cov'] = vvels_cov
-
-        return data
+                # now transform from local uvw to enu
+                self.Velocity[i,k,:] = V
+                self.VelocityCovariance[i,k,:] = SigV
+                self.ChiSquared[i,k] = chi2
+                self.NumPoints[i,k] = N
 
 
-# same vvels function?  Move to a utils file?
-    def vvels(self, vlos, dvlos, A, cov, minnumpoints=1):
-        # implimentation of Heinselman and Nicolls 2008 vector velocity algorithm
+    def compute_geodetic_velocity(self):
 
-        # remove nan data points
-        finite_inds = np.where(np.isfinite(vlos))[0]
+        R_enu2uvw, R_uvw2enu = self.rotation_matrices(self.datahandler.site[0], self.datahandler.site[1])
 
-        # if there are too few points for a valid reconstruction, set output to NAN
-        if finite_inds.size < minnumpoints:
-            V = np.full(3,np.nan)
-            sigV = np.full((3,3),np.nan)
-            return V, sigV, np.nan, 0.
 
-        vlos = vlos[finite_inds]
-        dvlos = dvlos[finite_inds]
-        A = np.matrix(A[finite_inds,:])
+        # now transform from local uvw to enu
+        self.Velocity = np.einsum('ij,...mj->...mi', R_uvw2enu, self.Velocity)
+        self.VelocityCovariance = np.einsum('ij,...mjk,lk->...mil', R_uvw2enu, self.VelocityCovariance, R_uvw2enu)
 
-        sigmaE = np.matrix(np.diag(dvlos**2))
-        sigmaV = np.matrix(np.diag(cov))
 
-        try:
-            X = sigmaV*A.T*np.linalg.inv(A*sigmaV*A.T + sigmaE)
-            V = X*np.matrix(vlos).T     # calculate velocity estimate (Heinselman 2008 eqn 12)
-            sigV = sigmaV - X*A*sigmaV  # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
-            temp = np.array(A*V - np.matrix(vlos).T)
-            chi2 = np.sum(temp**2/dvlos**2) / finite_inds.size
-            V = np.array(V.T)
-        except np.linalg.LinAlgError:
-            V = np.full(3,np.nan)
-            sigV = np.full((3,3),np.nan)
-            chi2 = np.nan
 
-        return V, sigV, chi2, finite_inds.size
+# # same vvels function?  Move to a utils file?
+#     def vvels(self, vlos, dvlos, A, cov, minnumpoints=1):
+#         # implimentation of Heinselman and Nicolls 2008 vector velocity algorithm
+#
+#         # remove nan data points
+#         finite_inds = np.where(np.isfinite(vlos))[0]
+#
+#         # if there are too few points for a valid reconstruction, set output to NAN
+#         if finite_inds.size < minnumpoints:
+#             V = np.full(3,np.nan)
+#             sigV = np.full((3,3),np.nan)
+#             return V, sigV, np.nan, 0.
+#
+#         vlos = vlos[finite_inds]
+#         dvlos = dvlos[finite_inds]
+#         A = np.matrix(A[finite_inds,:])
+#
+#         sigmaE = np.matrix(np.diag(dvlos**2))
+#         sigmaV = np.matrix(np.diag(cov))
+#
+#         try:
+#             X = sigmaV*A.T*np.linalg.inv(A*sigmaV*A.T + sigmaE)
+#             V = X*np.matrix(vlos).T     # calculate velocity estimate (Heinselman 2008 eqn 12)
+#             sigV = sigmaV - X*A*sigmaV  # calculate covariance of velocity estimate (Heinselman 2008 eqn 13)
+#             temp = np.array(A*V - np.matrix(vlos).T)
+#             chi2 = np.sum(temp**2/dvlos**2) / finite_inds.size
+#             V = np.array(V.T)
+#         except np.linalg.LinAlgError:
+#             V = np.full(3,np.nan)
+#             sigV = np.full((3,3),np.nan)
+#             chi2 = np.nan
+#
+#         return V, sigV, chi2, finite_inds.size
 
 
     # def get_site(self):
@@ -584,69 +475,14 @@ class ResolveVectorsAlt(object):
             outfile.create_group('/', 'VectorVels')
             save_carray(outfile, '/VectorVels/AltitudeBins', self.bins, {'TITLE':'Altitude Bins'})
             save_carray(outfile, '/VectorVels/Altitudes', self.bin_centers, {'TITLE':'Altitude of Center of Bins'})
-            save_carray(outfile, '/VectorVels/Vest', output['vvels'], {'TITLE':'Velocity'})
-            save_carray(outfile, '/VectorVels/covVest', output['vvels_cov'], {'TITLE':'Velocity Covariance Matrix'})
-            save_carray(outfile, '/VectorVels/errVest', errvvels, {'TITLE':'Velocity Errors'})
-            save_carray(outfile, '/VectorVels/Nmeas', output['num_points'], {'TITLE':'Number of Measurements'})
-            save_carray(outfile, '/VectorVels/chi', output['chi2s'], {'TITLE':'Chi Squared'})
+            save_carray(outfile, '/VectorVels/Vest', self.Velocity, {'TITLE':'Velocity'})
+            save_carray(outfile, '/VectorVels/covVest', self.VelocityCovariance, {'TITLE':'Velocity Covariance Matrix'})
 
-
-            # outfile.create_group('/', 'Magnetic')
-            #
-            # save_carray(outfile, '/Magnetic/Latitue', self.bin_alat, {'TITLE':'Magnetic Latitude', 'Size':'Nbins'})
-            # save_carray(outfile, '/Magnetic/Longitude', self.bin_alon, {'TITLE':'Magnetic Longitude', 'Size':'Nbins'})
-            # save_carray(outfile, '/Magnetic/Velocity', self.Velocity, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)', 'Units':'m/s'})
-            # save_carray(outfile, '/Magnetic/CovarianceV', self.VelocityCovariance, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nbins x 3 x 3', 'Units':'(m/s)^2'})
-            # save_carray(outfile, '/Magnetic/ElectricField', self.ElectricField, {'TITLE':'Convection Electric Field', 'Size':'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)', 'Units':'V/m'})
-            # save_carray(outfile, '/Magnetic/CovarianceV', self.ElectricFieldCovariance, {'TITLE':'Electric Field Covariance Matrix', 'Size':'Nrecords x Nbins x 3 x 3', 'Units':'(V/m)^2'})
-            #
-            #
-            #
-            # outfile.create_group('/', 'Geodetic')
-            #
-            # save_carray(outfile, '/Geodetic/Latitue', self.bin_alat, {'TITLE':'Geographic Latitude', 'Size':'Nalts x Nbins'})
-            # save_carray(outfile, '/Geodetic/Longitude', self.bin_alon, {'TITLE':'Geographic Longitude', 'Size':'Nalts x Nbins'})
-            # save_carray(outfile, '/Geodetic/Altitde', self.bin_alon, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
-            # save_carray(outfile, '/Geodetic/Velocity', self.Velocity_gd, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nalts x Nbins x 3 (East, North, Up)', 'Units':'m/s'})
-            # save_carray(outfile, '/Geodetic/CovarianceV', self.VelocityCovariance_gd, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nalts x Nbins x 3 x 3', 'Units':'(m/s)^2'})
-            # save_carray(outfile, '/Geodetic/Vmag', self.Vgd_mag, {'TITLE':'Velocity Magnitude', 'Size':'Nrecords x Nalts x Nbins', 'Units':'m/s'})
-            # save_carray(outfile, '/Geodetic/errVmag', self.Vgd_mag_err, {'TITLE':'Velocity Magnitude Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'m/s'})
-            # save_carray(outfile, '/Geodetic/Vdir', self.Vgd_dir, {'TITLE':'Velocity Direction Angle East of North Magnetic Meridian (-e2)', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
-            # save_carray(outfile, '/Geodetic/errVdir', self.Vgd_dir_err, {'TITLE':'Velocity Direction Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
-            # save_carray(outfile, '/Geodetic/ElectricField', self.ElectricField_gd, {'TITLE':'Convection Electric Field', 'Size':'Nrecords x Nbins x 3 (East, North, Up)', 'Units':'V/m'})
-            # save_carray(outfile, '/Geodetic/CovarianceE', self.ElectricFieldCovariance_gd, {'TITLE':'Electric Field Covariance Matrix', 'Size':'Nrecords x Nbins x 3 x 3', 'Units':'(V/m)^2'})
-            # save_carray(outfile, '/Geodetic/Emag', self.Egd_mag, {'TITLE':'Electric Field Magnitude', 'Size':'Nrecords x Nalts x Nbins', 'Units':'V/m'})
-            # save_carray(outfile, '/Geodetic/errEmag', self.Egd_mag_err, {'TITLE':'Electric Field Magnitude Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'V/m'})
-            # save_carray(outfile, '/Geodetic/Edir', self.Egd_dir, {'TITLE':'Electric Field Direction Angle East of North Magnetic Meridian (-e2)', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
-            # save_carray(outfile, '/Geodetic/errEdir', self.Egd_dir_err, {'TITLE':'Electric Field Direction Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
-
-
-            # site = self.get_site()
-            # outfile.create_group('/', 'Site')
-            #
-            # outfile.create_array('/Site', 'Altitude', site['altitude'])
-            # h5.create_array('/Site', 'Code', site['code'])
-            # h5.create_array('/Site', 'Latitude', site['latitude'])
-            # h5.create_array('/Site', 'Longitude', site['longitude'])
-            # h5.create_array('/Site', 'Name', site['name'])
 
             outfile.create_group('/', 'ProcessingParams')
 
-            # RE-ADD THESE IN THE FUTURE
-            # save_carray(outfile, '/ProcessingParams/Chi2', self.ChiSquared, {'TITLE':'Reduced Chi-Squared', 'Size':'Nrecords x Nbins'})
-            # save_carray(outfile, '/ProcessingParams/NumPoints', self.NumPoints, {'TITLE':'Number of input data points used to estimate the vector', 'Size':'Nrecords x Nbins'})
-
-            # outfile.create_group('/ProcessingParams', 'Apexpy')
-            #
-            # outfile.create_array('/ProcessingParams/Apexpy', 'Year', self.marp.year)
-            # outfile.set_node_attr('/ProcessingParams/Apexpy/Year', 'TITLE', 'Decimal Year used for IGRF Model')
-            #
-            # outfile.create_array('/ProcessingParams/Apexpy','RefHeight',self.marp.refh)
-            # outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'TITLE', 'Reference height used for Apex coordinates')
-            # outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'Units', 'km')
-            #
-            # outfile.create_array('/ProcessingParams/Apexpy','Version',apexpy.__version__.encode('utf-8'))
-            # outfile.set_node_attr('/ProcessingParams/Apexpy/Version', 'TITLE', 'Apexpy version used.')
+            save_carray(outfile, '/ProcessingParams/Chi2', self.ChiSquared, {'TITLE':'Reduced Chi-Squared', 'Size':'Nrecords x Nbins'})
+            save_carray(outfile, '/ProcessingParams/NumPoints', self.NumPoints, {'TITLE':'Number of input data points used to estimate the vector', 'Size':'Nrecords x Nbins'})
 
             # Save computer information and config file
             # Computer information:
@@ -687,150 +523,64 @@ class ResolveVectorsAlt(object):
 
 
 
-# move to run_resolve_vectors.py?
-    def run(self):
-
-        # add overwrite flag to config file?
-        # First check if output file is able to be created
-        # temp_file = tempfile.mktemp()
-        # output_file = os.path.join(self.config['output']['output_path'],self.config['output']['output_name'])
-        output_file = os.path.join(self.output_path,self.output_name)
-
-        # Run the calculator and write output to a file
-        output = self.do_vvels()
-        i = np.array([0,1,2])
-        errvvels = np.sqrt(np.squeeze(output['vvels_cov'][:,:,i,i]))
-
-        # # get Site information
-        # site = self.get_site()
-        # # get Time information
-        # time = self.get_time()
-
-        self.save_output(output, errvvels)
-
-        # # Get current date and time
-        # date = datetime.utcnow()
-        # processing_time = date.strftime("%a, %d %b %Y %H:%M:%S +0000")
-        #
-        # # move this to an independent function
-        # # add more attribute information to the hdf5 output
-        # # Write the output
-        # # set up the output file
-        # print("Writing data to file...")
-        # with tables.open_file(temp_file,'w') as h5:
-        #     for h5path in h5paths:
-        #         group_path, group_name = os.path.split(h5path[0])
-        #         h5.create_group(group_path,group_name,title=h5path[1],createparents=True)
-        #
-        #     node_path = '/ProcessingParams'
-        #     h5.create_array(node_path,'ProcessingTimeStamp',np.array(processing_time),createparents=True)
-        #
-        #     node_path = '/Site'
-        #     h5.create_array(node_path,'Altitude',site['altitude'],createparents=True)
-        #     h5.create_array(node_path,'Code',site['code'],createparents=True)
-        #     h5.create_array(node_path,'Latitude',site['latitude'],createparents=True)
-        #     h5.create_array(node_path,'Longitude',site['longitude'],createparents=True)
-        #     h5.create_array(node_path,'Name',site['name'],createparents=True)
-        #
-        #     node_path = '/VectorVels'
-        #     h5.create_array(node_path,'AltitudeBins',self.bins,createparents=True)
-        #     h5.create_array(node_path,'Altitudes',self.bin_centers,createparents=True)
-        #     h5.create_array(node_path,'Vest',output['vvels'],createparents=True)
-        #     h5.create_array(node_path,'covVest',output['vvels_cov'],createparents=True)
-        #     h5.create_array(node_path,'errVest',errvvels,createparents=True)
-        #     h5.create_array(node_path,'Nmeas',output['num_points'],createparents=True)
-        #     h5.create_array(node_path,'chi2',output['chi2s'],createparents=True)
-        #
-        #     node_path = '/Time'
-        #     h5.create_array(node_path,'Day',time['day'],createparents=True)
-        #     h5.create_array(node_path,'Month',time['month'],createparents=True)
-        #     h5.create_array(node_path,'Year',time['year'],createparents=True)
-        #     h5.create_array(node_path,'doy',time['doy'],createparents=True)
-        #     h5.create_array(node_path,'UnixTime',time['unixtime'],createparents=True)
-        #
-        #
-        # # Add configuration information
-        # print("Adding configuration information...")
-        # inputfiles = [x.filelist for x in self.datahandlers]
-        # self.write_config_info(temp_file,inputfiles)
-        #
-        # with tables.open_file(temp_file,'r+') as h5:
-        #     for key in h5attribs.keys():
-        #         for attr in h5attribs[key]:
-        #             h5.set_node_attr(key,attr[0],attr[1])
-        #
-        # # Add repacking to vvelsLat
-        # # repack the file with compression
-        # print("Repacking the file with compression...")
-        # repack = repackh5(temp_file,output_file)
-        # repack.repack()
-        # # remove the temporary file
-        # print("Cleaning up...")
-        # os.remove(temp_file)
-
-        print("Plotting...")
-        plotter = ra.ResolvedAltPlotter(output_file)
-        plotter.make_plot()
-
-        print("Done!")
 
 
 
-    def write_config_info(self,h5name,raw_files):
-        import platform
-        import getpass
-
-        # Computer information:
-        PythonVersion   = platform.python_version()
-        Type            = platform.machine()
-        System          = "%s %s %s" % (platform.system(),platform.release(),platform.version())
-        User            = getpass.getuser()
-        Hostname        = platform.node()
-        if len(Hostname) == 0:
-            import socket
-            Hostname = socket.gethostname()
-
-        # Fitter configuration information
-        Version = ra.__version__  # Eventually replaced by self.__version__
-
-        # Get the config file used
-        cf = self.configfile
-        Path = os.path.dirname(os.path.abspath(cf))
-        Name = os.path.basename(cf)
-
-        with open(cf,'r') as f:
-            Contents = "".join(f.readlines())
-
-        # Record the raw files used
-        # Make a string listing all the files
-        RawFiles = ''
-        for i,files in enumerate(raw_files):
-            temp = "\n".join(files)
-            if i != 0:
-                RawFiles += '\n'
-            RawFiles += temp
-
-        # Record the directory where fitted files can be found
-        # OutputPath = os.path.abspath(self.config['output']['output_path'])
-
-        # Open the fitted h5 file
-        with tables.open_file(h5name,'r+') as h5:
-            node_path = '/ProcessingParams'
-            h5.create_group(node_path,'ComputerInfo',title='Processing Computer Information',createparents=True)
-            h5.create_group(node_path,'ConfigFiles',title='Config File Information',createparents=True)
-            h5.create_array(node_path,'SoftwareVersion',np.array(Version),title='Version of software that made this file',createparents=True)
-            h5.create_array(node_path,'RawFiles',np.array(RawFiles),title='The raw files used to produce this file',createparents=True)
-            # h5.create_array(node_path,'OutputPath',np.array(OutputPath),title='Path where this file was originally made',createparents=True)
-            node_path = '/ProcessingParams/ComputerInfo'
-            h5.create_array(node_path,'PythonVersion',np.array(PythonVersion),title='Version of python used',createparents=True)
-            h5.create_array(node_path,'Type',np.array(Type),title='Type of operating system',createparents=True)
-            h5.create_array(node_path,'System',np.array(System),title='System information',createparents=True)
-            h5.create_array(node_path,'User',np.array(User),title='Username',createparents=True)
-            h5.create_array(node_path,'Host',np.array(Hostname),title='Hostname of the computer',createparents=True)
-            node_path = '/ProcessingParams/ConfigFiles/File1'
-            h5.create_array(node_path,'Name',np.array(Name),createparents=True)
-            h5.create_array(node_path,'Path',np.array(Path),createparents=True)
-            h5.create_array(node_path,'Contents',np.array(Contents),createparents=True)
+    # def write_config_info(self,h5name,raw_files):
+    #     import platform
+    #     import getpass
+    #
+    #     # Computer information:
+    #     PythonVersion   = platform.python_version()
+    #     Type            = platform.machine()
+    #     System          = "%s %s %s" % (platform.system(),platform.release(),platform.version())
+    #     User            = getpass.getuser()
+    #     Hostname        = platform.node()
+    #     if len(Hostname) == 0:
+    #         import socket
+    #         Hostname = socket.gethostname()
+    #
+    #     # Fitter configuration information
+    #     Version = ra.__version__  # Eventually replaced by self.__version__
+    #
+    #     # Get the config file used
+    #     cf = self.configfile
+    #     Path = os.path.dirname(os.path.abspath(cf))
+    #     Name = os.path.basename(cf)
+    #
+    #     with open(cf,'r') as f:
+    #         Contents = "".join(f.readlines())
+    #
+    #     # Record the raw files used
+    #     # Make a string listing all the files
+    #     RawFiles = ''
+    #     for i,files in enumerate(raw_files):
+    #         temp = "\n".join(files)
+    #         if i != 0:
+    #             RawFiles += '\n'
+    #         RawFiles += temp
+    #
+    #     # Record the directory where fitted files can be found
+    #     # OutputPath = os.path.abspath(self.config['output']['output_path'])
+    #
+    #     # Open the fitted h5 file
+    #     with tables.open_file(h5name,'r+') as h5:
+    #         node_path = '/ProcessingParams'
+    #         h5.create_group(node_path,'ComputerInfo',title='Processing Computer Information',createparents=True)
+    #         h5.create_group(node_path,'ConfigFiles',title='Config File Information',createparents=True)
+    #         h5.create_array(node_path,'SoftwareVersion',np.array(Version),title='Version of software that made this file',createparents=True)
+    #         h5.create_array(node_path,'RawFiles',np.array(RawFiles),title='The raw files used to produce this file',createparents=True)
+    #         # h5.create_array(node_path,'OutputPath',np.array(OutputPath),title='Path where this file was originally made',createparents=True)
+    #         node_path = '/ProcessingParams/ComputerInfo'
+    #         h5.create_array(node_path,'PythonVersion',np.array(PythonVersion),title='Version of python used',createparents=True)
+    #         h5.create_array(node_path,'Type',np.array(Type),title='Type of operating system',createparents=True)
+    #         h5.create_array(node_path,'System',np.array(System),title='System information',createparents=True)
+    #         h5.create_array(node_path,'User',np.array(User),title='Username',createparents=True)
+    #         h5.create_array(node_path,'Host',np.array(Hostname),title='Hostname of the computer',createparents=True)
+    #         node_path = '/ProcessingParams/ConfigFiles/File1'
+    #         h5.create_array(node_path,'Name',np.array(Name),createparents=True)
+    #         h5.create_array(node_path,'Path',np.array(Path),createparents=True)
+    #         h5.create_array(node_path,'Contents',np.array(Contents),createparents=True)
 
 
 
@@ -895,40 +645,40 @@ class ResolveVectorsAlt(object):
 
 
 
-def save_carray(h5, node, data, attributes):
-    group, name = os.path.split(node)
-    atom = tables.Atom.from_dtype(data.dtype)
-    arr = h5.create_carray(group, name, atom, data.shape)
-    arr[:] = data
-    for k, v in attributes.items():
-        h5.set_node_attr(node, k, v)
+# def save_carray(h5, node, data, attributes):
+#     group, name = os.path.split(node)
+#     atom = tables.Atom.from_dtype(data.dtype)
+#     arr = h5.create_carray(group, name, atom, data.shape)
+#     arr[:] = data
+#     for k, v in attributes.items():
+#         h5.set_node_attr(node, k, v)
 
 
 
-config_file_help = """Determine velocity vectors in altitude bins that are consistent with
-input fitted line of sight velocities.
-
-Requires a configuration file containing the following example format:
-[DEFAULT]
-[VVELS_OPTIONS]
-#number of seconds of data to integrate
-Recs2integrate=20
-#use mean or median
-mean_or_median=median
-# altitude bin format: start,stop,stepsize,stride
-# all in km, separate multiple bins settings with colon
-altitude_bins=80,200,5,5:200,400,20,20
-[INPUT]
-# input paths (separate pulsetypes with comma,
-# separate searches within same pulsetype with colons)
-# example 2 pulsetypes, 2 search path per pulsetypes
-file_paths=/path1/20150126.001_ac_5min-fitcal.h5:/path2/20150126.002_ac_5min-fitcal.h5,/path1/20150126.001_lp_5min-fitcal.h5:/path2/20150126.002_lp_5min-fitcal.h5
-[OUTPUT]
-# Output path
-OUTPUT_PATH=/path/to/output/directory/%%(EXPNAME)s
-# Output filename
-OUTPUT_NAME=%%(OUTPUT_PATH)s/%%(EXPNAME)s_vvelsalt_%%(INTEG)s.h5
-"""
+# config_file_help = """Determine velocity vectors in altitude bins that are consistent with
+# input fitted line of sight velocities.
+#
+# Requires a configuration file containing the following example format:
+# [DEFAULT]
+# [VVELS_OPTIONS]
+# #number of seconds of data to integrate
+# Recs2integrate=20
+# #use mean or median
+# mean_or_median=median
+# # altitude bin format: start,stop,stepsize,stride
+# # all in km, separate multiple bins settings with colon
+# altitude_bins=80,200,5,5:200,400,20,20
+# [INPUT]
+# # input paths (separate pulsetypes with comma,
+# # separate searches within same pulsetype with colons)
+# # example 2 pulsetypes, 2 search path per pulsetypes
+# file_paths=/path1/20150126.001_ac_5min-fitcal.h5:/path2/20150126.002_ac_5min-fitcal.h5,/path1/20150126.001_lp_5min-fitcal.h5:/path2/20150126.002_lp_5min-fitcal.h5
+# [OUTPUT]
+# # Output path
+# OUTPUT_PATH=/path/to/output/directory/%%(EXPNAME)s
+# # Output filename
+# OUTPUT_NAME=%%(OUTPUT_PATH)s/%%(EXPNAME)s_vvelsalt_%%(INTEG)s.h5
+# """
 
 
 # # a function to run this file as a script

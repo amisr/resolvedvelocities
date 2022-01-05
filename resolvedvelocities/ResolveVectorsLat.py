@@ -18,14 +18,25 @@ from scipy.spatial import Delaunay
 from .DataHandler import FittedVelocityDataHandler
 from .marp import Marp
 from .plot import summary_plots
+from .utils import *
 
 import resolvedvelocities as rv
 
 
 class ResolveVectorsLat(object):
-    def __init__(self, config):
-        self.configfile = config
+    def __init__(self, configfile):
+        self.configfile = configfile
         self.read_config(self.configfile)
+
+        print(self.datafile)
+        self.datahandler = FittedVelocityDataHandler(self.datafile)
+        self.datahandler.load_data(self.use_beams)
+        self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
+
+        self.integration_periods = self.get_integration_periods()
+
+
+        # move these two to save output and plotting functions specifically?
 
         # check if output path exists, if not try to create it
         # else raise exception
@@ -37,12 +48,22 @@ class ResolveVectorsLat(object):
             self.create_path(self.plotsavedir)
 
 
-        print(self.datafile)
-        self.datahandler = FittedVelocityDataHandler(self.datafile)
-        self.datahandler.read_data(self.use_beams)
-        self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
 
-        self.integration_periods = self.get_integration_periods()
+    def run(self):
+        # rv.read_data()
+        # rv.filter_data()
+        self.transform()
+        # rv.ion_upflow_correction()
+        self.bin_data()
+        self.get_integration_periods()
+        self.compute_vector_velocity()
+        self.compute_apex_velocity()
+        self.compute_electric_field()
+        self.compute_geodetic_output()
+        self.save_output()
+        self.create_plots()
+
+
 
     def create_path(self,path):
         path = os.path.abspath(path)
@@ -51,10 +72,9 @@ class ResolveVectorsLat(object):
     def read_config(self, config_file):
 
         # read config file
-        config = configparser.ConfigParser(converters={'list':self.parse_list})
+        config = configparser.ConfigParser(converters={'list':parse_list})
         config.read(config_file)
 
-        # Possibly could done better with converters?  This may by python3 specific though.
         self.datafile = config.get('FILEIO', 'DATAFILE')
 
         self.outfilename = config.get('FILEIO', 'OUTFILENAME')
@@ -64,15 +84,9 @@ class ResolveVectorsLat(object):
         self.nelim = config.getlist('CONFIG', 'NELIM')
         self.chi2lim = config.getlist('CONFIG', 'CHI2LIM')
         self.goodfitcode = config.getlist('CONFIG', 'GOODFITCODE')
-        # self.covar = [float(i) for i in config.get('CONFIG', 'COVAR').split(',')]
-        # self.altlim = [float(i) for i in config.get('CONFIG', 'ALTLIM').split(',')]
-        # self.nelim = [float(i) for i in config.get('CONFIG', 'NELIM').split(',')]
-        # self.chi2lim = [float(i) for i in config.get('CONFIG', 'CHI2LIM').split(',')]
-        # self.goodfitcode = [float(i) for i in config.get('CONFIG', 'GOODFITCODE').split(',')]
         self.binvert = eval(config.get('CONFIG', 'BINVERT'))
         # can probably change this parameter to a list of start, end, step similar to vvelsAlt
         self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
-        # self.marprot = [float(i) for i in config.get('CONFIG', 'MARPROT').split(',')]
 
         # optional parameters
         self.marprot = config.getlist('CONFIG', 'MARPROT') if config.has_option('CONFIG', 'MARPROT') else [0.,0.]
@@ -83,142 +97,24 @@ class ResolveVectorsLat(object):
         self.integration_time = config.getfloat('CONFIG', 'INTTIME') if config.has_option('CONFIG', 'INTTIME') else None
         self.outfilepath = config.get('FILEIO', 'OUTFILEPATH') if config.has_option('FILEIO', 'OUTFILEPATH') else '.'
 
-    def parse_list(self, s):
-        return [float(i) for i in s.split(',')]
-
-    # def read_data(self):
-    #     # read data from standard AMISR fit files
-    #     with tables.open_file(self.datafile,'r') as infile:
-    #
-    #         # time
-    #         self.time = infile.get_node('/Time/UnixTime')[:]
-    #
-    #         # site
-    #         lat = infile.get_node('/Site/Latitude').read()
-    #         lon = infile.get_node('/Site/Longitude').read()
-    #         alt = infile.get_node('/Site/Altitude').read()
-    #         self.site = np.array([lat, lon, alt/1000.])
-    #
-    #         # define which beams to use (default is all)
-    #         self.BeamCodes=infile.get_node('/BeamCodes')[:,0]
-    #         if self.use_beams:
-    #             bm_idx = np.array([i for i,b in enumerate(self.BeamCodes) if b in self.use_beams])
-    #         else:
-    #             bm_idx = np.arange(0,len(self.BeamCodes))
-    #
-    #         # geodetic location of each measurement
-    #         self.alt = infile.get_node('/Geomag/Altitude')[bm_idx,:].flatten()
-    #         self.lat = infile.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
-    #         self.lon = infile.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
-    #
-    #         # geodetic k vectors
-    #         self.ke = infile.get_node('/Geomag/ke')[bm_idx,:].flatten()
-    #         self.kn = infile.get_node('/Geomag/kn')[bm_idx,:].flatten()
-    #         self.kz = infile.get_node('/Geomag/kz')[bm_idx,:].flatten()
-    #
-    #         # ion masses
-    #         ion_mass = infile.get_node('/FittedParams/IonMass')[:]
-    #         nions = len(ion_mass)                                   # number of ions
-    #         ion_idx = np.argwhere(ion_mass==16.).flatten()[0]       # find index for O+
-    #
-    #         # line of sight velocity and error
-    #         self.vlos = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
-    #         self.dvlos = infile.get_node('/FittedParams/Errors')[:,bm_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(self.alt)))
-    #
-    #         # chi2 and fitcode (for filtering poor quality data)
-    #         self.chi2 = infile.get_node('/FittedParams/FitInfo/chi2')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
-    #         self.fitcode = infile.get_node('/FittedParams/FitInfo/fitcode')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
-    #
-    #         # density (for filtering and ion upflow correction)
-    #         self.ne = infile.get_node('/FittedParams/Ne')[:,bm_idx,:].reshape((len(self.time[:,0]),len(self.alt)))
-    #
-    #         # temperature (for ion upflow)
-    #         self.Te = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,-1,1].reshape((len(self.time[:,0]),len(self.alt)))
-    #         Ts = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,1]
-    #         frac = infile.get_node('/FittedParams/Fits')[:,bm_idx,:,:nions,0]
-    #         self.Ti = np.sum(Ts*frac,axis=-1).reshape((len(self.time[:,0]),len(self.alt)))
-    #
-    #         # get up-B beam velocities for ion outflow correction
-    #         if self.upB_beamcode:
-    #             upB_idx = np.argwhere(self.BeamCodes==self.upB_beamcode).flatten()
-    #             if upB_idx:
-    #                 upB_alt = infile.get_node('/Geomag/Altitude')[upB_idx,:].flatten()
-    #                 upB_vlos = infile.get_node('/FittedParams/Fits')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
-    #                 upB_dvlos = infile.get_node('/FittedParams/Errors')[:,upB_idx,:,ion_idx,3].reshape((len(self.time[:,0]),len(upB_alt)))
-    #                 self.upB = {'alt':upB_alt, 'vlos':upB_vlos, 'dvlos':upB_dvlos}
-    #             else:
-    #                 print('Warning: upB beam %d not found. Will not perform upflow subtraction.' % self.upB_beamcode)
-    #                 self.upB = None
-    #                 self.ionup = False
-
-
-
-    # def filter_data(self):
-    #     # filter and adjust data so it is appropriate for Bayesian reconstruction
-    #
-    #     with np.errstate(invalid='ignore'):
-    #
-    #         # add chirp to LoS velocity
-    #         self.vlos = self.vlos + self.chirp
-    #
-    #         # discard data with low density
-    #         inds = np.where((self.ne < self.nelim[0]) | (self.ne > self.nelim[1]))
-    #         self.vlos[inds] = np.nan
-    #         self.dvlos[inds] = np.nan
-    #
-    #         # discard data outside of altitude range
-    #         inds = np.where((self.alt < self.altlim[0]*1000.) | (self.alt > self.altlim[1]*1000.))
-    #         self.vlos[:,inds] = np.nan
-    #         self.dvlos[:,inds] = np.nan
-    #
-    #         # discard data with extremely high or extremely low chi2 values
-    #         inds = np.where((self.chi2 < self.chi2lim[0]) | (self.chi2 > self.chi2lim[1]))
-    #         self.vlos[inds] = np.nan
-    #         self.dvlos[inds] = np.nan
-    #
-    #         # discard data with poor fitcode (fitcodes 1-4 denote solution found, anything else should not be used)
-    #         inds = np.where(~np.isin(self.fitcode, self.goodfitcode))
-    #         self.vlos[inds] = np.nan
-    #         self.vlos[inds] = np.nan
 
 
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
-        # shouldn't need to do the NaN-replacement anymore - apexpy handles this now
-        # find indices where nans exist in the altitude array and should be inserted in to other coordinate/component arrays
-        # replace_nans = np.array([r - i for i,r in enumerate(np.argwhere(np.isnan(self.alt)).flatten())], dtype=int)
-        #
-        # glat = self.lat[np.isfinite(self.lat)]
-        # glon = self.lon[np.isfinite(self.lon)]
-        # galt = self.alt[np.isfinite(self.alt)] / 1000.
-        glat = self.datahandler.data['lat']
-        glon = self.datahandler.data['lon']
-        galt = self.datahandler.data['alt'] / 1000.
-
         # intialize apex coordinates
-        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.data['time'][0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
+        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
 
         # find magnetic latitude and longitude
-        # mlat, mlon = self.Apex.geo2apex(glat, glon, galt)
-        self.mlat, self.mlon = self.marp.geo2marp(glat, glon, galt)
-        # self.mlat = np.insert(mlat,replace_nans,np.nan)
-        # self.mlon = np.insert(mlon,replace_nans,np.nan)
-        # print(self.mlat, self.mlon)
+        self.mlat, self.mlon = self.marp.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
 
         # Analogous to apex basis vectors in geodetic coordinates [e n u]
         # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
-        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(glat, glon, galt)
-        # d1 = np.insert(d1,replace_nans,np.nan,axis=1)
-        # d2 = np.insert(d2,replace_nans,np.nan,axis=1)
-        # d3 = np.insert(d3,replace_nans,np.nan,axis=1)
-        # e1 = np.insert(e1,replace_nans,np.nan,axis=1)
-        # e2 = np.insert(e2,replace_nans,np.nan,axis=1)
-        # e3 = np.insert(e3,replace_nans,np.nan,axis=1)
+        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
         e = np.array([e1,e2,e3]).T
 
         # kvec in geodetic coordinates [e n u]
-        kvec = np.array([self.datahandler.data['ke'], self.datahandler.data['kn'], self.datahandler.data['kz']]).T
+        kvec = np.array([self.datahandler.ke, self.datahandler.kn, self.datahandler.kz]).T
 
         # find components of k for d1, d2, d3 base vectors (Laundal and Richmond, 2016 eqn. 60)
         self.A = np.einsum('ij,ijk->ik', kvec, e)
@@ -237,7 +133,7 @@ class ResolveVectorsLat(object):
                 continue
             elif self.ionup == 'UPB':
                 # interpolate velocities from up B beam to all other measurements
-                vupflow, dvupflow = lin_interp(self.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
+                vupflow, dvupflow = lin_interp(self.datahandler.alt, self.upB['alt'], self.upB['vlos'][t], self.upB['dvlos'][t])
             elif self.ionup == 'EMP':
                 # use empirical method to find ion upflow
                 # NOTE: NOT DEVELOPED YET!!!
@@ -274,14 +170,14 @@ class ResolveVectorsLat(object):
     def get_integration_periods(self):
 
         if not self.integration_time:
-            return self.datahandler.data['time']
+            return self.datahandler.utime
 
         integration_periods = list()
         start_time = None
         # integration_time = self.config['vvels_options']['recs2integrate']
         integration_time = self.integration_time
-        num_times = len(self.datahandler.data['time'])
-        for i,time_pair in enumerate(self.datahandler.data['time']):
+        num_times = len(self.datahandler.utime)
+        for i,time_pair in enumerate(self.datahandler.utime):
             temp_start_time, temp_end_time = time_pair
             if start_time is None:
                 start_time = temp_start_time
@@ -336,35 +232,35 @@ class ResolveVectorsLat(object):
         # Iterate over all bins at each integration period and use Heinselman
         # and Nicolls Bayesian reconstruction algorithm to get full vectors
 
-        Velocity = []
-        VelocityCovariance = []
-        ChiSquared = []
-        NumPoints = []
+        num_integrations = len(self.integration_periods)
+        num_bins = len(self.bin_mlat)
+
+        self.Velocity = np.full((num_integrations,num_bins,3), np.nan)
+        self.VelocityCovariance = np.full((num_integrations,num_bins,3,3), np.nan)
+        self.ChiSquared = np.full((num_integrations,num_bins), np.nan)
+        self.NumPoints = np.full((num_integrations,num_bins), np.nan)
 
         # For each integration period and bin, calculate covarient components
         # of drift velocity (Ve1, Ve2, Ve3) loop over integration periods
-        for integration_period in self.integration_periods:
+        for i, integration_period in enumerate(self.integration_periods):
         # for tidx in self.integration_indices:
 
-            data, t = self.datahandler.get_records(integration_period[0],integration_period[1])
+            # data, t = self.datahandler.get_records(integration_period[0],integration_period[1])
+            tidx = self.datahandler.get_record_indices(integration_period[0],integration_period[1])
 
-            Vel = []
-            SigmaV = []
-            Chi2 = []
-            NumP = []
             # loop over spatial bins
-            for bidx in self.bin_idx:
+            for k, bidx in enumerate(self.bin_idx):
 
                 # pull out the line of slight measurements for the time period
                 # and bins
-                # vlos = self.vlos[tidx,bidx[:,np.newaxis]].flatten()
-                # dvlos = self.dvlos[tidx,bidx[:,np.newaxis]].flatten()
-                vlos = data['vel'][:,bidx].flatten()
-                dvlos = data['evel'][:,bidx].flatten()
+                vlos = self.datahandler.vlos[tidx,bidx[:,np.newaxis]].flatten()
+                dvlos = self.datahandler.dvlos[tidx,bidx[:,np.newaxis]].flatten()
+                # vlos = data['vel'][:,bidx].flatten()
+                # dvlos = data['evel'][:,bidx].flatten()
                 # pull out the k vectors for the bins and duplicate so they
                 # match the number of time measurements
                 # if self.integration_time:
-                A = np.repeat(self.A[bidx], t.shape[0], axis=0)
+                A = np.repeat(self.A[bidx], len(tidx), axis=0)
                 # else:
                     # if no post integraiton, k vectors do not need to be
                     # duplicated
@@ -374,23 +270,14 @@ class ResolveVectorsLat(object):
 
                 # use Heinselman and Nicolls Bayesian reconstruction algorithm
                 # to get full vectors
-                V, SigV, chi2, num_points = vvels(vlos, dvlos, A, self.covar)
+                V, SigV, chi2, N = vvels(vlos, dvlos, A, self.covar)
 
-                # append vector and coviarience matrix
-                Vel.append(V)
-                SigmaV.append(SigV)
-                Chi2.append(chi2)
-                NumP.append(num_points)
+                self.Velocity[i,k,:] = V
+                self.VelocityCovariance[i,k,:] = SigV
+                self.ChiSquared[i,k] = chi2
+                self.NumPoints[i,k] = N
 
-            Velocity.append(Vel)
-            VelocityCovariance.append(SigmaV)
-            ChiSquared.append(Chi2)
-            NumPoints.append(NumP)
 
-        self.Velocity = np.array(Velocity)
-        self.VelocityCovariance = np.array(VelocityCovariance)
-        self.ChiSquared = np.array(ChiSquared)
-        self.NumPoints = np.array(NumPoints)
 
     def compute_apex_velocity(self):
 
@@ -465,20 +352,6 @@ class ResolveVectorsLat(object):
         north = -e2.T.reshape((vbins,hbins,3))
         self.Vgd_mag, self.Vgd_mag_err, self.Vgd_dir, self.Vgd_dir_err = magnitude_direction(self.Velocity_gd, self.VelocityCovariance_gd, north)
         self.Egd_mag, self.Egd_mag_err, self.Egd_dir, self.Egd_dir_err = magnitude_direction(self.ElectricField_gd, self.ElectricFieldCovariance_gd, north)
-
-    def run(self):
-        # rv.read_data()
-        # rv.filter_data()
-        self.transform()
-        # rv.ion_upflow_correction()
-        self.bin_data()
-        self.get_integration_periods()
-        self.compute_vector_velocity()
-        self.compute_apex_velocity()
-        self.compute_electric_field()
-        self.compute_geodetic_output()
-        self.save_output()
-        self.create_plots()
 
 
     def save_output(self):
@@ -889,135 +762,135 @@ class ResolveVectorsLat(object):
 
 
 
-def vvels(vlos, dvlos, A, cov, minnumpoints=1):
-    # Bayesian inference method described in Heinselman and Nicolls 2008
-    # vector velocity algorithm
-
-    # Get indices for finite valued data points
-    finite = np.isfinite(vlos)
-    num_points = np.sum(finite)
-    dof = num_points - 3 # solving for 3 components
-
-    # Filter inputs to only use finite valued data
-    vlos = vlos[finite]
-    dvlos = dvlos[finite]
-    A = A[finite]
-
-    SigmaE = np.diagflat(dvlos**2)
-    SigmaV = np.diagflat(cov)
-
-    try:
-        # measurement errors and a priori covariance, terms in the inverse
-        # (Heinselman and Nicolls 2008 eqn 12)
-        # I = (A*SigV*A.T + SigE)^-1
-        I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)
-        # calculate velocity estimate (Heinselman and Nicolls 2008 eqn 12)
-        V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)
-        # calculate covariance of velocity estimate
-        # (Heinselman and Nicolls 2008 eqn 13)
-        term1 = np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A)
-        term2 = np.linalg.inv(SigmaV)
-        SigV = np.linalg.inv(term1 + term2)
-
-        # chi-squared is meaningless for an underdetermined problem
-        if dof < 1:
-            chi2 = np.nan
-        else:
-            model = np.einsum('...i,i->...',A,V)
-            chi2 = np.sum((vlos - model)**2 / dvlos**2) / dof
-
-    except np.linalg.LinAlgError:
-        V = np.full(3,np.nan)
-        SigV = np.full((3,3),np.nan)
-        chi2 = np.nan
-        num_points = 0
-
-    return V, SigV, chi2, num_points
-
-
-def lin_interp(x, xp, fp, dfp):
-    # Piecewise linear interpolation routine that returns interpolated values
-    # and their errors
-
-    # find the indicies of xp that bound each value in x
-    # Note: where x is out of range of xp, -1 is used as a place holder
-    #   This provides a valid "dummy" index for the array calculations and can
-    # be used to identify values to nan in final output
-    xpmin = np.nanmin(xp)
-    xpmax = np.nanmax(xp)
-    i = np.array([np.argwhere((xi>=xp[:-1]) & (xi<xp[1:])).flatten()[0]
-                  if ((xi>=xpmin) & (xi<xpmax)) else -1 for xi in x])
-    # calculate X
-    X = (x-xp[i])/(xp[i+1]-xp[i])
-    # calculate interpolated values
-    f = (1-X)*fp[i] + X*fp[i+1]
-    # calculate interpolation error
-    df = np.sqrt((1-X)**2*dfp[i]**2 + X**2*dfp[i+1]**2)
-    # replace out-of-range values with NaN
-    f[i<0] = np.nan
-    df[i<0] = np.nan
-
-    return f, df
-
-def save_carray(h5, node, data, attributes):
-    group, name = os.path.split(node)
-    atom = tables.Atom.from_dtype(data.dtype)
-    arr = h5.create_carray(group, name, atom, data.shape)
-    arr[:] = data
-    for k, v in attributes.items():
-        h5.set_node_attr(node, k, v)
-
-def ion_upflow(Te,Ti,ne):
-    # calculate ion upflow empirically using the Lu/Zou method (not published yet?)
-    pass
-
-def magnitude_direction(A,Sig,e):
-    # Calculate the magnitude of vector A and the clockwise angle between
-    # vectors e and A
-    # Also calculates corresponding errors
-    # A = vector
-    # Sig = covariance matrix for A
-    # e = vector to take the direction relative to
-    # ep = e x z (vector perpendicular to e and up)
-    # This is all done with an error analysis using addition in quadrature.
-    # All calculations are done with matrix algebra using einsum to prevent
-    # nested for loops.
-    # Input vectors are assumed to have orthogonal components
-
-    # Calculate the Magnitude of input A
-
-    # Some helper matricies
-    # dot product of A and A
-    AA = np.einsum('...i,...i->...', A, A)
-    # matrix multipy A*Sig*transpose(A)
-    ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)
-
-    # calculate magnitude and magnitude error
-    magnitude = np.sqrt(AA)
-    mag_err = np.sqrt(ASA/AA)
+# def vvels(vlos, dvlos, A, cov, minnumpoints=1):
+#     # Bayesian inference method described in Heinselman and Nicolls 2008
+#     # vector velocity algorithm
+#
+#     # Get indices for finite valued data points
+#     finite = np.isfinite(vlos)
+#     num_points = np.sum(finite)
+#     dof = num_points - 3 # solving for 3 components
+#
+#     # Filter inputs to only use finite valued data
+#     vlos = vlos[finite]
+#     dvlos = dvlos[finite]
+#     A = A[finite]
+#
+#     SigmaE = np.diagflat(dvlos**2)
+#     SigmaV = np.diagflat(cov)
+#
+#     try:
+#         # measurement errors and a priori covariance, terms in the inverse
+#         # (Heinselman and Nicolls 2008 eqn 12)
+#         # I = (A*SigV*A.T + SigE)^-1
+#         I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)
+#         # calculate velocity estimate (Heinselman and Nicolls 2008 eqn 12)
+#         V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)
+#         # calculate covariance of velocity estimate
+#         # (Heinselman and Nicolls 2008 eqn 13)
+#         term1 = np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A)
+#         term2 = np.linalg.inv(SigmaV)
+#         SigV = np.linalg.inv(term1 + term2)
+#
+#         # chi-squared is meaningless for an underdetermined problem
+#         if dof < 1:
+#             chi2 = np.nan
+#         else:
+#             model = np.einsum('...i,i->...',A,V)
+#             chi2 = np.sum((vlos - model)**2 / dvlos**2) / dof
+#
+#     except np.linalg.LinAlgError:
+#         V = np.full(3,np.nan)
+#         SigV = np.full((3,3),np.nan)
+#         chi2 = np.nan
+#         num_points = 0
+#
+#     return V, SigV, chi2, num_points
 
 
-    # Now find the angle clockwise around geodetic up in the horizontal plane
-    # that is perpendicular to geodetic up, where angle=0 is along the
-    # projection 'e' in the horizontal plane
+# def lin_interp(x, xp, fp, dfp):
+#     # Piecewise linear interpolation routine that returns interpolated values
+#     # and their errors
+#
+#     # find the indicies of xp that bound each value in x
+#     # Note: where x is out of range of xp, -1 is used as a place holder
+#     #   This provides a valid "dummy" index for the array calculations and can
+#     # be used to identify values to nan in final output
+#     xpmin = np.nanmin(xp)
+#     xpmax = np.nanmax(xp)
+#     i = np.array([np.argwhere((xi>=xp[:-1]) & (xi<xp[1:])).flatten()[0]
+#                   if ((xi>=xpmin) & (xi<xpmax)) else -1 for xi in x])
+#     # calculate X
+#     X = (x-xp[i])/(xp[i+1]-xp[i])
+#     # calculate interpolated values
+#     f = (1-X)*fp[i] + X*fp[i+1]
+#     # calculate interpolation error
+#     df = np.sqrt((1-X)**2*dfp[i]**2 + X**2*dfp[i+1]**2)
+#     # replace out-of-range values with NaN
+#     f[i<0] = np.nan
+#     df[i<0] = np.nan
+#
+#     return f, df
 
-    # Some helper matricies
-    # dot product of e and e
-    ee = np.einsum('...i,...i->...', e, e)
-    # dot product of e and A
-    eA = np.einsum('...i,...i->...', e, A)
-    # find ep, perpendicular to both e and geodetic up
-    ep = np.cross(e,np.array([0,0,1]))
-    epep = np.einsum('...i,...i->...', ep, ep)
-    epA = np.einsum('...i,...i->...', ep, A)
+# def save_carray(h5, node, data, attributes):
+#     group, name = os.path.split(node)
+#     atom = tables.Atom.from_dtype(data.dtype)
+#     arr = h5.create_carray(group, name, atom, data.shape)
+#     arr[:] = data
+#     for k, v in attributes.items():
+#         h5.set_node_attr(node, k, v)
+#
+# def ion_upflow(Te,Ti,ne):
+#     # calculate ion upflow empirically using the Lu/Zou method (not published yet?)
+#     pass
 
-    # B = ep(e*A)-e(ep*A) = A x (ep x e)
-    B = np.einsum('...ij,...i->...ij',ep,eA)-np.einsum('...ij,...i->...ij',e,epA)
-    # matrix multipy B*Sig*B (covariance propagation)
-    BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)
-
-    # calculate direction and direction error
-    direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
-    dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
-
-    return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
+# def magnitude_direction(A,Sig,e):
+#     # Calculate the magnitude of vector A and the clockwise angle between
+#     # vectors e and A
+#     # Also calculates corresponding errors
+#     # A = vector
+#     # Sig = covariance matrix for A
+#     # e = vector to take the direction relative to
+#     # ep = e x z (vector perpendicular to e and up)
+#     # This is all done with an error analysis using addition in quadrature.
+#     # All calculations are done with matrix algebra using einsum to prevent
+#     # nested for loops.
+#     # Input vectors are assumed to have orthogonal components
+#
+#     # Calculate the Magnitude of input A
+#
+#     # Some helper matricies
+#     # dot product of A and A
+#     AA = np.einsum('...i,...i->...', A, A)
+#     # matrix multipy A*Sig*transpose(A)
+#     ASA = np.einsum('...i,...ij,...j->...', A, Sig, A)
+#
+#     # calculate magnitude and magnitude error
+#     magnitude = np.sqrt(AA)
+#     mag_err = np.sqrt(ASA/AA)
+#
+#
+#     # Now find the angle clockwise around geodetic up in the horizontal plane
+#     # that is perpendicular to geodetic up, where angle=0 is along the
+#     # projection 'e' in the horizontal plane
+#
+#     # Some helper matricies
+#     # dot product of e and e
+#     ee = np.einsum('...i,...i->...', e, e)
+#     # dot product of e and A
+#     eA = np.einsum('...i,...i->...', e, A)
+#     # find ep, perpendicular to both e and geodetic up
+#     ep = np.cross(e,np.array([0,0,1]))
+#     epep = np.einsum('...i,...i->...', ep, ep)
+#     epA = np.einsum('...i,...i->...', ep, A)
+#
+#     # B = ep(e*A)-e(ep*A) = A x (ep x e)
+#     B = np.einsum('...ij,...i->...ij',ep,eA)-np.einsum('...ij,...i->...ij',e,epA)
+#     # matrix multipy B*Sig*B (covariance propagation)
+#     BSB = np.einsum('...i,...ij,...j->...', B, Sig, B)
+#
+#     # calculate direction and direction error
+#     direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
+#     dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
+#
+#     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
