@@ -2,7 +2,9 @@
 
 import os
 import sys
-from .ResolveVectorsLat import ResolveVectors
+from .ResolveVectorsLat import ResolveVectorsLat
+from .ResolveVectorsAlt import ResolveVectorsAlt
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 config_file_help = """Calculate 2D resolved plasma drift velocity and electric
 field vectors from the LoS measurments in a fitted AMISR file.
@@ -70,29 +72,28 @@ PLOTSAVEDIR = /home/user/vvels/20190510.001_vvels_plots
 
 
 # a function to run this file as a script
-def main():
-    from argparse import ArgumentParser, RawDescriptionHelpFormatter
+def run_vvels_lat():
 
     # Build the argument parser tree
     parser = ArgumentParser(description=config_file_help,
                             formatter_class=RawDescriptionHelpFormatter)
     arg = parser.add_argument('config_file',help='A configuration file.')
 
-    # this format doesn't really make a lot of sense, particularly because you can't skip most steps
     args = vars(parser.parse_args())
-    rv = ResolveVectors(args['config_file'])
-    # rv.read_data()
-    # rv.filter_data()
-    rv.transform()
-    # rv.ion_upflow_correction()
-    rv.bin_data()
-    rv.get_integration_periods()
-    rv.compute_vector_velocity()
-    rv.compute_apex_velocity()
-    rv.compute_electric_field()
-    rv.compute_geodetic_output()
-    rv.save_output()
-    rv.create_plots()
+    vvelslat = ResolveVectorsLat(args['config_file'])
+    vvelslat.run()
 
-if __name__=='__main__':
-    main()
+
+def run_vvels_alt():
+    # Build the argument parser tree
+    parser = ArgumentParser(description=config_file_help,
+                            formatter_class=RawDescriptionHelpFormatter)
+    arg = parser.add_argument('config_file',help='A configuration file.')
+
+    args = vars(parser.parse_args())
+    vvelsalt = ResolveVectorsAlt(args['config_file'])
+    vvelsalt.run()
+
+
+# if __name__=='__main__':
+#     main()

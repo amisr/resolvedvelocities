@@ -22,7 +22,7 @@ from .plot import summary_plots
 import resolvedvelocities as rv
 
 
-class ResolveVectors(object):
+class ResolveVectorsLat(object):
     def __init__(self, config):
         self.configfile = config
         self.read_config(self.configfile)
@@ -465,6 +465,20 @@ class ResolveVectors(object):
         north = -e2.T.reshape((vbins,hbins,3))
         self.Vgd_mag, self.Vgd_mag_err, self.Vgd_dir, self.Vgd_dir_err = magnitude_direction(self.Velocity_gd, self.VelocityCovariance_gd, north)
         self.Egd_mag, self.Egd_mag_err, self.Egd_dir, self.Egd_dir_err = magnitude_direction(self.ElectricField_gd, self.ElectricFieldCovariance_gd, north)
+
+    def run(self):
+        # rv.read_data()
+        # rv.filter_data()
+        self.transform()
+        # rv.ion_upflow_correction()
+        self.bin_data()
+        self.get_integration_periods()
+        self.compute_vector_velocity()
+        self.compute_apex_velocity()
+        self.compute_electric_field()
+        self.compute_geodetic_output()
+        self.save_output()
+        self.create_plots()
 
 
     def save_output(self):

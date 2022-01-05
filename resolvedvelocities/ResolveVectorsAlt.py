@@ -72,7 +72,7 @@ class ResolveVectorsAlt(object):
         self.read_config(configfile)
 
         # move to config file
-        self.aprior_covar = np.array([3000.0**2,3000.0**2,100.0**2])
+        # self.aprior_covar = np.array([3000.0**2,3000.0**2,100.0**2])
 
         # # find files using config information
         # print("Checking input files...")
@@ -206,35 +206,35 @@ class ResolveVectorsAlt(object):
     #     return parsed_config
 
 
-    def get_files(self):
-        # we need to find all files that match the search strings
-        # and check every input file path for them
-        # This combines AC/LP files?
-        # by_pulsetype = self.config['input']['files'].split(',')
-        by_pulsetype = self.datafile.split(',')
-        num_pulsetypes = len(by_pulsetype)
-
-        filelists = [[] for x in range(num_pulsetypes)]
-        for i in range(num_pulsetypes):
-            files_for_pulsetype = by_pulsetype[i].split(':')
-            # check that all files are accessible
-            for f in files_for_pulsetype:
-                if not os.path.exists(f):
-                    raise FileNotFoundError('File does not exist: %s' % f)
-            filelists[i].extend(sorted(files_for_pulsetype))
-
-        num_pulsetypes = len(filelists)
-
-        # calculate the total number of files
-        num_files = 0
-        for i in range(len(filelists)):
-            num_files += len(filelists[i])
-
-        filestr = "files" if num_files > 1 else "file"
-        pulsetypestr = "pulsetypes" if num_pulsetypes > 1 else "pulsetype"
-        print("Found %s %s for %s %s." % (num_files,filestr,num_pulsetypes,pulsetypestr))
-
-        return filelists
+    # def get_files(self):
+    #     # we need to find all files that match the search strings
+    #     # and check every input file path for them
+    #     # This combines AC/LP files?
+    #     # by_pulsetype = self.config['input']['files'].split(',')
+    #     by_pulsetype = self.datafile.split(',')
+    #     num_pulsetypes = len(by_pulsetype)
+    #
+    #     filelists = [[] for x in range(num_pulsetypes)]
+    #     for i in range(num_pulsetypes):
+    #         files_for_pulsetype = by_pulsetype[i].split(':')
+    #         # check that all files are accessible
+    #         for f in files_for_pulsetype:
+    #             if not os.path.exists(f):
+    #                 raise FileNotFoundError('File does not exist: %s' % f)
+    #         filelists[i].extend(sorted(files_for_pulsetype))
+    #
+    #     num_pulsetypes = len(filelists)
+    #
+    #     # calculate the total number of files
+    #     num_files = 0
+    #     for i in range(len(filelists)):
+    #         num_files += len(filelists[i])
+    #
+    #     filestr = "files" if num_files > 1 else "file"
+    #     pulsetypestr = "pulsetypes" if num_pulsetypes > 1 else "pulsetype"
+    #     print("Found %s %s for %s %s." % (num_files,filestr,num_pulsetypes,pulsetypestr))
+    #
+    #     return filelists
 
 
     # bin forming function
@@ -263,22 +263,22 @@ class ResolveVectorsAlt(object):
         self.bin_centers = bin_centers
 
 
-    def get_unique_times(self):
-        all_times = list()
-        for i in range(self.num_pulsetypes):
-            all_times.extend(list(self.datahandlers[i].times))
-        all_times = [tuple(x) for x in all_times]
-        unique_times = np.array(sorted(list(set(list(all_times)))))
-
-        # now detect time pairs that have 0 difference in start or end time
-        # sometimes fitted files don't have exactly the same time windows...
-        if self.num_pulsetypes > 1:
-            diffs = np.diff(unique_times,axis=0)   # diff the start and end times
-            diffs = np.array([[x[0].total_seconds(),x[1].total_seconds()] for x in diffs])
-            inds = np.where(~((diffs[:,0] == 0) | (diffs[:,1] == 0)))[0]  # exclude times where start or end diffs are 0
-            unique_times = unique_times[inds,:]
-
-        return unique_times
+    # def get_unique_times(self):
+    #     all_times = list()
+    #     for i in range(self.num_pulsetypes):
+    #         all_times.extend(list(self.datahandlers[i].times))
+    #     all_times = [tuple(x) for x in all_times]
+    #     unique_times = np.array(sorted(list(set(list(all_times)))))
+    #
+    #     # now detect time pairs that have 0 difference in start or end time
+    #     # sometimes fitted files don't have exactly the same time windows...
+    #     if self.num_pulsetypes > 1:
+    #         diffs = np.diff(unique_times,axis=0)   # diff the start and end times
+    #         diffs = np.array([[x[0].total_seconds(),x[1].total_seconds()] for x in diffs])
+    #         inds = np.where(~((diffs[:,0] == 0) | (diffs[:,1] == 0)))[0]  # exclude times where start or end diffs are 0
+    #         unique_times = unique_times[inds,:]
+    #
+    #     return unique_times
 
 
     def get_integration_periods(self):
@@ -313,31 +313,31 @@ class ResolveVectorsAlt(object):
         return np.array(integration_periods)
 
 
-    @staticmethod
-    # configparser objects can basically be treated as a dictionary
-    # this may be outdated?
-    def __config_to_dict_helper(configparserclass):
-        # based on https://gist.github.com/amitsaha/3065184
-        # converts a config parser object to a dictionary
-        config = dict()
-        defaults = configparserclass.defaults()
-        sections = configparserclass.sections()
-
-        temp = dict()
-        for key in defaults:
-            temp[key] = defaults[key]
-        config['default'] = temp
-        default_options = temp.keys()
-
-        for section in sections:
-            opts = configparserclass.options(section)
-            options = [x for x in opts if not x in default_options]
-            temp = dict()
-            for option in options:
-                temp[option] = configparserclass.get(section,option)
-            config[section.lower()] = temp
-
-        return config
+    # @staticmethod
+    # # configparser objects can basically be treated as a dictionary
+    # # this may be outdated?
+    # def __config_to_dict_helper(configparserclass):
+    #     # based on https://gist.github.com/amitsaha/3065184
+    #     # converts a config parser object to a dictionary
+    #     config = dict()
+    #     defaults = configparserclass.defaults()
+    #     sections = configparserclass.sections()
+    #
+    #     temp = dict()
+    #     for key in defaults:
+    #         temp[key] = defaults[key]
+    #     config['default'] = temp
+    #     default_options = temp.keys()
+    #
+    #     for section in sections:
+    #         opts = configparserclass.options(section)
+    #         options = [x for x in opts if not x in default_options]
+    #         temp = dict()
+    #         for option in options:
+    #             temp[option] = configparserclass.get(section,option)
+    #         config[section.lower()] = temp
+    #
+    #     return config
 
     def transform(self):
         # lon = data['site']['lon']*np.pi/180.
@@ -512,17 +512,17 @@ class ResolveVectorsAlt(object):
         return V, sigV, chi2, finite_inds.size
 
 
-    def get_site(self):
-        site = dict()
-        fname = self.datahandler.filelist
-        with tables.open_file(fname,'r') as h5:
-            site['altitude']  = h5.root.Site.Altitude.read()
-            site['code']      = h5.root.Site.Code.read()
-            site['latitude']  = h5.root.Site.Latitude.read()
-            site['longitude'] = h5.root.Site.Longitude.read()
-            site['name']      = h5.root.Site.Name.read()
-
-        return site
+    # def get_site(self):
+    #     site = dict()
+    #     fname = self.datahandler.filelist
+    #     with tables.open_file(fname,'r') as h5:
+    #         site['altitude']  = h5.root.Site.Altitude.read()
+    #         site['code']      = h5.root.Site.Code.read()
+    #         site['latitude']  = h5.root.Site.Latitude.read()
+    #         site['longitude'] = h5.root.Site.Longitude.read()
+    #         site['name']      = h5.root.Site.Name.read()
+    #
+    #     return site
 
 
     # def get_time(self):
@@ -692,7 +692,7 @@ class ResolveVectorsAlt(object):
 
         # add overwrite flag to config file?
         # First check if output file is able to be created
-        temp_file = tempfile.mktemp()
+        # temp_file = tempfile.mktemp()
         # output_file = os.path.join(self.config['output']['output_path'],self.config['output']['output_name'])
         output_file = os.path.join(self.output_path,self.output_name)
 
@@ -834,64 +834,64 @@ class ResolveVectorsAlt(object):
 
 
 
-# Don't think we need this if we save arrays as carrays and compress to start
-# Class for repacking h5 files and compressing them
-ignore_attribs = ['TITLE','CLASS','VERSION']
-class repackh5(object):
-    """
-    Repack the input hdf5 file and compress the arrays
-    """
-    def __init__(self,input_fname,output_fname):
-        self.input_file = input_fname
-        self.output_file = output_fname
-
-    def repack(self):
-        FILTERS = tables.Filters(complib='zlib', complevel=1)
-        with tables.open_file(self.input_file,'r') as input_h5:
-            with tables.open_file(self.output_file,'w',filters=FILTERS) as output_h5:
-
-                for group in input_h5.walk_groups():
-                    group_name = group._v_pathname
-
-                    # First make sure the group in the input file is in the output file.
-                    output_h5_groups = [g._v_pathname for g in output_h5.walk_groups()]
-                    if group_name not in output_h5_groups:
-                        root, name = os.path.split(group_name)
-                        output_h5.create_group(root,name)
-
-                    # Now list the nodes in the group. For any node that isn't a group, write it
-                    # to the output file.
-                    for node in input_h5.list_nodes(group_name):
-                        if node._v_attrs.CLASS != 'GROUP':
-                            # Read the array, get it's attributes
-                            name = node.name
-                            title = node.title
-                            data = node.read()
-                            try:
-                                shape = data.shape
-                                is_array = True
-                            except AttributeError:
-                                shape = ()
-                                is_array = False
-
-                            #attributes
-                            output_attribs = dict()
-                            input_attribs = node.attrs.__dict__
-                            output_attribs_keys = [x for x in input_attribs.keys() if not x.startswith('_') and not x in ignore_attribs]
-                            for key in output_attribs_keys:
-                                output_attribs[key] = input_attribs[key]
-
-
-                            # Write the array, write it's attributes
-                            if len(shape) and is_array:
-                                atom = tables.Atom.from_dtype(data.dtype)
-                                array = output_h5.create_carray(group_name,name,atom,shape,title=title)
-                                array[:] = data
-                            else:
-                                output_h5.create_array(group_name,name,data,title=title)
-
-                            for key in output_attribs_keys:
-                                output_h5.set_node_attr(node._v_pathname,key,output_attribs[key])
+# # Don't think we need this if we save arrays as carrays and compress to start
+# # Class for repacking h5 files and compressing them
+# ignore_attribs = ['TITLE','CLASS','VERSION']
+# class repackh5(object):
+#     """
+#     Repack the input hdf5 file and compress the arrays
+#     """
+#     def __init__(self,input_fname,output_fname):
+#         self.input_file = input_fname
+#         self.output_file = output_fname
+#
+#     def repack(self):
+#         FILTERS = tables.Filters(complib='zlib', complevel=1)
+#         with tables.open_file(self.input_file,'r') as input_h5:
+#             with tables.open_file(self.output_file,'w',filters=FILTERS) as output_h5:
+#
+#                 for group in input_h5.walk_groups():
+#                     group_name = group._v_pathname
+#
+#                     # First make sure the group in the input file is in the output file.
+#                     output_h5_groups = [g._v_pathname for g in output_h5.walk_groups()]
+#                     if group_name not in output_h5_groups:
+#                         root, name = os.path.split(group_name)
+#                         output_h5.create_group(root,name)
+#
+#                     # Now list the nodes in the group. For any node that isn't a group, write it
+#                     # to the output file.
+#                     for node in input_h5.list_nodes(group_name):
+#                         if node._v_attrs.CLASS != 'GROUP':
+#                             # Read the array, get it's attributes
+#                             name = node.name
+#                             title = node.title
+#                             data = node.read()
+#                             try:
+#                                 shape = data.shape
+#                                 is_array = True
+#                             except AttributeError:
+#                                 shape = ()
+#                                 is_array = False
+#
+#                             #attributes
+#                             output_attribs = dict()
+#                             input_attribs = node.attrs.__dict__
+#                             output_attribs_keys = [x for x in input_attribs.keys() if not x.startswith('_') and not x in ignore_attribs]
+#                             for key in output_attribs_keys:
+#                                 output_attribs[key] = input_attribs[key]
+#
+#
+#                             # Write the array, write it's attributes
+#                             if len(shape) and is_array:
+#                                 atom = tables.Atom.from_dtype(data.dtype)
+#                                 array = output_h5.create_carray(group_name,name,atom,shape,title=title)
+#                                 array[:] = data
+#                             else:
+#                                 output_h5.create_array(group_name,name,data,title=title)
+#
+#                             for key in output_attribs_keys:
+#                                 output_h5.set_node_attr(node._v_pathname,key,output_attribs[key])
 
 
 
@@ -931,20 +931,20 @@ OUTPUT_NAME=%%(OUTPUT_PATH)s/%%(EXPNAME)s_vvelsalt_%%(INTEG)s.h5
 """
 
 
-# a function to run this file as a script
-def main():
-    from argparse import ArgumentParser, RawDescriptionHelpFormatter
-
-    # Build the argument parser tree
-    parser = ArgumentParser(description=config_file_help,
-                            formatter_class=RawDescriptionHelpFormatter)
-    arg = parser.add_argument('config_file',help='A configuration file.')
-
-    args = vars(parser.parse_args())
-    vvelsalt = ResolveVectorsAlt(args['config_file'])
-    vvelsalt.run()
-
-
-# Run as a script
-if __name__ == '__main__':
-    main()
+# # a function to run this file as a script
+# def main():
+#     from argparse import ArgumentParser, RawDescriptionHelpFormatter
+#
+#     # Build the argument parser tree
+#     parser = ArgumentParser(description=config_file_help,
+#                             formatter_class=RawDescriptionHelpFormatter)
+#     arg = parser.add_argument('config_file',help='A configuration file.')
+#
+#     args = vars(parser.parse_args())
+#     vvelsalt = ResolveVectorsAlt(args['config_file'])
+#     vvelsalt.run()
+#
+#
+# # Run as a script
+# if __name__ == '__main__':
+#     main()
