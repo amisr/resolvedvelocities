@@ -34,6 +34,7 @@ class ResolveVectorsLat(object):
         self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
 
         self.integration_periods = self.get_integration_periods()
+        self.outalt = self.create_alt_array()
 
 
         # move these two to save output and plotting functions specifically?
@@ -86,7 +87,8 @@ class ResolveVectorsLat(object):
         self.goodfitcode = config.getlist('CONFIG', 'GOODFITCODE')
         self.binvert = eval(config.get('CONFIG', 'BINVERT'))
         # can probably change this parameter to a list of start, end, step similar to vvelsAlt
-        self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
+        # self.outalt = [float(i) for i in config.get('CONFIG', 'OUTALT').split(',')]
+        self.altitude_bins_def = config.get('CONFIG', 'OUTALT')
 
         # optional parameters
         self.marprot = config.getlist('CONFIG', 'MARPROT') if config.has_option('CONFIG', 'MARPROT') else [0.,0.]
@@ -97,6 +99,15 @@ class ResolveVectorsLat(object):
         self.integration_time = config.getfloat('CONFIG', 'INTTIME') if config.has_option('CONFIG', 'INTTIME') else None
         self.outfilepath = config.get('FILEIO', 'OUTFILEPATH') if config.has_option('FILEIO', 'OUTFILEPATH') else '.'
 
+
+    def create_alt_array(self):
+
+        altarr = np.empty((0,))
+        groups = self.altitude_bins_def.split(';')
+        for i,group in enumerate(groups):
+            start, stop, step = [float(i) for i in group.split(',')]
+            altarr = np.append(altarr, np.arange(start, stop, step))
+        return altarr
 
 
     def transform(self):
@@ -478,7 +489,7 @@ class ResolveVectorsLat(object):
 
             save_carray(outfile, '/Geodetic/Latitude', self.bin_alat, {'TITLE':'Geographic Latitude', 'Size':'Nalts x Nbins'})
             save_carray(outfile, '/Geodetic/Longitude', self.bin_alon, {'TITLE':'Geographic Longitude', 'Size':'Nalts x Nbins'})
-            save_carray(outfile, '/Geodetic/Altitude', self.bin_alon, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
+            save_carray(outfile, '/Geodetic/Altitude', self.outalt, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
             save_carray(outfile, '/Geodetic/Velocity', self.Velocity_gd, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nalts x Nbins x 3 (East, North, Up)', 'Units':'m/s'})
             save_carray(outfile, '/Geodetic/CovarianceV', self.VelocityCovariance_gd, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nalts x Nbins x 3 x 3', 'Units':'(m/s)^2'})
             save_carray(outfile, '/Geodetic/Vmag', self.Vgd_mag, {'TITLE':'Velocity Magnitude', 'Size':'Nrecords x Nalts x Nbins', 'Units':'m/s'})

@@ -183,28 +183,19 @@ class ResolveVectorsAlt(object):
 
     # bin forming function
     def get_bins(self):
-        # bins_groups = self.config['vvels_options']['altitude_bins'].split(':')
-        bins_groups = self.altitude_bins_def.split(':')
-        for i,group in enumerate(bins_groups):
-            opts = group.split(',')
-            start  = float(opts[0])
-            stop   = float(opts[1])
-            step   = float(opts[2])
-            stride = float(opts[3])
-            num_alts = np.floor((stop-start)/step)+1
-            temp_bin_centers = np.arange(start,stop,step=step)
-            temp_bins = np.repeat(temp_bin_centers[:,np.newaxis],2,axis=1)
-            temp_bins[:,0] -= stride / 2.
-            temp_bins[:,1] += stride / 2.
-            if i == 0:
-                bins = temp_bins
-                bin_centers = temp_bin_centers
-            else:
-                bins = np.concatenate((bins,temp_bins),axis=0)
-                bin_centers = np.concatenate((bin_centers,temp_bin_centers),axis=0)
 
-        self.bins = bins
-        self.bin_centers = bin_centers
+        self.bins = np.empty((0,2))
+        self.bin_centers = np.empty((0,))
+
+        bins_groups = self.altitude_bins_def.split(';')
+        for i,group in enumerate(bins_groups):
+            start, stop, step, stride = [float(i) for i in group.split(',')]
+
+            bin_centers0 = np.arange(start, stop, step)
+            bins0 = np.array([bin_centers0-stride/2., bin_centers0+stride/2.]).T
+
+            self.bins = np.append(self.bins, bins0, axis=0)
+            self.bin_centers = np.append(self.bin_centers, bin_centers0)
 
 
 
