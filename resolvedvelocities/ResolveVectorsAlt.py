@@ -29,9 +29,12 @@ import socket
 import getpass
 import platform
 
-import resolvedalts as ra
+# import resolvedalts as ra
 from resolvedvelocities.DataHandler import FittedVelocityDataHandler
 import resolvedvelocities as rv
+
+from .plot import summary_plots
+from .utils import *
 
 # # output file definition
 # h5paths = [['/ProcessingParams','Processing Parameters'],
@@ -112,8 +115,9 @@ class ResolveVectorsAlt(object):
 
 
         print("Plotting...")
-        plotter = ra.ResolvedAltPlotter(output_file)
-        plotter.make_plot()
+        self.create_plots()
+        # plotter = ra.ResolvedAltPlotter(output_file)
+        # plotter.make_plot()
 
         print("Done!")
 
@@ -138,6 +142,7 @@ class ResolveVectorsAlt(object):
         self.goodfitcode = config.getlist('VVELS_OPTIONS', 'GOODFITCODE')
         self.integration_time = config.getfloat('VVELS_OPTIONS', 'INTTIME') if config.has_option('VVELS_OPTIONS', 'INTTIME') else None
         self.use_beams = config.getlist('VVELS_OPTIONS', 'USE_BEAMS') if config.has_option('VVELS_OPTIONS', 'USE_BEAMS') else None
+        self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
 
 
     # def parse_list(self, s):
@@ -348,7 +353,7 @@ class ResolveVectorsAlt(object):
 
                 A = np.repeat(self.A[aidx], len(tidx), axis=0)
 
-                V, SigV, chi2, N = self.vvels(vlos, dvlos, A, self.aprior_covar, minnumpoints=3)
+                V, SigV, chi2, N = vvels(vlos, dvlos, A, self.aprior_covar, minnumpoints=3)
 
                 # now transform from local uvw to enu
                 self.Velocity[i,k,:] = V
@@ -366,6 +371,9 @@ class ResolveVectorsAlt(object):
         self.Velocity = np.einsum('ij,...mj->...mi', R_uvw2enu, self.Velocity)
         self.VelocityCovariance = np.einsum('ij,...mjk,lk->...mil', R_uvw2enu, self.VelocityCovariance, R_uvw2enu)
 
+        # calculate vector magnitude and direction
+        north = np.tile(np.array([0,1,0]), (len(self.bin_centers),1))
+        self.Vmag, self.Vmag_err, self.Vdir, self.Vdir_err = magnitude_direction(self.Velocity, self.VelocityCovariance, north)
 
 
 # # same vvels function?  Move to a utils file?
@@ -475,8 +483,12 @@ class ResolveVectorsAlt(object):
             outfile.create_group('/', 'VectorVels')
             save_carray(outfile, '/VectorVels/AltitudeBins', self.bins, {'TITLE':'Altitude Bins'})
             save_carray(outfile, '/VectorVels/Altitudes', self.bin_centers, {'TITLE':'Altitude of Center of Bins'})
-            save_carray(outfile, '/VectorVels/Vest', self.Velocity, {'TITLE':'Velocity'})
-            save_carray(outfile, '/VectorVels/covVest', self.VelocityCovariance, {'TITLE':'Velocity Covariance Matrix'})
+            save_carray(outfile, '/VectorVels/Velocity', self.Velocity, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nalts x 3 (East, North, Up)', 'Units':'m/s'})
+            save_carray(outfile, '/VectorVels/CovarianceV', self.VelocityCovariance, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nalts x 3 x 3', 'Units':'(m/s)^2'})
+            save_carray(outfile, '/VectorVels/Vmag', self.Vmag, {'TITLE':'Velocity Magnitude', 'Size':'Nrecords x Nalts', 'Units':'m/s'})
+            save_carray(outfile, '/VectorVels/errVmag', self.Vmag_err, {'TITLE':'Velocity Magnitude Error', 'Size':'Nrecords x Nalts', 'Units':'m/s'})
+            save_carray(outfile, '/VectorVels/Vdir', self.Vdir, {'TITLE':'Velocity Direction Angle East of North', 'Size':'Nrecords x Nalts', 'Units':'Degrees'})
+            save_carray(outfile, '/VectorVels/errVdir', self.Vdir_err, {'TITLE':'Velocity Direction Error', 'Size':'Nrecords x Nalts', 'Units':'Degrees'})
 
 
             outfile.create_group('/', 'ProcessingParams')
@@ -520,6 +532,72 @@ class ResolveVectorsAlt(object):
 
             # input file
             outfile.create_array('/ProcessingParams', 'InputFile', self.datafile.encode('utf-8'))
+
+
+    def create_plots(self, alt=300.):
+
+        if self.plotsavedir:
+
+            # break up arrays into chunks of time no bigger than 24 hours
+            chunks_to_plot = list()
+
+            start_time = None
+            start_ind = None
+            num_times = len(self.integration_periods)
+            for i,time_pair in enumerate(self.integration_periods):
+                temp_start_time, temp_end_time = time_pair
+                if start_time is None:
+                    start_time = temp_start_time
+                    start_ind = i
+                time_diff = temp_end_time - start_time
+
+                if (time_diff >= 24*3600) or (i == num_times -1):
+                    chunks_to_plot.append([start_ind,i])
+                    start_time = None
+                    start_ind = None
+                    continue
+
+            num_chunks = len(chunks_to_plot)
+            for t, [start_ind,end_ind] in enumerate(chunks_to_plot):
+                # if only 1 day worth of data, set t=None so we don't have a
+                # 'byDay' in the plot file names
+                if (num_chunks == 1):
+                    vcom_fname = 'alt_velocity_components.png'
+                    vmag_fname = 'alt_velocity_magnitudes.png'
+                else:
+                    vcom_fname = 'alt_velocity_components_{}.png'.format(t)
+                    vmag_fname = 'alt_velocity_magnitudes_{}.png'.format(t)
+
+                # make vector plots
+                times = self.integration_periods[start_ind:end_ind,:]
+                binmlat = ['{:.2f}'.format(ml) for ml in self.bin_centers]
+
+                vels = self.Velocity[start_ind:end_ind,:]
+                covvels = self.VelocityCovariance[start_ind:end_ind,:]
+
+                summary_plots.plot_components(times, self.bin_centers, vels, covvels,
+                                titles=[r'$V_E$ (m/s)',r'$V_N$ (m/s)',r'$V_U$ (m/s)'],
+                                ylabel='Altitude (km)', yticklabels=binmlat,
+                                clim=[[-1500.,1500.], [0.,350.]], cmap=['coolwarm', 'turbo'],
+                                filename=os.path.join(self.plotsavedir,vcom_fname), scale_factors=[1,1,1])
+
+
+
+                # make magnitude plots
+                vmag = self.Vmag[start_ind:end_ind,:]
+                dvmag = self.Vmag_err[start_ind:end_ind,:]
+                vdir = self.Vdir[start_ind:end_ind,:]
+                dvdir = self.Vdir_err[start_ind:end_ind,:]
+                chi2 = self.ChiSquared[start_ind:end_ind,:]
+
+                titles = ['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', '']
+                clim = [[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]]
+                cmap = ['viridis', 'turbo', 'twilight', 'turbo']
+
+                summary_plots.plot_magnitude(times, self.bin_centers, vmag, dvmag, vdir, dvdir, chi2,
+                                err_thres=100., mag_thres=100., titles=titles,
+                                ylabel='Altitude (km)', yticklabels=binmlat, clim=clim, cmap=cmap,
+                                filename=os.path.join(self.plotsavedir,vmag_fname))
 
 
 

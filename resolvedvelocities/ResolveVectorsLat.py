@@ -478,7 +478,7 @@ class ResolveVectorsLat(object):
 
             save_carray(outfile, '/Geodetic/Latitude', self.bin_alat, {'TITLE':'Geographic Latitude', 'Size':'Nalts x Nbins'})
             save_carray(outfile, '/Geodetic/Longitude', self.bin_alon, {'TITLE':'Geographic Longitude', 'Size':'Nalts x Nbins'})
-            save_carray(outfile, '/Geodetic/Altitde', self.bin_alon, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
+            save_carray(outfile, '/Geodetic/Altitude', self.bin_alon, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
             save_carray(outfile, '/Geodetic/Velocity', self.Velocity_gd, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nalts x Nbins x 3 (East, North, Up)', 'Units':'m/s'})
             save_carray(outfile, '/Geodetic/CovarianceV', self.VelocityCovariance_gd, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nalts x Nbins x 3 x 3', 'Units':'(m/s)^2'})
             save_carray(outfile, '/Geodetic/Vmag', self.Vgd_mag, {'TITLE':'Velocity Magnitude', 'Size':'Nrecords x Nalts x Nbins', 'Units':'m/s'})
@@ -676,11 +676,7 @@ class ResolveVectorsLat(object):
         return year, month, day, doy, dtime, mlt
 
 
-    def create_plots(self,alt=300.,vcomptitles=None,vcomplim=None,
-                     vcompcmap=None,ecomptitles=None,ecomplim=None,
-                     ecompcmap=None,vmagtitles=None,vmaglim=None,
-                     vmagcmap=None,emagtitles=None,emaglim=None,
-                     emagcmap=None):
+    def create_plots(self, alt=300.):
 
         if self.plotsavedir:
 
@@ -708,56 +704,69 @@ class ResolveVectorsLat(object):
                 # if only 1 day worth of data, set t=None so we don't have a
                 # 'byDay' in the plot file names
                 if (num_chunks == 1):
-                    t = None
+                    vcom_fname = 'velocity_components.png'
+                    ecom_fname = 'electric_field_components.png'
+                    vmag_fname = 'velocity_magnitudes.png'
+                    emag_fname = 'electric_field_magnitudes.png'
+                else:
+                    vcom_fname = 'velocity_components_{}.png'.format(t)
+                    ecom_fname = 'electric_field_components_{}.png'.format(t)
+                    vmag_fname = 'velocity_magnitudes_{}.png'.format(t)
+                    emag_fname = 'electric_field_magnitudes_{}.png'.format(t)
 
                 # make vector plots
                 times = self.integration_periods[start_ind:end_ind,:]
+                binmlat = ['{:.2f} N'.format(ml) for ml in self.bin_mlat]
+
                 vels = self.Velocity[start_ind:end_ind,:]
                 covvels = self.VelocityCovariance[start_ind:end_ind,:]
-                summary_plots.plot_components(times,self.bin_mlat,
-                                              self.bin_mlon,vels,covvels,
-                                              param='V',titles=vcomptitles,
-                                              clim=vcomplim,cmap=vcompcmap,
-                                              savedir=self.plotsavedir,
-                                              savenamebase=self.outfilename,
-                                              day_ind=t)
-                es = self.ElectricField[start_ind:end_ind,:]
-                coves = self.ElectricFieldCovariance[start_ind:end_ind,:]
-                summary_plots.plot_components(times,self.bin_mlat,
-                                              self.bin_mlon,es,coves,
-                                              param='E',titles=ecomptitles,
-                                              clim=ecomplim,cmap=ecompcmap,
-                                              savedir=self.plotsavedir,
-                                              savenamebase=self.outfilename,
-                                              day_ind=t)
+                efs = self.ElectricField[start_ind:end_ind,:]*1000.
+                covefs = self.ElectricFieldCovariance[start_ind:end_ind,:]*1000.*1000.
+
+                summary_plots.plot_components(times, self.bin_mlat, vels, covvels,
+                                titles=['Ve1 (m/s)','Ve2 (m/s)','Ve3 (m/s)'],
+                                ylabel='Apex MLAT', yticklabels=binmlat,
+                                clim=[[-1500.,1500.], [0.,350.]], cmap=['coolwarm', 'turbo'],
+                                filename=os.path.join(self.plotsavedir,vcom_fname), scale_factors=[1,1,10])
+
+                summary_plots.plot_components(times, self.bin_mlat, efs, covefs,
+                                titles=['Ed1 (mV/m)','Ed2 (mV/m)','Ed3 (mV/m)'],
+                                ylabel='Apex MLAT', yticklabels=binmlat,
+                                clim=[[-75., 75.], [0., 15.]], cmap=['coolwarm', 'turbo'],
+                                filename=os.path.join(self.plotsavedir,ecom_fname), scale_factors=[1,1,10])
+
+
 
                 # make magnitude plots
                 # find index of altitude bin that is closest to alt
                 i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
                 vmag = self.Vgd_mag[start_ind:end_ind,i,:]
-                evmag = self.Vgd_mag_err[start_ind:end_ind,i,:]
+                dvmag = self.Vgd_mag_err[start_ind:end_ind,i,:]
                 vdir = self.Vgd_dir[start_ind:end_ind,i,:]
-                evdir = self.Vgd_dir_err[start_ind:end_ind,i,:]
-                chi2 = self.ChiSquared[start_ind:end_ind,:]
-                summary_plots.plot_magnitude(times,self.bin_mlat,self.bin_mlon,
-                                             vmag,evmag,vdir,evdir,chi2,
-                                             param='V',titles=vmagtitles,
-                                             clim=vmaglim,cmap=vmagcmap,
-                                             savedir=self.plotsavedir,
-                                             savenamebase=self.outfilename,
-                                             day_ind=t)
-
-                emag = self.Egd_mag[start_ind:end_ind,i,:]
-                eemag = self.Egd_mag_err[start_ind:end_ind,i,:]
+                dvdir = self.Vgd_dir_err[start_ind:end_ind,i,:]
+                emag = self.Egd_mag[start_ind:end_ind,i,:]*1000.
+                demag = self.Egd_mag_err[start_ind:end_ind,i,:]*1000.
                 edir = self.Egd_dir[start_ind:end_ind,i,:]
-                eedir = self.Egd_dir_err[start_ind:end_ind,i,:]
-                summary_plots.plot_magnitude(times,self.bin_mlat,self.bin_mlon,
-                                             emag,eemag,edir,eedir,chi2,
-                                             param='E',titles=emagtitles,
-                                             clim=emaglim,cmap=emagcmap,
-                                             savedir=self.plotsavedir,
-                                             savenamebase=self.outfilename,
-                                             day_ind=t)
+                dedir = self.Egd_dir_err[start_ind:end_ind,i,:]
+                chi2 = self.ChiSquared[start_ind:end_ind,:]
+
+                titles = ['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', '']
+                clim = [[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]]
+                cmap = ['viridis', 'turbo', 'twilight', 'turbo']
+
+                summary_plots.plot_magnitude(times, self.bin_mlat, vmag, dvmag, vdir, dvdir, chi2,
+                                err_thres=100., mag_thres=100., titles=titles,
+                                ylabel='Apex MLAT', yticklabels=binmlat, clim=clim, cmap=cmap,
+                                filename=os.path.join(self.plotsavedir,vmag_fname))
+
+                titles = ['E mag. (mV/m)', 'E mag err (mV/m)', 'E dir (deg)', 'E dir err (deg)', '']
+                clim = [[0.,75.],[0., 15.],[-180., 180.],[0., 35.]]
+                cmap = ['viridis', 'turbo', 'twilight', 'turbo']
+
+                summary_plots.plot_magnitude(times, self.bin_mlat, emag, demag, edir, dedir, chi2,
+                                err_thres=5., mag_thres=5., titles=titles,
+                                ylabel='Apex MLAT', yticklabels=binmlat, clim=clim, cmap=cmap,
+                                filename=os.path.join(self.plotsavedir,emag_fname))
 
 
 
