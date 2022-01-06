@@ -159,24 +159,24 @@ class FittedVelocityDataHandler(object):
 
 
     def get_record_indices(self, start_time, end_time):
-        request_time_inds = np.where((self.utime[:,0] < end_time) & (self.utime[:,1] >= start_time))[0]
+        request_time_inds = np.where((self.utime[:,0] < end_time) & (self.utime[:,1] > start_time))[0]
         return request_time_inds
 
 
-    def get_records(self,start_time,end_time):
-
-        # figure out how many time records we have to get
-        # the logic on the next line is correct, even though it seems confusing at first
-        # The start time needs to be checked against the end times of each time record
-        # and the e time needs to be checked against the start times of each record.
-        request_time_inds = np.where((self.utime[:,0] < end_time) & (self.utime[:,1] >= start_time))[0]
-        temp_times = self.data['time'][request_time_inds]
-        # print(request_time_inds, temp_times.shape, self.data['vlos'].shape, self.data['vlos'][request_time_inds].shape)
-
-        data = {'vel':self.data['vlos'][request_time_inds],
-                'evel':self.data['dvlos'][request_time_inds],
-                'chi2':self.data['chi2'][request_time_inds],
-                'ne':self.data['ne'][request_time_inds]}
+    # def get_records(self,start_time,end_time):
+    #
+    #     # figure out how many time records we have to get
+    #     # the logic on the next line is correct, even though it seems confusing at first
+    #     # The start time needs to be checked against the end times of each time record
+    #     # and the e time needs to be checked against the start times of each record.
+    #     request_time_inds = np.where((self.utime[:,0] < end_time) & (self.utime[:,1] > start_time))[0]
+    #     temp_times = self.data['time'][request_time_inds]
+    #     # print(request_time_inds, temp_times.shape, self.data['vlos'].shape, self.data['vlos'][request_time_inds].shape)
+    #
+    #     data = {'vel':self.data['vlos'][request_time_inds],
+    #             'evel':self.data['dvlos'][request_time_inds],
+    #             'chi2':self.data['chi2'][request_time_inds],
+    #             'ne':self.data['ne'][request_time_inds]}
 
         # if len(temp_times) < 1:
         #     print("No data for request start and end times.")

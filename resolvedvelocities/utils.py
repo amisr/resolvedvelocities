@@ -2,6 +2,8 @@
 # Convenient utility functions needed for resolving vector velocities.
 
 import numpy as np
+import datetime as dt
+from apexpy import Apex
 import tables
 import os
 
@@ -129,6 +131,43 @@ def magnitude_direction(A,Sig,e):
     dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
+
+
+def get_integration_periods(utime, integration_time):
+    # calculate new integration periods
+
+    integration_periods = list()
+    start_time = None
+    num_times = len(utime)
+    for i,time_pair in enumerate(utime):
+
+        temp_start_time, temp_end_time = time_pair
+        if start_time is None:
+            start_time = temp_start_time
+        time_diff = temp_end_time - start_time
+
+        if (time_diff >= integration_time) or (i == num_times -1):
+            integration_periods.append([start_time, temp_end_time])
+            start_time = None
+            continue
+
+    return np.array(integration_periods)
+
+
+def create_time_arrays(integration_periods, site):
+    # generate time arrays in various formats
+    time_array = np.array([[dt.datetime.utcfromtimestamp(t[0]), dt.datetime.utcfromtimestamp(t[1])] for t in integration_periods])
+    year = np.array([[t[0].year, t[1].year] for t in time_array])
+    month = np.array([[t[0].month, t[1].month] for t in time_array])
+    day = np.array([[t[0].day, t[1].day] for t in time_array])
+    doy = np.array([[t[0].timetuple().tm_yday, t[1].timetuple().tm_yday] for t in time_array])
+    dtime = np.array([[(t[0]-t[0].replace(hour=0,minute=0,second=0)).total_seconds()/(60.*60.), (t[0]-t[0].replace(hour=0,minute=0,second=0)).total_seconds()/(60.*60.)] for t in time_array])
+
+    A = Apex(date=time_array[0,0])
+    mlat, mlon = A.geo2apex(site[0], site[1], site[2])
+    mlt = np.array([[A.mlon2mlt(mlon,t[0]), A.mlon2mlt(mlon,t[1])] for t in time_array])
+
+    return year, month, day, doy, dtime, mlt
 
 
 def save_carray(h5, node, data, attributes):

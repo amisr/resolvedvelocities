@@ -78,17 +78,23 @@ class ResolveVectorsAlt(object):
         self.datahandler.load_data(self.use_beams)
         self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
 
-        self.integration_periods = self.get_integration_periods()
+        if self.integration_time:
+            self.integration_periods = get_integration_periods(self.datahandler.utime, self.integration_time)
+        else:
+            self.integration_periods = self.datahandler.utime
 
+        # set up the bins
+        # print("Forming altitude bins...")
+        self.altitude_bins = self.get_bins()
 
-        # make sure output directory is available and if not create it
-        print("Validating output directory...")
-        # output_dir = self.config['output']['output_path']
-        # if not os.path.exists(output_dir):
-        if not os.path.exists(self.output_path):
-            print("    Output directory doesn't exist!")
-            print("    Attempting to create one...")
-            os.makedirs(self.output_path)
+        # # make sure output directory is available and if not create it
+        # print("Validating output directory...")
+        # # output_dir = self.config['output']['output_path']
+        # # if not os.path.exists(output_dir):
+        # if not os.path.exists(self.output_path):
+        #     print("    Output directory doesn't exist!")
+        #     print("    Attempting to create one...")
+        #     os.makedirs(self.output_path)
 
 
     def run(self):
@@ -97,11 +103,7 @@ class ResolveVectorsAlt(object):
         # First check if output file is able to be created
         # temp_file = tempfile.mktemp()
         # output_file = os.path.join(self.config['output']['output_path'],self.config['output']['output_name'])
-        output_file = os.path.join(self.output_path,self.output_name)
 
-        # set up the bins
-        print("Forming altitude bins...")
-        self.altitude_bins = self.get_bins()
 
         self.transform()
 
@@ -111,15 +113,16 @@ class ResolveVectorsAlt(object):
         # i = np.array([0,1,2])
         # errvvels = np.sqrt(np.squeeze(output['vvels_cov'][:,:,i,i]))
         #
-        # self.save_output(output, errvvels)
+        self.save_output()
 
 
-        print("Plotting...")
-        self.create_plots()
+        # print("Plotting...")
+        if self.plotsavedir:
+            self.create_plots()
         # plotter = ra.ResolvedAltPlotter(output_file)
         # plotter.make_plot()
 
-        print("Done!")
+        # print("Done!")
 
 
     def read_config(self, config_file):
@@ -199,36 +202,36 @@ class ResolveVectorsAlt(object):
 
 
 
-    def get_integration_periods(self):
-
-        if not self.integration_time:
-            return self.datahandler.utime
-
-        integration_periods = list()
-        start_time = None
-        # integration_time = self.config['vvels_options']['recs2integrate']
-        integration_time = self.integration_time
-        num_times = len(self.datahandler.utime)
-        for i,time_pair in enumerate(self.datahandler.utime):
-        # integration_time = self.integration_time
-        # num_times = len(self.times)
-        # for i,time_pair in enumerate(self.times):
-            temp_start_time, temp_end_time = time_pair
-            if start_time is None:
-                start_time = temp_start_time
-            time_diff = (temp_end_time - start_time).total_seconds()
-
-            if time_diff >= integration_time:
-                integration_periods.append([start_time,temp_end_time])
-                start_time = None
-                continue
-
-            # Add an integration period for when we are at the end of the files
-            # but we haven't reached the requested integration time
-            if (i == num_times -1):
-                integration_periods.append([start_time,temp_end_time])
-
-        return np.array(integration_periods)
+    # def get_integration_periods(self):
+    #
+    #     if not self.integration_time:
+    #         return self.datahandler.utime
+    #
+    #     integration_periods = list()
+    #     start_time = None
+    #     # integration_time = self.config['vvels_options']['recs2integrate']
+    #     integration_time = self.integration_time
+    #     num_times = len(self.datahandler.utime)
+    #     for i,time_pair in enumerate(self.datahandler.utime):
+    #     # integration_time = self.integration_time
+    #     # num_times = len(self.times)
+    #     # for i,time_pair in enumerate(self.times):
+    #         temp_start_time, temp_end_time = time_pair
+    #         if start_time is None:
+    #             start_time = temp_start_time
+    #         time_diff = (temp_end_time - start_time).total_seconds()
+    #
+    #         if time_diff >= integration_time:
+    #             integration_periods.append([start_time,temp_end_time])
+    #             start_time = None
+    #             continue
+    #
+    #         # Add an integration period for when we are at the end of the files
+    #         # but we haven't reached the requested integration time
+    #         if (i == num_times -1):
+    #             integration_periods.append([start_time,temp_end_time])
+    #
+    #     return np.array(integration_periods)
 
 
     def rotation_matrices(self, lat, lon):
@@ -445,10 +448,10 @@ class ResolveVectorsAlt(object):
         return year, month, day, doy, dtime, mlt
 
 
-    def save_output(self, output, errvvels):
-        # TODO: come up with a better way to manage all this
+    def save_output(self):
 
         # save output file
+        os.makedirs(os.path.abspath(self.output_path),exist_ok=True)
         outfile = os.path.join(self.output_path, self.output_name)
         FILTERS = tables.Filters(complib='zlib', complevel=1)
         with tables.open_file(outfile, mode='w',filters=FILTERS) as outfile:
@@ -456,19 +459,20 @@ class ResolveVectorsAlt(object):
             # copy some groups directly from fitted input file
             with tables.open_file(self.datafile, mode='r') as infile:
                 outfile.copy_children(infile.get_node('/Site'), outfile.create_group('/','Site'))
-                if not self.integration_time:
-                    outfile.copy_children(infile.get_node('/Time'), outfile.create_group('/','Time'))
-                else:
-                    outfile.create_group('/','Time')
-                    year, month, day, doy, dtime, mlt = self.create_time_arrays()
 
-                    save_carray(outfile, '/Time/UnixTime', self.integration_periods, {'TITLE':'UnixTime', 'Size':'Nrecords x 2 (Start and end of integration)', 'Units':'Seconds'})
-                    save_carray(outfile, '/Time/Year', year, {'TITLE':'Year', 'Size':'Nrecords x 2 (Start and end of integration)'})
-                    save_carray(outfile, '/Time/Month', month, {'TITLE':'Month', 'Size':'Nrecords x 2 (Start and end of integration)'})
-                    save_carray(outfile, '/Time/Day', day, {'TITLE':'Day of Month', 'Size':'Nrecords x 2 (Start and end of integration)'})
-                    save_carray(outfile, '/Time/doy', doy, {'TITLE':'Day of Year', 'Size':'Nrecords x 2 (Start and end of integration)'})
-                    save_carray(outfile, '/Time/dtime', dtime, {'TITLE':'Decimal Hour of Day', 'Size':'Nrecords x 2 (Start and end of integration)'})
-                    save_carray(outfile, '/Time/MagneticLocalTimeSite', mlt, {'TITLE':'Magnetic Local Time of Site', 'Size':'Nrecords x 2 (Start and end of integration)'})
+            # if not self.integration_time:
+            #     outfile.copy_children(infile.get_node('/Time'), outfile.create_group('/','Time'))
+            # else:
+            outfile.create_group('/','Time')
+            year, month, day, doy, dtime, mlt = create_time_arrays(self.integration_periods, self.datahandler.site)
+
+            save_carray(outfile, '/Time/UnixTime', self.integration_periods, {'TITLE':'UnixTime', 'Size':'Nrecords x 2 (Start and end of integration)', 'Units':'Seconds'})
+            save_carray(outfile, '/Time/Year', year, {'TITLE':'Year', 'Size':'Nrecords x 2 (Start and end of integration)'})
+            save_carray(outfile, '/Time/Month', month, {'TITLE':'Month', 'Size':'Nrecords x 2 (Start and end of integration)'})
+            save_carray(outfile, '/Time/Day', day, {'TITLE':'Day of Month', 'Size':'Nrecords x 2 (Start and end of integration)'})
+            save_carray(outfile, '/Time/doy', doy, {'TITLE':'Day of Year', 'Size':'Nrecords x 2 (Start and end of integration)'})
+            save_carray(outfile, '/Time/dtime', dtime, {'TITLE':'Decimal Hour of Day', 'Size':'Nrecords x 2 (Start and end of integration)'})
+            save_carray(outfile, '/Time/MagneticLocalTimeSite', mlt, {'TITLE':'Magnetic Local Time of Site', 'Size':'Nrecords x 2 (Start and end of integration)'})
 
 
             outfile.create_group('/', 'VectorVels')
@@ -525,70 +529,70 @@ class ResolveVectorsAlt(object):
             outfile.create_array('/ProcessingParams', 'InputFile', self.datafile.encode('utf-8'))
 
 
-    def create_plots(self, alt=300.):
+    def create_plots(self):
 
-        if self.plotsavedir:
+        os.makedirs(os.path.abspath(self.plotsavedir),exist_ok=True)
 
-            # break up arrays into chunks of time no bigger than 24 hours
-            chunks_to_plot = list()
+        # break up arrays into chunks of time no bigger than 24 hours
+        chunks_to_plot = list()
 
-            start_time = None
-            start_ind = None
-            num_times = len(self.integration_periods)
-            for i,time_pair in enumerate(self.integration_periods):
-                temp_start_time, temp_end_time = time_pair
-                if start_time is None:
-                    start_time = temp_start_time
-                    start_ind = i
-                time_diff = temp_end_time - start_time
+        start_time = None
+        start_ind = None
+        num_times = len(self.integration_periods)
+        for i,time_pair in enumerate(self.integration_periods):
+            temp_start_time, temp_end_time = time_pair
+            if start_time is None:
+                start_time = temp_start_time
+                start_ind = i
+            time_diff = temp_end_time - start_time
 
-                if (time_diff >= 24*3600) or (i == num_times -1):
-                    chunks_to_plot.append([start_ind,i])
-                    start_time = None
-                    start_ind = None
-                    continue
+            if (time_diff >= 24*3600) or (i == num_times -1):
+                chunks_to_plot.append([start_ind,i])
+                start_time = None
+                start_ind = None
+                continue
 
-            num_chunks = len(chunks_to_plot)
-            for t, [start_ind,end_ind] in enumerate(chunks_to_plot):
-                # if only 1 day worth of data, set t=None so we don't have a
-                # 'byDay' in the plot file names
-                if (num_chunks == 1):
-                    vcom_fname = 'alt_velocity_components.png'
-                    vmag_fname = 'alt_velocity_magnitudes.png'
-                else:
-                    vcom_fname = 'alt_velocity_components_{}.png'.format(t)
-                    vmag_fname = 'alt_velocity_magnitudes_{}.png'.format(t)
+        num_chunks = len(chunks_to_plot)
+        for t, [start_ind,end_ind] in enumerate(chunks_to_plot):
+            # if only 1 day worth of data, set t=None so we don't have a
+            # 'byDay' in the plot file names
+            if (num_chunks == 1):
+                vcom_fname = 'alt_velocity_components.png'
+                vmag_fname = 'alt_velocity_magnitudes.png'
+            else:
+                vcom_fname = 'alt_velocity_components_{}.png'.format(t)
+                vmag_fname = 'alt_velocity_magnitudes_{}.png'.format(t)
 
-                # make vector plots
-                times = self.integration_periods[start_ind:end_ind,:]
-                binmlat = ['{:.2f}'.format(ml) for ml in self.bin_centers]
+            # make vector plots
+            times = self.integration_periods[start_ind:end_ind,:]
+            binmlat = ['{:.2f}'.format(ml) for ml in self.bin_centers]
 
-                vels = self.Velocity[start_ind:end_ind,:]
-                covvels = self.VelocityCovariance[start_ind:end_ind,:]
+            vels = self.Velocity[start_ind:end_ind,:]
+            covvels = self.VelocityCovariance[start_ind:end_ind,:]
 
-                summary_plots.plot_components(times, self.bin_centers, vels, covvels,
-                                titles=[r'$V_E$ (m/s)',r'$V_N$ (m/s)',r'$V_U$ (m/s)'],
-                                ylabel='Altitude (km)', yticklabels=binmlat,
-                                clim=[[-1500.,1500.], [0.,350.]], cmap=['coolwarm', 'turbo'],
-                                filename=os.path.join(self.plotsavedir,vcom_fname), scale_factors=[1,1,1])
+            summary_plots.plot_components(times, self.bin_centers, vels, covvels,
+                            titles=[r'$V_E$ (m/s)',r'$V_N$ (m/s)',r'$V_U$ (m/s)'],
+                            ylabel='Altitude (km)', yticklabels=binmlat,
+                            clim=[[-1500.,1500.], [0.,350.]], cmap=['coolwarm', 'turbo'],
+                            filename=os.path.join(self.plotsavedir,vcom_fname), scale_factors=[1,1,1])
 
 
 
-                # make magnitude plots
-                vmag = self.Vmag[start_ind:end_ind,:]
-                dvmag = self.Vmag_err[start_ind:end_ind,:]
-                vdir = self.Vdir[start_ind:end_ind,:]
-                dvdir = self.Vdir_err[start_ind:end_ind,:]
-                chi2 = self.ChiSquared[start_ind:end_ind,:]
+            # make magnitude plots
+            vmag = self.Vmag[start_ind:end_ind,:]
+            dvmag = self.Vmag_err[start_ind:end_ind,:]
+            vdir = self.Vdir[start_ind:end_ind,:]
+            dvdir = self.Vdir_err[start_ind:end_ind,:]
+            chi2 = self.ChiSquared[start_ind:end_ind,:]
 
-                titles = ['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', '']
-                clim = [[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]]
-                cmap = ['viridis', 'turbo', 'twilight', 'turbo']
+            titles = ['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', '']
+            clim = [[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]]
+            cmap = ['viridis', 'turbo', 'twilight', 'turbo']
 
-                summary_plots.plot_magnitude(times, self.bin_centers, vmag, dvmag, vdir, dvdir, chi2,
-                                err_thres=100., mag_thres=100., titles=titles,
-                                ylabel='Altitude (km)', yticklabels=binmlat, clim=clim, cmap=cmap,
-                                filename=os.path.join(self.plotsavedir,vmag_fname))
+            summary_plots.plot_magnitude(times, self.bin_centers, vmag, dvmag, vdir, dvdir, chi2,
+                            err_thres=100., mag_thres=100., titles=titles,
+                            ylabel='Altitude (km)', yticklabels=binmlat, clim=clim, cmap=cmap,
+                            filename=os.path.join(self.plotsavedir,vmag_fname))
 
 
 
