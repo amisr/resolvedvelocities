@@ -5,9 +5,6 @@ import numpy as np
 class FittedVelocityDataHandler(object):
     def __init__(self,filename):
 
-        # Input checking
-        # if not len(filelist):
-        #     raise Exception('File list is empty.')
         self.filename = filename
 
 
