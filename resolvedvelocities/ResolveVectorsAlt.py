@@ -21,12 +21,62 @@ except ImportError:
 import socket
 import getpass
 import platform
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
 
 from .DataHandler import FittedVelocityDataHandler
 from .plot import summary_plots
 from .utils import *
 import resolvedvelocities as rv
 
+config_file_help = """Calculate 2D resolved plasma drift velocity and electric
+field vectors from the LoS measurments in a fitted AMISR file.
+
+Requires a configuration file containing the following example format:
+
+[DEFAULT]
+
+[VVELS_OPTIONS]
+# altitude bin format: start,stop,stepsize,stride
+# all in km, separate multiple bins settings with semicolon
+altitude_bins=80,150,4.5,9;150,300,20,20
+
+# chirp
+CHIRP = 0.0
+
+; # post-integration time (optional) - if omitted, the native times of the input file are used
+; INTTIME = 180.
+
+# density limits - measurements with density outside of this range are discarded
+NELIM = 2.0e9, 1.0e13
+
+# A priori covariance matrix
+COVAR = 9000000., 9000000., 10000.
+
+# altitude limits - measurements outside of this range are discarded
+ALTLIM = 150., 400.
+
+# chi2 limits - measurements with chi2 outside this range are discarded
+CHI2LIM = 0.1, 10.
+
+# permitted fit codes - measurements with a fit code not in this list are discarded
+GOODFITCODE = 1, 2, 3, 4
+
+[FILEIO]
+# input file
+files=20200607.002_lp_5min-fitcal.h5
+
+# Output path
+OUTPUT_PATH=output
+
+# Output filename
+OUTPUT_NAME=20200607.002_lp_5min_vvelsalt.h5
+
+[PLOTTING]
+# directory output summary plots should be saved in
+PLOTSAVEDIR = output
+
+"""
 
 
 class ResolveVectorsAlt(object):
@@ -327,3 +377,18 @@ class ResolveVectorsAlt(object):
                             err_thres=100., mag_thres=100., titles=titles,
                             ylabel='Altitude (km)', yticklabels=binmlat, clim=clim, cmap=cmap,
                             filename=os.path.join(self.plotsavedir,vmag_fname))
+
+
+def main():
+    # Build the argument parser tree
+    parser = ArgumentParser(description=config_file_help,
+                            formatter_class=RawDescriptionHelpFormatter)
+    arg = parser.add_argument('config_file',help='A configuration file.')
+
+    args = vars(parser.parse_args())
+    vvelsalt = ResolveVectorsAlt(args['config_file'])
+    vvelsalt.run()
+
+
+if __name__ == '__main__':
+    main()
