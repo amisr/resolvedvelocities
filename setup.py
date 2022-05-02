@@ -34,7 +34,7 @@ match = re.findall(regex,text)
 version = match[0].strip("'")
 
 # Package description
-DESC = "Tool for resolving 2D plasma drift from AMISR LoS velocity "
+DESC = "Tool for resolving 3D plasma drift from AMISR LoS velocity "
 
 #############################################################################
 # First, check to make sure we are executing
@@ -72,8 +72,8 @@ setup(name='resolvedvelocities',
                   ],
       entry_points={
           'console_scripts': [
-              'resolvedvelocities=resolvedvelocities.run_resolve_vectors:main',
-              'resolvedalts=resolvedalts.ResolveVectors:main',
+              'resolvedvelocities-lat=resolvedvelocities.ResolveVectorsLat:main',
+              'resolvedvelocities-alt=resolvedvelocities.ResolveVectorsAlt:main',
         ],
 }
       )
