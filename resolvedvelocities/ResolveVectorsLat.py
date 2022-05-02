@@ -127,32 +127,36 @@ class ResolveVectorsLat(object):
         config = configparser.ConfigParser(converters={'list':parse_list})
         config.read(config_file)
 
+        # input/output file paths
         self.datafile = config.get('FILEIO', 'DATAFILE')
+        self.output_path = config.get('FILEIO', 'OUTPUT_PATH')
+        self.output_name = config.get('FILEIO', 'OUTPUT_NAME')
 
-        self.outfilename = config.get('FILEIO', 'OUTFILENAME')
-        self.chirp = config.getfloat('CONFIG', 'CHIRP')
-        self.covar = config.getlist('CONFIG', 'COVAR')
-        self.altlim = config.getlist('CONFIG', 'ALTLIM')
-        self.nelim = config.getlist('CONFIG', 'NELIM')
-        self.chi2lim = config.getlist('CONFIG', 'CHI2LIM')
-        self.goodfitcode = config.getlist('CONFIG', 'GOODFITCODE')
-        self.binvert = eval(config.get('CONFIG', 'BINVERT'))
-        self.altitude_bins_def = config.get('CONFIG', 'OUTALT')
+        # general options
+        self.chirp = config.getfloat('OPTIONS', 'CHIRP') if config.has_option('OPTIONS', 'CHIRP') else 0.
+        self.nelim = config.getlist('OPTIONS', 'NELIM') if config.has_option('OPTIONS', 'NELIM') else None
+        self.chi2lim = config.getlist('OPTIONS', 'CHI2LIM') if config.has_options('OPTIONS', 'CHI2LIM') else None
+        self.goodfitcode = config.getlist('OPTIONS', 'GOODFITCODE') if config.has_option('OPTIONS', 'GOODFITCODE') else None
+        self.covar = config.getlist('OPTIONS', 'COVAR')
+        self.integration_time = config.getfloat('OPTIONS', 'INTTIME') if config.has_option('OPTIONS', 'INTTIME') else None
+        self.use_beams = config.getlist('OPTIONS', 'USE_BEAMS') if config.has_option('OPTIONS', 'USE_BEAMS') else None
 
-        # optional parameters
-        self.marprot = config.getlist('CONFIG', 'MARPROT') if config.has_option('CONFIG', 'MARPROT') else [0.,0.]
+        # latitude-resolved vector velocities specific options
+        self.binvert = eval(config.get('VVELSLAT', 'MLATBINVERT'))
+        self.marprot = config.getlist('VVELSLAT', 'MARPROT') if config.has_option('VVELS_LAT', 'MARPROT') else [0.,0.]
+        self.altlim = config.getlist('VVELSLAT', 'ALTLIM') if config.has_option('VVELS_LAT', 'ALTLIM') else None
+        self.out_alts_def = config.get('VVELSLAT', 'OUTALTS')
+        self.upB_beamcode = config.getint('VVELSLAT', 'UPB_BEAMCODE') if config.has_option('VVELS_LAT', 'UPB_BEAMCODE') else None
+        self.ionup = config.get('VVELSLAT', 'IONUP') if config.has_option('VVELS_LAT', 'IONUP') else None
+
+        # plotting
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
-        self.upB_beamcode = config.getint('CONFIG', 'UPB_BEAMCODE') if config.has_option('CONFIG', 'UPB_BEAMCODE') else None
-        self.ionup = config.get('CONFIG', 'IONUP') if config.has_option('CONFIG', 'IONUP') else None
-        self.use_beams = config.getlist('CONFIG', 'USE_BEAMS') if config.has_option('CONFIG', 'USE_BEAMS') else None
-        self.integration_time = config.getfloat('CONFIG', 'INTTIME') if config.has_option('CONFIG', 'INTTIME') else None
-        self.outfilepath = config.get('FILEIO', 'OUTFILEPATH') if config.has_option('FILEIO', 'OUTFILEPATH') else '.'
 
 
     def create_alt_array(self):
 
         altarr = np.empty((0,))
-        groups = self.altitude_bins_def.split(';')
+        groups = self.out_alts_def.split(';')
         for i,group in enumerate(groups):
             start, stop, step = [float(i) for i in group.split(',')]
             altarr = np.append(altarr, np.arange(start, stop, step))

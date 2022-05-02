@@ -90,7 +90,7 @@ class ResolveVectorsAlt(object):
 
         self.datahandler = FittedVelocityDataHandler(self.datafile)
         self.datahandler.load_data(self.use_beams)
-        self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
+        self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, mlat=self.mlatlim, fitcode=self.goodfitcode, chirp=self.chirp)
 
         if self.integration_time:
             self.integration_periods = get_integration_periods(self.datahandler.utime, self.integration_time)
@@ -117,20 +117,25 @@ class ResolveVectorsAlt(object):
         config = configparser.ConfigParser(converters={'list':parse_list})
         config.read(config_file)
 
-        # Possibly could done better with converters?  This may by python3 specific though.
-        self.datafile = config.get('FILEIO', 'files')
+        # input/output file paths
+        self.datafile = config.get('FILEIO', 'DATAFILE')
         self.output_path = config.get('FILEIO', 'OUTPUT_PATH')
         self.output_name = config.get('FILEIO', 'OUTPUT_NAME')
 
-        self.altitude_bins_def = config.get('VVELS_OPTIONS', 'altitude_bins')
-        self.chirp = config.getfloat('VVELS_OPTIONS', 'CHIRP')
-        self.aprior_covar = config.getlist('VVELS_OPTIONS', 'COVAR')
-        self.altlim = config.getlist('VVELS_OPTIONS', 'ALTLIM')
-        self.nelim = config.getlist('VVELS_OPTIONS', 'NELIM')
-        self.chi2lim = config.getlist('VVELS_OPTIONS', 'CHI2LIM')
-        self.goodfitcode = config.getlist('VVELS_OPTIONS', 'GOODFITCODE')
-        self.integration_time = config.getfloat('VVELS_OPTIONS', 'INTTIME') if config.has_option('VVELS_OPTIONS', 'INTTIME') else None
-        self.use_beams = config.getlist('VVELS_OPTIONS', 'USE_BEAMS') if config.has_option('VVELS_OPTIONS', 'USE_BEAMS') else None
+        # general options
+        self.chirp = config.getfloat('OPTIONS', 'CHIRP') if config.has_option('OPTIONS', 'CHIRP') else 0.
+        self.nelim = config.getlist('OPTIONS', 'NELIM') if config.has_option('OPTIONS', 'NELIM') else None
+        self.chi2lim = config.getlist('OPTIONS', 'CHI2LIM') if config.has_options('OPTIONS', 'CHI2LIM') else None
+        self.goodfitcode = config.getlist('OPTIONS', 'GOODFITCODE') if config.has_option('OPTIONS', 'GOODFITCODE') else None
+        self.aprior_covar = config.getlist('OPTIONS', 'COVAR')
+        self.integration_time = config.getfloat('OPTIONS', 'INTTIME') if config.has_option('OPTIONS', 'INTTIME') else None
+        self.use_beams = config.getlist('OPTIONS', 'USE_BEAMS') if config.has_option('OPTIONS', 'USE_BEAMS') else None
+
+        # altitude-resolved vector velocities specific options
+        self.altitude_bins_def = config.get('VVELSALT', 'ALTBIN')
+        self.mlatlim = config.getlist('VVELSALT', 'MLATLIM') if config.has_option('VVELS_ALT', 'MLATLIM') else None
+
+        # plotting
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
 
 
