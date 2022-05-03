@@ -30,53 +30,10 @@ from .utils import *
 import resolvedvelocities as rv
 
 config_file_help = """Calculate 2D resolved plasma drift velocity and electric
-field vectors from the LoS measurments in a fitted AMISR file.
+field vectors from the LoS measurments in a fitted AMISR file in altitude bins.
 
-Requires a configuration file containing the following example format:
+Requires a configuration file containing the following example format:\n""" + get_example_config()
 
-[DEFAULT]
-
-[VVELS_OPTIONS]
-# altitude bin format: start,stop,stepsize,stride
-# all in km, separate multiple bins settings with semicolon
-altitude_bins=80,150,4.5,9;150,300,20,20
-
-# chirp
-CHIRP = 0.0
-
-; # post-integration time (optional) - if omitted, the native times of the input file are used
-; INTTIME = 180.
-
-# density limits - measurements with density outside of this range are discarded
-NELIM = 2.0e9, 1.0e13
-
-# A priori covariance matrix
-COVAR = 9000000., 9000000., 10000.
-
-# altitude limits - measurements outside of this range are discarded
-ALTLIM = 150., 400.
-
-# chi2 limits - measurements with chi2 outside this range are discarded
-CHI2LIM = 0.1, 10.
-
-# permitted fit codes - measurements with a fit code not in this list are discarded
-GOODFITCODE = 1, 2, 3, 4
-
-[FILEIO]
-# input file
-files=20200607.002_lp_5min-fitcal.h5
-
-# Output path
-OUTPUT_PATH=output
-
-# Output filename
-OUTPUT_NAME=20200607.002_lp_5min_vvelsalt.h5
-
-[PLOTTING]
-# directory output summary plots should be saved in
-PLOTSAVEDIR = output
-
-"""
 
 
 class ResolveVectorsAlt(object):

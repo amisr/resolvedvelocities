@@ -6,6 +6,8 @@ import datetime as dt
 from apexpy import Apex
 import tables
 import os
+import pkg_resources
+
 
 def vvels(vlos, dvlos, A, cov, minnumpoints=1):
     # Bayesian inference method described in Heinselman and Nicolls 2008
@@ -178,3 +180,10 @@ def save_carray(h5, node, data, attributes):
     arr[:] = data
     for k, v in attributes.items():
         h5.set_node_attr(node, k, v)
+
+def get_example_config():
+
+    with pkg_resources.resource_stream(__package__, '../example_config.ini') as f:
+        example_config = f.read()
+
+    return example_config.decode("utf-8")
