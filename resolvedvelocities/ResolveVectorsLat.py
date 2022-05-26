@@ -5,9 +5,6 @@ try:
     import ConfigParser as configparser
 except ImportError:
     import configparser
-import socket
-import getpass
-import platform
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 
@@ -21,7 +18,7 @@ from marppy import Marp
 from .DataHandler import FittedVelocityDataHandler
 from .plot import summary_plots
 from .utils import *
-import resolvedvelocities as rv
+
 
 config_file_help = """Calculate 3D resolved plasma drift velocity and electric
 field vectors from the LoS measurments in a fitted AMISR file in bins of
@@ -362,38 +359,18 @@ class ResolveVectorsLat(object):
             outfile.create_array('/ProcessingParams/Apexpy','Version',apexpy.__version__.encode('utf-8'))
             outfile.set_node_attr('/ProcessingParams/Apexpy/Version', 'TITLE', 'Apexpy version used.')
 
-            # Save computer information and config file
-            # Computer information:
-            PythonVersion   = platform.python_version()
-            Type            = platform.machine()
-            System          = '{} {} {}'.format(platform.system(),platform.release(),platform.version())
-            User            = getpass.getuser()
-            Hostname        = platform.node()
-            if len(Hostname) == 0:
-                Hostname = socket.gethostname()
+
+            computer_info, config_info, software_version = get_processing_info(self.configfile)
 
             outfile.create_group('/ProcessingParams', 'ComputerInfo')
+            for key, value in computer_info.items():
+                outfile.create_array('/ProcessingParams/ComputerInfo', key, value.encode('utf-8'))
 
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'PythonVersion', PythonVersion.encode('utf-8'))
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'Type', Type.encode('utf-8'))
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'System', System.encode('utf-8'))
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'User', User.encode('utf-8'))
-            outfile.create_array('/ProcessingParams/ComputerInfo', 'Host', Hostname.encode('utf-8'))
-
-            Path = os.path.dirname(os.path.abspath(self.configfile))
-            Name = os.path.basename(self.configfile)
-            with open(self.configfile, 'r') as f:
-                Contents = ''.join(f.readlines())
-
-            # config file
             outfile.create_group('/ProcessingParams', 'ConfigFile')
+            for key, value in config_info.items():
+                outfile.create_array('/ProcessingParams/ConfigFile', key, value.encode('utf-8'))
 
-            outfile.create_array('/ProcessingParams/ConfigFile', 'Name', Name.encode('utf-8'))
-            outfile.create_array('/ProcessingParams/ConfigFile', 'Path', Path.encode('utf-8'))
-            outfile.create_array('/ProcessingParams/ConfigFile', 'Contents', Contents.encode('utf-8'))
-
-            # resolved velocities code version
-            outfile.create_array('/ProcessingParams', 'SoftwareVersion', rv.__version__.encode('utf-8'))
+            outfile.create_array('/ProcessingParams', 'SoftwareVersion', software_version.encode('utf-8'))
             outfile.set_node_attr('/ProcessingParams/SoftwareVersion', 'TITLE', 'Version of the resolvedvelocities software that was used.')
 
             # input file

@@ -7,6 +7,10 @@ from apexpy import Apex
 import tables
 import os
 import importlib
+import socket
+import getpass
+import platform
+
 
 
 def vvels(vlos, dvlos, A, cov, minnumpoints=1):
@@ -186,3 +190,28 @@ def get_example_config():
     example_config = importlib.resources.read_text(__package__, 'example_config.ini')
 
     return example_config
+
+
+def get_processing_info(configfile):
+
+    # Save computer information and config file
+    # Computer information:
+    computer_info = {}
+    computer_info['PythonVersion'] = platform.python_version()
+    computer_info['Type'] = platform.machine()
+    computer_info['System'] = '{} {} {}'.format(platform.system(),platform.release(),platform.version())
+    computer_info['User'] = getpass.getuser()
+    hostname = platform.node()
+    if len(hostname) == 0:
+        hostname = socket.gethostname()
+    computer_info['Host'] = hostname
+
+    config_info = {}
+    config_info['Path'] = os.path.dirname(os.path.abspath(configfile))
+    config_info['Name'] = os.path.basename(configfile)
+    with open(configfile, 'r') as f:
+        config_info['Contents'] = ''.join(f.readlines())
+
+    software_version = importlib.metadata.version(__package__)
+
+    return computer_info, config_info, software_version
