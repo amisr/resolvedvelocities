@@ -16,9 +16,9 @@ import tables
 import numpy as np
 import datetime as dt
 from scipy.spatial import Delaunay
+from marppy import Marp
 
 from .DataHandler import FittedVelocityDataHandler
-from .marp import Marp
 from .plot import summary_plots
 from .utils import *
 import resolvedvelocities as rv
@@ -79,7 +79,7 @@ class ResolveVectorsLat(object):
         # general options
         self.chirp = config.getfloat('OPTIONS', 'CHIRP') if config.has_option('OPTIONS', 'CHIRP') else 0.
         self.nelim = config.getlist('OPTIONS', 'NELIM') if config.has_option('OPTIONS', 'NELIM') else None
-        self.chi2lim = config.getlist('OPTIONS', 'CHI2LIM') if config.has_options('OPTIONS', 'CHI2LIM') else None
+        self.chi2lim = config.getlist('OPTIONS', 'CHI2LIM') if config.has_option('OPTIONS', 'CHI2LIM') else None
         self.goodfitcode = config.getlist('OPTIONS', 'GOODFITCODE') if config.has_option('OPTIONS', 'GOODFITCODE') else None
         self.covar = config.getlist('OPTIONS', 'COVAR')
         self.integration_time = config.getfloat('OPTIONS', 'INTTIME') if config.has_option('OPTIONS', 'INTTIME') else None
@@ -87,11 +87,11 @@ class ResolveVectorsLat(object):
 
         # latitude-resolved vector velocities specific options
         self.binvert = eval(config.get('VVELSLAT', 'MLATBINVERT'))
-        self.marprot = config.getlist('VVELSLAT', 'MARPROT') if config.has_option('VVELS_LAT', 'MARPROT') else [0.,0.]
-        self.altlim = config.getlist('VVELSLAT', 'ALTLIM') if config.has_option('VVELS_LAT', 'ALTLIM') else None
+        self.marprot = config.getlist('VVELSLAT', 'MARPROT') if config.has_option('VVELSLAT', 'MARPROT') else [0.,0.]
+        self.altlim = config.getlist('VVELSLAT', 'ALTLIM') if config.has_option('VVELSLAT', 'ALTLIM') else None
         self.out_alts_def = config.get('VVELSLAT', 'OUTALTS')
-        self.upB_beamcode = config.getint('VVELSLAT', 'UPB_BEAMCODE') if config.has_option('VVELS_LAT', 'UPB_BEAMCODE') else None
-        self.ionup = config.get('VVELSLAT', 'IONUP') if config.has_option('VVELS_LAT', 'IONUP') else None
+        self.upB_beamcode = config.getint('VVELSLAT', 'UPB_BEAMCODE') if config.has_option('VVELSLAT', 'UPB_BEAMCODE') else None
+        self.ionup = config.get('VVELSLAT', 'IONUP') if config.has_option('VVELSLAT', 'IONUP') else None
 
         # plotting
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
@@ -217,8 +217,9 @@ class ResolveVectorsLat(object):
 
     def compute_apex_velocity(self):
 
-        d1m, d2m, d3m, e1m, e2m, e3m = self.marp.basevectors_marp(self.bin_mlat,self.bin_mlon,300.,coords='marp')
+        # d1m, d2m, d3m, e1m, e2m, e3m = self.marp.basevectors_marp(self.bin_mlat,self.bin_mlon,300.,coords='marp')
         self.bin_alat, self.bin_alon = self.marp.marp2apex(self.bin_mlat,self.bin_mlon)
+        d1m, d2m, d3m, e1m, e2m, e3m = self.marp.basevectors_marp(self.bin_alat,self.bin_alon,300.,coords='apex')
         _,_,_,_,_,_, d1a, d2a, d3a, e1a, e2a, e3a = self.marp.basevectors_apex(self.bin_alat,self.bin_alon,300.,coords='apex')
 
         em = np.array([e1m, e2m, e3m])
@@ -293,8 +294,8 @@ class ResolveVectorsLat(object):
     def save_output(self):
         # save output file
 
-        os.makedirs(os.path.abspath(self.outfilepath),exist_ok=True)
-        output = os.path.join(self.outfilepath, self.outfilename)
+        os.makedirs(os.path.abspath(self.output_path),exist_ok=True)
+        output = os.path.join(self.output_path, self.output_name)
         FILTERS = tables.Filters(complib='zlib', complevel=1)
         with tables.open_file(output, mode='w',filters=FILTERS) as outfile:
 
