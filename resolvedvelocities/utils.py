@@ -6,7 +6,7 @@ import datetime as dt
 from apexpy import Apex
 import tables
 import os
-import pkg_resources
+import importlib
 
 
 def vvels(vlos, dvlos, A, cov, minnumpoints=1):
@@ -183,7 +183,6 @@ def save_carray(h5, node, data, attributes):
 
 def get_example_config():
 
-    with pkg_resources.resource_stream(__package__, '../example_config.ini') as f:
-        example_config = f.read()
+    example_config = importlib.resources.read_text(__package__, 'example_config.ini')
 
-    return example_config.decode("utf-8")
+    return example_config
