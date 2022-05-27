@@ -10,9 +10,9 @@ The configuration file provides important specifications about how the `resolved
 +==========+=======================================+================================+===============+==============+===============+
 | FILEIO   | :ref:`DATAFILE <datafile>`            | Input file name                | 20190328.006_lp_1min-fitcal.h5               |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`OUTFILENAME <outfilename>`      | Output file name               | 20190328.006_lp_1min-fitcal_vvels.h5         |
+|          | :ref:`OUTPUT_NAME <outfilename>`      | Output file name               | 20190328.006_lp_1min-fitcal_vvels.h5         |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`OUTFILEPATH <outfilepath>` \+   | Output file path               | /home/users/vvels/output/                    |
+|          | :ref:`OUTPUT_PATH <outfilepath>` \+   | Output file path               | /home/users/vvels/output/                    |
 +----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
 | OPTIONS  | :ref:`CHIRP <chirp>` \+               | Correction for frequency chirp | 0.0 \*                                       |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
@@ -30,7 +30,7 @@ The configuration file provides important specifications about how the `resolved
 +----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
 | VVELSLAT | :ref:`MLATBINVERT <mlatbinvert>`      | Vertices of each mlat bin      | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`MARPROT <marprot>` \+           | MARP rotation coordinates      | 0.0, 0.0      | 82.1, -31.5  | 82.1, -31.5   |
+|          | :ref:`MARPROT <marprot>` \+           | MARP rotation coordinates      | 0.0, 0.0      | 74.7, -94.4  | 74.7, -94.4   |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`ALTLIM <altlim>` \+             | Altitude limits                | 150., 400. \*                                |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
@@ -103,7 +103,7 @@ MLATBINVERT: The list of vertices that define each bin.  These should be given i
 
 .. _marprot:
 
-MARPROT: (Optional) The rotation coordinates for the MARP coordinate system.
+MARPROT: (Optional) The rotation coordinates for the MARP coordinate system.  These should be given in geodetic latitude, longitude at an assumed altitude of 300 km.
 
 .. _altlim:
 

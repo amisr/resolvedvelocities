@@ -108,7 +108,7 @@ class ResolveVectorsLat(object):
         # transform k vectors from geodetic to geomagnetic
 
         # intialize apex coordinates
-        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), lam0=self.marprot[0], phi0=self.marprot[1])
+        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), lam0=self.marprot[0], phi0=self.marprot[1], coords='geo')
 
         # find magnetic latitude and longitude
         self.mlat, self.mlon = self.marp.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
