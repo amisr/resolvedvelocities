@@ -53,7 +53,8 @@ class ResolveVectorsLat(object):
         self.transform()
         self.bin_data()
         self.compute_vector_velocity()
-        self.compute_apex_velocity()
+        if self.marprot:
+            self.compute_apex_velocity()
         self.compute_electric_field()
         self.compute_geodetic_output()
         self.save_output()
@@ -84,7 +85,7 @@ class ResolveVectorsLat(object):
 
         # latitude-resolved vector velocities specific options
         self.binvert = eval(config.get('VVELSLAT', 'MLATBINVERT'))
-        self.marprot = config.getlist('VVELSLAT', 'MARPROT') if config.has_option('VVELSLAT', 'MARPROT') else [0.,0.]
+        self.marprot = config.getlist('VVELSLAT', 'MARPROT') if config.has_option('VVELSLAT', 'MARPROT') else None
         self.altlim = config.getlist('VVELSLAT', 'ALTLIM') if config.has_option('VVELSLAT', 'ALTLIM') else None
         self.out_alts_def = config.get('VVELSLAT', 'OUTALTS')
         self.upB_beamcode = config.getint('VVELSLAT', 'UPB_BEAMCODE') if config.has_option('VVELSLAT', 'UPB_BEAMCODE') else None
@@ -107,15 +108,17 @@ class ResolveVectorsLat(object):
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
-        # intialize apex coordinates
-        self.marp = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), lam0=self.marprot[0], phi0=self.marprot[1], coords='geo')
+        if self.marprot:
+            # Use MARP for magnetic coordinate system
+            self.magcoord = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), lam0=self.marprot[0], phi0=self.marprot[1], alt=0., coords='geo')
+            self.mlat, self.mlon = self.magcoord.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+            d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+        else:
+            # Use Apex for magnetic coordinate system if no rotation angle specified
+            self.magcoord = Apex(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]))
+            self.mlat, self.mlon = self.magcoord.geo2apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+            f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
 
-        # find magnetic latitude and longitude
-        self.mlat, self.mlon = self.marp.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
-
-        # Analogous to apex basis vectors in geodetic coordinates [e n u]
-        # f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.Apex.basevectors_apex(glat, glon, galt)
-        d1, d2, d3, e1, e2, e3 = self.marp.basevectors_marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
         e = np.array([e1,e2,e3]).T
 
         # kvec in geodetic coordinates [e n u]
@@ -213,11 +216,12 @@ class ResolveVectorsLat(object):
 
 
     def compute_apex_velocity(self):
+        # Transform velocity components from marp to apex
+        # This function will only be called if Marp coordinates were used
 
-        # d1m, d2m, d3m, e1m, e2m, e3m = self.marp.basevectors_marp(self.bin_mlat,self.bin_mlon,300.,coords='marp')
-        self.bin_alat, self.bin_alon = self.marp.marp2apex(self.bin_mlat,self.bin_mlon)
-        d1m, d2m, d3m, e1m, e2m, e3m = self.marp.basevectors_marp(self.bin_alat,self.bin_alon,300.,coords='apex')
-        _,_,_,_,_,_, d1a, d2a, d3a, e1a, e2a, e3a = self.marp.basevectors_apex(self.bin_alat,self.bin_alon,300.,coords='apex')
+        self.bin_mlat, self.bin_mlon = self.magcoord.marp2apex(self.bin_mlat,self.bin_mlon)
+        d1m, d2m, d3m, e1m, e2m, e3m = self.magcoord.basevectors_marp(self.bin_mlat,self.bin_mlon,300.,coords='apex')
+        _,_,_,_,_,_, d1a, d2a, d3a, e1a, e2a, e3a = self.magcoord.basevectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
 
         em = np.array([e1m, e2m, e3m])
         da = np.array([d1a, d2a, d3a])
@@ -235,8 +239,7 @@ class ResolveVectorsLat(object):
 
         # find Be3 value at each output bin location
         # NOTE: Be3 is constant along magnetic field lines, so the altitude chosen here doesn't matter
-        # Be3, __, __, __ = self.Apex.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
-        Be3, __, __, __ = self.marp.bvectors_apex(self.bin_alat,self.bin_alon,300.,coords='apex')
+        Be3, __, __, __ = self.magcoord.bvectors_apex(self.bin_mlat,self.bin_mlon,300.,coords='apex')
         # Be3 = np.full(len(self.bin_mlat),1.0)        # set Be3 array to 1.0 - useful for debugging linear algebra
 
         # form rotation array
@@ -251,20 +254,20 @@ class ResolveVectorsLat(object):
         # map velocity and electric field to get an array at different altitudes
         # altitudes are defined by config file
 
-        hbins = len(self.bin_alat)
+        hbins = len(self.bin_mlat)
         vbins = len(self.outalt)
-        alat = np.tile(self.bin_alat,vbins)
-        alon = np.tile(self.bin_alon,vbins)
+        alat = np.tile(self.bin_mlat,vbins)
+        alon = np.tile(self.bin_mlon,vbins)
         alt = np.repeat(self.outalt, hbins)
 
         # calculate bin locations in geodetic coordinates
-        glat, glon, err = self.marp.apex2geo(alat, alon, alt)
+        glat, glon, err = self.magcoord.apex2geo(alat, alon, alt)
         self.bin_glat = glat.reshape((vbins,hbins))
         self.bin_glon = glon.reshape((vbins,hbins))
         self.bin_galt = alt.reshape((vbins,hbins))
 
         # apex basis vectors in geodetic coordinates [e n u]
-        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.marp.basevectors_apex(glat, glon, alt)
+        f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_apex(glat, glon, alt)
 
         # Ve3 and Ed3 should be 0 because VE and E should not have components parallel to B.
         # To force this, set e3 = 0 and d3 = 0
@@ -314,8 +317,8 @@ class ResolveVectorsLat(object):
 
             outfile.create_group('/', 'Magnetic')
 
-            save_carray(outfile, '/Magnetic/Latitude', self.bin_alat, {'TITLE':'Magnetic Latitude', 'Size':'Nbins'})
-            save_carray(outfile, '/Magnetic/Longitude', self.bin_alon, {'TITLE':'Magnetic Longitude', 'Size':'Nbins'})
+            save_carray(outfile, '/Magnetic/Latitude', self.bin_mlat, {'TITLE':'Magnetic Latitude', 'Size':'Nbins'})
+            save_carray(outfile, '/Magnetic/Longitude', self.bin_mlon, {'TITLE':'Magnetic Longitude', 'Size':'Nbins'})
             save_carray(outfile, '/Magnetic/Velocity', self.Velocity, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nbins x 3 (Ve1, Ve2, Ve3)', 'Units':'m/s'})
             save_carray(outfile, '/Magnetic/CovarianceV', self.VelocityCovariance, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nbins x 3 x 3', 'Units':'(m/s)^2'})
             save_carray(outfile, '/Magnetic/ElectricField', self.ElectricField, {'TITLE':'Convection Electric Field', 'Size':'Nrecords x Nbins x 3 (Ed1, Ed2, Ed3)', 'Units':'V/m'})
@@ -325,9 +328,9 @@ class ResolveVectorsLat(object):
 
             outfile.create_group('/', 'Geodetic')
 
-            save_carray(outfile, '/Geodetic/Latitude', self.bin_alat, {'TITLE':'Geographic Latitude', 'Size':'Nalts x Nbins'})
-            save_carray(outfile, '/Geodetic/Longitude', self.bin_alon, {'TITLE':'Geographic Longitude', 'Size':'Nalts x Nbins'})
-            save_carray(outfile, '/Geodetic/Altitude', self.outalt, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
+            save_carray(outfile, '/Geodetic/Latitude', self.bin_glat, {'TITLE':'Geographic Latitude', 'Size':'Nalts x Nbins'})
+            save_carray(outfile, '/Geodetic/Longitude', self.bin_glon, {'TITLE':'Geographic Longitude', 'Size':'Nalts x Nbins'})
+            save_carray(outfile, '/Geodetic/Altitude', self.bin_galt, {'TITLE':'Geographic Altitude', 'Size':'Nalts x Nbins', 'Units':'km'})
             save_carray(outfile, '/Geodetic/Velocity', self.Velocity_gd, {'TITLE':'Plasma Drift Velocity', 'Size':'Nrecords x Nalts x Nbins x 3 (East, North, Up)', 'Units':'m/s'})
             save_carray(outfile, '/Geodetic/CovarianceV', self.VelocityCovariance_gd, {'TITLE':'Velocity Covariance Matrix', 'Size':'Nrecords x Nalts x Nbins x 3 x 3', 'Units':'(m/s)^2'})
             save_carray(outfile, '/Geodetic/Vmag', self.Vgd_mag, {'TITLE':'Velocity Magnitude', 'Size':'Nrecords x Nalts x Nbins', 'Units':'m/s'})
@@ -349,10 +352,10 @@ class ResolveVectorsLat(object):
 
             outfile.create_group('/ProcessingParams', 'Apexpy')
 
-            outfile.create_array('/ProcessingParams/Apexpy', 'Year', self.marp.year)
+            outfile.create_array('/ProcessingParams/Apexpy', 'Year', self.magcoord.year)
             outfile.set_node_attr('/ProcessingParams/Apexpy/Year', 'TITLE', 'Decimal Year used for IGRF Model')
 
-            outfile.create_array('/ProcessingParams/Apexpy','RefHeight',self.marp.refh)
+            outfile.create_array('/ProcessingParams/Apexpy','RefHeight',self.magcoord.refh)
             outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'TITLE', 'Reference height used for Apex coordinates')
             outfile.set_node_attr('/ProcessingParams/Apexpy/RefHeight', 'Units', 'km')
 
