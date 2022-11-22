@@ -73,7 +73,14 @@ class FittedVelocityDataHandler(object):
             self.alt = infile.get_node('/Geomag/Altitude')[bm_idx,:].flatten()/1000.
             self.lat = infile.get_node('/Geomag/Latitude')[bm_idx,:].flatten()
             self.lon = infile.get_node('/Geomag/Longitude')[bm_idx,:].flatten()
-            self.mlat = infile.get_node('/Geomag/MagneticLatitude')[bm_idx,:].flatten()
+            try:
+                self.mlat = infile.get_node('/Geomag/MagneticLatitude')[bm_idx,:].flatten()
+            except:
+                from apexpy import Apex
+                import datetime as dt
+                A = Apex(dt.datetime.utcfromtimestamp(self.utime[0,0]))
+                mlat, mlon = A.geo2apex(self.lat, self.lon, self.alt/1000.)
+                self.mlat = mlat
 
             self.Nbins = len(self.alt)
 
