@@ -53,7 +53,7 @@ class ResolveVectorsLat(object):
         self.transform()
         self.bin_data()
         self.compute_vector_velocity()
-        if self.marprot:
+        if self.marpnull:
             self.compute_apex_velocity()
         self.compute_electric_field()
         self.compute_geodetic_output()
@@ -85,7 +85,7 @@ class ResolveVectorsLat(object):
 
         # latitude-resolved vector velocities specific options
         self.binvert = eval(config.get('VVELSLAT', 'MLATBINVERT'))
-        self.marprot = config.getlist('VVELSLAT', 'MARPROT') if config.has_option('VVELSLAT', 'MARPROT') else None
+        self.marpnull = config.getlist('VVELSLAT', 'MARPNULL') if config.has_option('VVELSLAT', 'MARPNULL') else None
         self.altlim = config.getlist('VVELSLAT', 'ALTLIM') if config.has_option('VVELSLAT', 'ALTLIM') else None
         self.out_alts_def = config.get('VVELSLAT', 'OUTALTS')
         self.upB_beamcode = config.getint('VVELSLAT', 'UPB_BEAMCODE') if config.has_option('VVELSLAT', 'UPB_BEAMCODE') else None
@@ -108,9 +108,9 @@ class ResolveVectorsLat(object):
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
-        if self.marprot:
+        if self.marpnull:
             # Use MARP for magnetic coordinate system
-            self.magcoord = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), lam0=self.marprot[0], phi0=self.marprot[1], alt=0., coords='geo')
+            self.magcoord = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), null=self.marpnull, alt=0., coords='geo')
             self.mlat, self.mlon = self.magcoord.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
             d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
         else:

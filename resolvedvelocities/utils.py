@@ -6,7 +6,13 @@ import datetime as dt
 from apexpy import Apex
 import tables
 import os
-import importlib
+# Currently using backport versions of importlib??
+try:
+    from importlib import resources as importlib_resources
+    from importlib import metadata as importlib_metadata
+except ImportError:
+    import importlib_resources
+    import importlib_metadata
 import socket
 import getpass
 import platform
@@ -187,7 +193,7 @@ def save_carray(h5, node, data, attributes):
 
 def get_example_config():
 
-    example_config = importlib.resources.read_text(__package__, 'example_config.ini')
+    example_config = importlib_resources.files(__package__).joinpath('example_config.ini').read_text()
 
     return example_config
 
@@ -212,6 +218,6 @@ def get_processing_info(configfile):
     with open(configfile, 'r') as f:
         config_info['Contents'] = ''.join(f.readlines())
 
-    software_version = importlib.metadata.version(__package__)
+    software_version = importlib_metadata.distribution(__package__).version
 
     return computer_info, config_info, software_version
