@@ -160,6 +160,12 @@ class ResolveVectorsLat(object):
         # bins defined in config file by a list of bin verticies in apex magnetic coordinates
         # the center of each bin is defined as the average of the verticies
 
+        # import matplotlib.pyplot as plt
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111)
+        # ax.scatter(self.mlon, self.mlat)
+        # plt.show()
+
         self.bin_mlat = []
         self.bin_mlon = []
         self.bin_idx = []

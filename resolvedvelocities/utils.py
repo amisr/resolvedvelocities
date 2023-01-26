@@ -6,7 +6,6 @@ import datetime as dt
 from apexpy import Apex
 import tables
 import os
-# Currently using backport versions of importlib??
 try:
     from importlib import resources as importlib_resources
     from importlib import metadata as importlib_metadata
