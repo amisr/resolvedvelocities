@@ -147,7 +147,7 @@ class ResolveVectorsLat(object):
                 # NOTE: NOT DEVELOPED YET!!!
                 vupflow, dvupflow = ion_upflow(self.Te, self.Ti, self.ne, self.alt)
 
-            print(vupflow)
+            # print(vupflow)
             # LoS velocity correction to remove ion upflow
             self.vlos[t] = self.vlos[t] + self.A[:,2]/self.D*vupflow
             # corrected error in new LoS velocities
@@ -163,8 +163,7 @@ class ResolveVectorsLat(object):
         # import matplotlib.pyplot as plt
         # fig = plt.figure()
         # ax = fig.add_subplot(111)
-        # ax.scatter(self.mlon, self.mlat)
-        # plt.show()
+        # ax.scatter(self.mlon, self.mlat, c=self.datahandler.vlos[0])
 
         self.bin_mlat = []
         self.bin_mlon = []
@@ -173,6 +172,9 @@ class ResolveVectorsLat(object):
             vert = np.array(vert)
             hull = Delaunay(vert)
 
+            # print(vert[:,1], vert[:,0])
+            # ax.plot(vert[:,1], vert[:,0])
+
             self.bin_mlat.append(np.nanmean(vert[:,0]))
             self.bin_mlon.append(np.nanmean(vert[:,1]))
             self.bin_idx.append(np.argwhere(hull.find_simplex(np.array([self.mlat, self.mlon]).T)>=0).flatten())
@@ -180,6 +182,7 @@ class ResolveVectorsLat(object):
         self.bin_mlat = np.array(self.bin_mlat)
         self.bin_mlon = np.array(self.bin_mlon)
 
+        # plt.show()
 
 
 
