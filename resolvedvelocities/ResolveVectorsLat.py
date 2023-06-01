@@ -7,6 +7,7 @@ except ImportError:
     import configparser
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
+import warnings
 
 import apexpy
 import tables
@@ -34,7 +35,6 @@ class ResolveVectorsLat(object):
         self.configfile = configfile
         self.read_config(self.configfile)
 
-        print(self.datafile)
         self.datahandler = FittedVelocityDataHandler(self.datafile)
         self.datahandler.load_data(self.use_beams)
         self.datahandler.filter(chi2=self.chi2lim, ne=self.nelim, alt=self.altlim, fitcode=self.goodfitcode, chirp=self.chirp)
@@ -108,16 +108,20 @@ class ResolveVectorsLat(object):
     def transform(self):
         # transform k vectors from geodetic to geomagnetic
 
-        if self.marpnull:
-            # Use MARP for magnetic coordinate system
-            self.magcoord = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), null=self.marpnull, alt=0., coords='geo')
-            self.mlat, self.mlon = self.magcoord.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
-            d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
-        else:
-            # Use Apex for magnetic coordinate system if no rotation angle specified
-            self.magcoord = Apex(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]))
-            self.mlat, self.mlon = self.magcoord.geo2apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
-            f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+        # Supress warnings caused by passing NaN coordinates into apexpy
+        with warnings.catch_warnings():
+            warnings.filterwarnings(action='ignore')
+
+            if self.marpnull:
+                # Use MARP for magnetic coordinate system
+                self.magcoord = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), null=self.marpnull, alt=0., coords='geo')
+                self.mlat, self.mlon = self.magcoord.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+                d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+            else:
+                # Use Apex for magnetic coordinate system if no rotation angle specified
+                self.magcoord = Apex(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]))
+                self.mlat, self.mlon = self.magcoord.geo2apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+                f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
 
         e = np.array([e1,e2,e3]).T
 

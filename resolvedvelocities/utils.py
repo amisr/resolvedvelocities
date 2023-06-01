@@ -6,6 +6,7 @@ import datetime as dt
 from apexpy import Apex
 import tables
 import os
+import warnings
 try:
     from importlib import resources as importlib_resources
     from importlib import metadata as importlib_metadata
@@ -115,7 +116,9 @@ def magnitude_direction(A,Sig,e):
 
     # calculate magnitude and magnitude error
     magnitude = np.sqrt(AA)
-    mag_err = np.sqrt(ASA/AA)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action='ignore', category=RuntimeWarning)
+        mag_err = np.sqrt(ASA/AA)
 
 
     # Now find the angle clockwise around geodetic up in the horizontal plane
@@ -139,7 +142,9 @@ def magnitude_direction(A,Sig,e):
 
     # calculate direction and direction error
     direction = np.arctan2(np.sqrt(ee)*epA,np.sqrt(epep)*eA)
-    dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action='ignore', category=RuntimeWarning)
+        dir_err = np.sqrt(epep*ee*BSB)/(ee*epA**2-epep*eA**2)
 
     return magnitude, mag_err, direction*180./np.pi, dir_err*180./np.pi
 
