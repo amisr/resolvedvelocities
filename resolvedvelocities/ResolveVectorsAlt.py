@@ -78,7 +78,7 @@ class ResolveVectorsAlt(object):
         # general options
         self.chirp = config.getfloat('OPTIONS', 'CHIRP') if config.has_option('OPTIONS', 'CHIRP') else 0.
         self.nelim = config.getlist('OPTIONS', 'NELIM') if config.has_option('OPTIONS', 'NELIM') else None
-        self.chi2lim = config.getlist('OPTIONS', 'CHI2LIM') if config.has_options('OPTIONS', 'CHI2LIM') else None
+        self.chi2lim = config.getlist('OPTIONS', 'CHI2LIM') if config.has_option('OPTIONS', 'CHI2LIM') else None
         self.goodfitcode = config.getlist('OPTIONS', 'GOODFITCODE') if config.has_option('OPTIONS', 'GOODFITCODE') else None
         self.aprior_covar = config.getlist('OPTIONS', 'COVAR')
         self.integration_time = config.getfloat('OPTIONS', 'INTTIME') if config.has_option('OPTIONS', 'INTTIME') else None
