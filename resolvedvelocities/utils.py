@@ -26,37 +26,46 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
     # Get indices for finite valued data points
     finite = np.isfinite(vlos)
     num_points = np.sum(finite)
-    dof = num_points - 3 # solving for 3 components
-
-    # Filter inputs to only use finite valued data
-    vlos = vlos[finite]
-    dvlos = dvlos[finite]
-    A = A[finite]
-
-    SigmaE = np.diagflat(dvlos**2)
-    SigmaV = np.diagflat(cov)
-
-    try:
-        # measurement errors and a priori covariance, terms in the inverse
-        # (Heinselman and Nicolls 2008 eqn 12)
-        # I = (A*SigV*A.T + SigE)^-1
-        I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)
-        # calculate velocity estimate (Heinselman and Nicolls 2008 eqn 12)
-        V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)
-        # calculate covariance of velocity estimate
-        # (Heinselman and Nicolls 2008 eqn 13)
-        term1 = np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A)
-        term2 = np.linalg.inv(SigmaV)
-        SigV = np.linalg.inv(term1 + term2)
-
-        # chi-squared is meaningless for an underdetermined problem
-        if dof < 1:
+    # Only attempt to find solution if there are vaild points
+    if num_points > 0:
+        dof = num_points - 3 # solving for 3 components
+    
+        # Filter inputs to only use finite valued data
+        vlos = vlos[finite]
+        dvlos = dvlos[finite]
+        A = A[finite]
+    
+        SigmaE = np.diagflat(dvlos**2)
+        SigmaV = np.diagflat(cov)
+    
+        try:
+            # measurement errors and a priori covariance, terms in the inverse
+            # (Heinselman and Nicolls 2008 eqn 12)
+            # I = (A*SigV*A.T + SigE)^-1
+            I = np.linalg.inv(np.einsum('jk,kl,ml->jm',A,SigmaV,A) + SigmaE)
+            # calculate velocity estimate (Heinselman and Nicolls 2008 eqn 12)
+            V = np.einsum('jk,lk,lm,m->j',SigmaV,A,I,vlos)
+            # calculate covariance of velocity estimate
+            # (Heinselman and Nicolls 2008 eqn 13)
+            term1 = np.einsum('kj,kl,lm->jm',A,np.linalg.inv(SigmaE),A)
+            term2 = np.linalg.inv(SigmaV)
+            SigV = np.linalg.inv(term1 + term2)
+    
+            # chi-squared is meaningless for an underdetermined problem
+            if dof < 1:
+                chi2 = np.nan
+            else:
+                model = np.einsum('...i,i->...',A,V)
+                chi2 = np.sum((vlos - model)**2 / dvlos**2) / dof
+    
+        except np.linalg.LinAlgError:
+            # Return NaNs if inversion unsucessful
+            V = np.full(3,np.nan)
+            SigV = np.full((3,3),np.nan)
             chi2 = np.nan
-        else:
-            model = np.einsum('...i,i->...',A,V)
-            chi2 = np.sum((vlos - model)**2 / dvlos**2) / dof
 
-    except np.linalg.LinAlgError:
+    else:
+        # Return NaNs if no valid points
         V = np.full(3,np.nan)
         SigV = np.full((3,3),np.nan)
         chi2 = np.nan
