@@ -406,21 +406,18 @@ class ResolveVectorsLat(object):
         # break up arrays into chunks of time no bigger than 24 hours
         chunks_to_plot = list()
 
-        start_time = None
-        start_ind = None
         num_times = len(self.integration_periods)
+        start_ind = 0
+        start_time = self.integration_periods[0,0]
         for i,time_pair in enumerate(self.integration_periods):
             temp_start_time, temp_end_time = time_pair
-            if start_time is None:
-                start_time = temp_start_time
-                start_ind = i
             time_diff = temp_end_time - start_time
-
-            if (time_diff >= 24*3600) or (i == num_times -1):
+            # Add chunk if over 24 hours elapsed
+            if (time_diff >= 24*3600):
                 chunks_to_plot.append([start_ind,i])
-                start_time = None
-                start_ind = None
-                continue
+                start_ind = i
+                start_time = temp_start_time
+        chunks_to_plot.append([start_ind, num_times])
 
         num_chunks = len(chunks_to_plot)
         for t, [start_ind,end_ind] in enumerate(chunks_to_plot):
