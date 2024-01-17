@@ -8,13 +8,20 @@ The Heinselman and Nicolls algorithm works by defining several spatial regions w
 Specifying Bins
 ---------------
 
-The vertices of velocity bins are specified through the :ref:`BINVERT <binvert>` parameter in the :ref:`configuration file <configfile>`.  Vertices should be given in magnetic coordinates.  Although any vertices can technically be selected, it usually makes sense to form regular rectangles in magnetic coordinates (latitude/longitude pairs), and makes the resulting velocities much easier to interpret.  Use the syntax of a Python nested list, where each element of the list represents a single bin and each element of that list list is the magnetic latitude and longitude of a vertex::
+There are two ways to specify bins int the :ref:`configuration file <configfile>`.
 
-  BINVERT = [[[65.0,-95.],[65.0,-88.],[65.5,-88.],[65.5,-95.]],
+Arbitrary vertices for bins can be specified through the :ref:`BIN_VERT <bin_vert>` parameter.  Vertices should be given in magnetic coordinates.  It is not nessisary for bins to form regular rectangles and any number of vertices may be provided for each bin.  This gives maximum flexibility at the expense of an unwiedy field in the config file.  For regular bins, using the BIN_REG_MLON and BIN_REG_MLAT parameters (see below) are recommended. Use the syntax of a Python nested list, where each element of the list represents a single bin and each element of that list list is the magnetic latitude and longitude of a vertex::
+
+  BIN_VERT = [[[65.0,-95.],[65.0,-88.],[65.5,-88.],[65.5,-95.]],
    [[65.5,-95.],[65.5,-88.],[66.0,-88.],[66.0,-95.]],
    [[66.0,-95.],[66.0,-88.],[66.5,-88.],[66.5,-95.]],
    [[66.5,-95.],[66.5,-88.],[67.0,-88.],[67.0,-95.]],
    [[67.0,-95.],[67.0,-88.],[67.5,-88.],[67.5,-95.]]]
+
+Regular rectangular bins can be specified much more easily through the :ref:`BIN_REG_MLON <bin_reg_mlon>` and :ref:`BIN_REG_MLAT <bin_reg_mlat>` parameters.  Both of these fields take groups of `start, stop, step, stride;` where groups have are separated by `;`. The `step` parameter refers to the distance between the start of each bin while the `stride` parameter is the width of each bin.  If `step < stride`, the bins will overlap, which is normal and helps achieve a higher spatial resolution with lower error on each bin.  Below is an example of a relatively standard setup with only one bin in magnetic longitude and several overlapping bins in magnetic latitude::
+
+  BIN_REG_MLON = -95., -88., 7., 7.
+  BIN_REG_MLAT = 65., 68., 0.25, 0.5
 
 Auroral Zone
 ------------

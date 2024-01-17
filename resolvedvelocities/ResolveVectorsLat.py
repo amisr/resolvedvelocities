@@ -84,7 +84,11 @@ class ResolveVectorsLat(object):
         self.use_beams = config.getlist('OPTIONS', 'USE_BEAMS') if config.has_option('OPTIONS', 'USE_BEAMS') else None
 
         # latitude-resolved vector velocities specific options
-        self.binvert = eval(config.get('VVELSLAT', 'MLATBINVERT'))
+        self.binvert = eval(config.get('VVELSLAT', 'BIN_VERT')) if config.has_option('VVELSLAT', 'BIN_VERT') else None
+        if not self.binvert:
+            mlon_bin_def = config.get('VVELSLAT', 'BIN_REG_MLON') if config.has_option('VVELSLAT', 'BIN_REG_MLON') else None
+            mlat_bin_def = config.get('VVELSLAT', 'BIN_REG_MLAT') if config.has_option('VVELSLAT', 'BIN_REG_MLAT') else None
+            self.binvert = self.create_binvert(mlon_bin_def, mlat_bin_def)
         self.marpnull = config.getlist('VVELSLAT', 'MARPNULL') if config.has_option('VVELSLAT', 'MARPNULL') else None
         self.altlim = config.getlist('VVELSLAT', 'ALTLIM') if config.has_option('VVELSLAT', 'ALTLIM') else None
         self.out_alts_def = config.get('VVELSLAT', 'OUTALTS')
@@ -93,6 +97,43 @@ class ResolveVectorsLat(object):
 
         # plotting
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
+
+
+    def create_binvert(self, mlon_bin_def, mlat_bin_def):
+
+        mlonarr_start = np.empty((0,))
+        mlonarr_end = np.empty((0,))
+        groups = mlon_bin_def.split(';')
+        for i,group in enumerate(groups):
+            start, stop, step, stride = [float(i) for i in group.split(',')]
+            arr = np.arange(start, stop, step)
+            mlonarr_start = np.append(mlonarr_start, arr)
+            mlonarr_end = np.append(mlonarr_end, arr+stride)
+
+        #print(mlonarr)
+
+        mlatarr_start = np.empty((0,))
+        mlatarr_end = np.empty((0,))
+        groups = mlat_bin_def.split(';')
+        for i,group in enumerate(groups):
+            start, stop, step, stride = [float(i) for i in group.split(',')]
+            arr = np.arange(start, stop, step)
+            mlatarr_start = np.append(mlatarr_start, arr)
+            mlatarr_end = np.append(mlatarr_end, arr+stride)
+
+        #print(mlatarr)
+
+        binvert = list()
+        for mlon1, mlon2 in zip(mlonarr_start, mlonarr_end):
+            for mlat1, mlat2 in zip(mlatarr_start, mlatarr_end):
+                #print(mlat, mlon, mlat2, mlon2)
+                binvert.append([[mlat1, mlon1], [mlat1, mlon2], [mlat2, mlon2], [mlat2, mlon1]])
+#        mlon_grid, mlat_grid = np.meshgrid(mlonarr, mlatarr)
+#        print(mlon_grid.shape, mlat_grid.shape)
+#        for mlon, mlat in zip(mlon_grid.ravel(), mlat_grid.ravel()):
+#            print(mlon, mlat)
+
+        return binvert
 
 
     def create_alt_array(self):
