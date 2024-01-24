@@ -90,6 +90,7 @@ class ResolveVectorsAlt(object):
 
         # plotting
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
+        self.plotprefix = config.get('PLOTTING', 'PLOTPREFIX') if config.has_option('PLOTTING', 'PLOTPREFIX') else ''
 
 
 
@@ -292,11 +293,11 @@ class ResolveVectorsAlt(object):
             # if only 1 day worth of data, set t=None so we don't have a
             # 'byDay' in the plot file names
             if (num_chunks == 1):
-                vcom_fname = 'alt_velocity_components.png'
-                vmag_fname = 'alt_velocity_magnitudes.png'
+                vcom_fname = '{}vvelsalt_vel_comp.png'.format(self.plotprefix)
+                vmag_fname = '{}vvelsalt_vel_mag.png'.format(self.plotprefix)
             else:
-                vcom_fname = 'alt_velocity_components_{}.png'.format(t)
-                vmag_fname = 'alt_velocity_magnitudes_{}.png'.format(t)
+                vcom_fname = '{}vvelsalt_vel_comp_{}.png'.format(self.plotprefix, t)
+                vmag_fname = '{}vvelsalt_vel_mag_{}.png'.format(self.plotprefix, t)
 
             # make vector plots
             times = self.integration_periods[start_ind:end_ind,:]

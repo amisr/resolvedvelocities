@@ -97,6 +97,7 @@ class ResolveVectorsLat(object):
 
         # plotting
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
+        self.plotprefix = config.get('PLOTTING', 'PLOTPREFIX') if config.has_option('PLOTTING', 'PLOTPREFIX') else ''
 
 
     def create_binvert(self, mlon_bin_def, mlat_bin_def):
@@ -465,15 +466,15 @@ class ResolveVectorsLat(object):
             # if only 1 day worth of data, set t=None so we don't have a
             # 'byDay' in the plot file names
             if (num_chunks == 1):
-                vcom_fname = 'velocity_components.png'
-                ecom_fname = 'electric_field_components.png'
-                vmag_fname = 'velocity_magnitudes.png'
-                emag_fname = 'electric_field_magnitudes.png'
+                vcom_fname = '{}vvelslat_vel_comp.png'.format(self.plotprefix)
+                ecom_fname = '{}vvelslat_efield_comp.png'.format(self.plotprefix)
+                vmag_fname = '{}vvelslat_vel_mag.png'.format(self.plotprefix)
+                emag_fname = '{}vvelslat_efield_mag.png'.format(self.plotprefix)
             else:
-                vcom_fname = 'velocity_components_{}.png'.format(t)
-                ecom_fname = 'electric_field_components_{}.png'.format(t)
-                vmag_fname = 'velocity_magnitudes_{}.png'.format(t)
-                emag_fname = 'electric_field_magnitudes_{}.png'.format(t)
+                vcom_fname = '{}vvelslat_vel_comp_{}.png'.format(self.plotprefix, t)
+                ecom_fname = '{}vvelslat_efield_comp_{}.png'.format(self.plotprefix, t)
+                vmag_fname = '{}vvelslat_vel_mag_{}.png'.format(self.plotprefix, t)
+                emag_fname = '{}vvelslat_eield_mag_{}.png'.format(self.plotprefix, t)
 
             # make vector plots
             times = self.integration_periods[start_ind:end_ind,:]

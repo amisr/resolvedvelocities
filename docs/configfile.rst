@@ -50,6 +50,8 @@ The configuration file provides important specifications about how the `resolved
 +----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
 | PLOTTING | :ref:`PLOTSAVEDIR <plotsavedir>`      | Directory to save plots to     | /home/user/vvels/plots                       |
 +----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
+| PLOTTING | :ref:`PLOTPREFIX <plotprefix>`        | Prefix for summary plot names  | 20190328.006_lp_1min-fitcal                  |
++----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
 
 \+ Optional parameter
 
@@ -144,3 +146,7 @@ MLATLIM: (Optional) The limits in magnetic latitude of which points should be co
 .. _plotsavedir:
 
 PLOTSAVEDIR: The path for a directory output summary plots should be saved in.
+
+.. _plotprefix:
+
+PLOTPREFIX: (Optional) The string to prefix standard summary plot filenames with. This can help identify the particular experiment file the summary plots are associated with.
