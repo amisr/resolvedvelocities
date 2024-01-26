@@ -149,6 +149,11 @@ class FittedVelocityDataHandler(object):
                 self.vlos[:,inds] = np.nan
                 self.dvlos[:,inds] = np.nan
 
+            ## CORRECTION FOR CHI2 PROBLEM ##
+            # Some processed files have an error where chi2 is artificially overestimated by 369.  To correct for this an allow the chi2 filter to work without removing all data, subtract 369 from the chi2 values from the file ONLY if the median of chi2 from the file is over 300.  New processing by the fitter should fix this issue in the fitted files, but this "workaround" is still included here for files that have not been refit yet.
+            if np.nanmedian(self.chi2)>300.:
+                self.chi2 = self.chi2 - 369.
+
             # discard data with extremely high or extremely low chi2 values
             if chi2:
                 inds = np.where((self.chi2 < chi2[0]) | (self.chi2 > chi2[1]))
