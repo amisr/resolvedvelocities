@@ -478,7 +478,6 @@ class ResolveVectorsLat(object):
 
             # make vector plots
             times = self.integration_periods[start_ind:end_ind,:]
-            binmlat = ['{:.2f} N'.format(ml) for ml in self.bin_mlat]
 
             vels = self.Velocity[start_ind:end_ind,:]
             covvels = self.VelocityCovariance[start_ind:end_ind,:]
@@ -487,14 +486,14 @@ class ResolveVectorsLat(object):
 
             summary_plots.plot_components(times, self.bin_mlat, vels, covvels,
                             titles=['Ve1 (m/s)','Ve2 (m/s)','Ve3 (m/s)'],
-                            ylabel='Apex MLAT', yticklabels=binmlat,
-                            clim=[[-1500.,1500.], [0.,350.]], cmap=['coolwarm', 'turbo'],
+                            ylabel='Apex MLAT', clim=[[-1500.,1500.], [0.,350.]],
+                            cmap=['coolwarm', 'turbo'],
                             filename=os.path.join(self.plotsavedir,vcom_fname), scale_factors=[1,1,10])
 
             summary_plots.plot_components(times, self.bin_mlat, efs, covefs,
                             titles=['Ed1 (mV/m)','Ed2 (mV/m)','Ed3 (mV/m)'],
-                            ylabel='Apex MLAT', yticklabels=binmlat,
-                            clim=[[-75., 75.], [0., 15.]], cmap=['coolwarm', 'turbo'],
+                            ylabel='Apex MLAT', clim=[[-75., 75.], [0., 15.]],
+                            cmap=['coolwarm', 'turbo'],
                             filename=os.path.join(self.plotsavedir,ecom_fname), scale_factors=[1,1,10])
 
 
@@ -518,7 +517,7 @@ class ResolveVectorsLat(object):
 
             summary_plots.plot_magnitude(times, self.bin_mlat, vmag, dvmag, vdir, dvdir, chi2,
                             err_thres=100., mag_thres=100., titles=titles,
-                            ylabel='Apex MLAT', yticklabels=binmlat, clim=clim, cmap=cmap,
+                            ylabel='Apex MLAT', clim=clim, cmap=cmap,
                             filename=os.path.join(self.plotsavedir,vmag_fname))
 
             titles = ['E mag. (mV/m)', 'E mag err (mV/m)', 'E dir (deg)', 'E dir err (deg)', '']
@@ -527,7 +526,7 @@ class ResolveVectorsLat(object):
 
             summary_plots.plot_magnitude(times, self.bin_mlat, emag, demag, edir, dedir, chi2,
                             err_thres=5., mag_thres=5., titles=titles,
-                            ylabel='Apex MLAT', yticklabels=binmlat, clim=clim, cmap=cmap,
+                            ylabel='Apex MLAT', clim=clim, cmap=cmap,
                             filename=os.path.join(self.plotsavedir,emag_fname))
 
 

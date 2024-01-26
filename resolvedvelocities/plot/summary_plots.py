@@ -6,7 +6,7 @@ import numpy as np
 import datetime as dt
 import os
 
-def plot_components(utime, ybins, vector, covariance, titles=None, ylabel=None, yticklabels=None, clim=None, cmap=None, filename=None, scale_factors=None):
+def plot_components(utime, ybins, vector, covariance, titles=None, ylabel=None, clim=None, cmap=None, filename=None, scale_factors=None):
 
     # pad time gaps
     utime, [vector, covariance] = timegaps(utime, [vector, covariance])
@@ -39,9 +39,7 @@ def plot_components(utime, ybins, vector, covariance, titles=None, ylabel=None, 
                 ax.set_xlim(xlim)
                 ax.set_xlabel('Universal Time')
 
-                ax.set_yticks(ybins)
                 if j == 0:
-                    ax.set_yticklabels(yticklabels)
                     ax.set_ylabel(ylabel)
                 else:
                     ax.set_yticklabels([])
@@ -67,7 +65,7 @@ def plot_components(utime, ybins, vector, covariance, titles=None, ylabel=None, 
         plt.close(fig)
 
 
-def plot_magnitude(utime, ybins, vmag, dvmag, vdir, dvdir, chi2, err_thres=None, mag_thres=None, titles=None, ylabel=None, yticklabels=None, clim=None, cmap=None, filename=None):
+def plot_magnitude(utime, ybins, vmag, dvmag, vdir, dvdir, chi2, err_thres=None, mag_thres=None, titles=None, ylabel=None, clim=None, cmap=None, filename=None):
 
     # pad time gaps
     utime, [vmag, dvmag, vdir, dvdir, chi2] = timegaps(utime, [vmag, dvmag, vdir, dvdir, chi2])
@@ -90,15 +88,8 @@ def plot_magnitude(utime, ybins, vmag, dvmag, vdir, dvdir, chi2, err_thres=None,
             f = ax.pcolormesh(xedge, yedge, A.T, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
             ax.set_xticks(xticks)
             ax.set_xticklabels([])
-            # ax.set_xticklabels(time)
-            # ax.set_yticks(yticks[::2])
-            # ax.set_yticklabels(binmlat[::2])
-            ax.set_yticks(ybins)
-            ax.set_yticklabels(yticklabels)
             ax.set_xlim(xlim)
-            # ax.set_xlabel('Universal Time')
             ax.set_ylabel(ylabel)
-            # ax.set_title(titles[i])
             pos = ax.get_position()
             cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
             cbar = fig.colorbar(f, cax=cax)
@@ -115,10 +106,6 @@ def plot_magnitude(utime, ybins, vmag, dvmag, vdir, dvdir, chi2, err_thres=None,
         f = ax.quiver(xedge[:-1], yedge[:-1], vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'), norm=plt.Normalize(vmin=-1,vmax=1))
         ax.set_xticks(xticks)
         ax.set_xticklabels(time)
-        # ax.set_yticks(np.arange(len(mlat))[::2])
-        # ax.set_yticklabels(binmlat[::2])
-        ax.set_yticks(ybins)
-        ax.set_yticklabels(yticklabels)
         ax.set_xlim(xlim)
         ax.set_xlabel('Universal Time')
         ax.set_ylabel(ylabel)
