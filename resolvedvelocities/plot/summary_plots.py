@@ -6,32 +6,7 @@ import numpy as np
 import datetime as dt
 import os
 
-def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=None, clim=None, cmap=None, savedir=None,savenamebase=None,day_ind=None):
-
-    # set defaults
-    defaults = {'V': {'titles':[['Ve1 (m/s)', 'Ve2 (m/s)', 'Ve3 (m/s) x 10'],
-                                ['errVe1 (m/s)', 'errVe2 (m/s)', 'errVe3 (m/s) x 10']],
-                      'clim':[[-1500., 1500.], [0., 350.]],
-                      'cmap':['coolwarm', 'viridis']},
-                'E': {'titles':[['Ed1 (mV/m)', 'Ed2 (mV/m)', 'Ed3 (mV/m) x 10'],
-                                ['errEd1 (mV/m)', 'errEd2 (mV/m)', 'errEd3 (mV/m) x 10']],
-                      'clim':[[-75., 75.], [0., 15.]],
-                      'cmap':['coolwarm', 'viridis']}}
-
-    # if titles, color limits, and color maps are not specified in function call, use defaults
-    if not titles:
-        titles = defaults[param]['titles']
-    if not clim:
-        clim = defaults[param]['clim']
-    if not cmap:
-        cmap = defaults[param]['cmap']
-    if not savedir:
-        savedir = os.getcwd()
-
-    # for electric field, multiply values by 1000 to get units of mV/m instead of V/m
-    if param=='E':
-        vector = vector*1000.
-        covariance = covariance*1000.*1000.
+def plot_components(utime, ybins, vector, covariance, titles=None, ylabel=None, clim=None, cmap=None, filename=None, scale_factors=None):
 
     # pad time gaps
     utime, [vector, covariance] = timegaps(utime, [vector, covariance])
@@ -39,12 +14,8 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
     # get x-axis (time) tick locations and labels
     time, xticks, xlims = get_time_ticks(utime)
 
-    # get y-axis (bin) tick locations and labels
-    yticks = np.arange(len(mlat))+0.5
-    binmlat = ['{:.2f} N'.format(ml) for ml in mlat]
-
     xedge = np.append(utime[:,0],utime[-1,1])
-    yedge = np.arange(len(mlat)+1)
+    yedge = calculate_yedge(ybins)
 
     # loop over every day of experiment
     for xlim in xlims:
@@ -56,8 +27,8 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
         for i, A in enumerate([vector,np.sqrt(np.diagonal(covariance,axis1=-1,axis2=-2))]):
             for j in range(3):
                 # for along B component, multiply by 10
-                if j==2:
-                    fac=10.
+                if scale_factors:
+                    fac = scale_factors[j]
                 else:
                     fac=1.
 
@@ -68,15 +39,18 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
                 ax.set_xlim(xlim)
                 ax.set_xlabel('Universal Time')
 
-                ax.set_yticks(yticks)
                 if j == 0:
-                    ax.set_yticklabels(binmlat)
-                    ax.set_ylabel('Apex MLAT')
+                    ax.set_ylabel(ylabel)
                 else:
                     ax.set_yticklabels([])
 
+                title = titles[j]
+                if fac != 1:
+                    title = title + ' x {}'.format(fac)
+                if i == 1:
+                    title = title + ' Error'
 
-                ax.set_title(titles[i][j])
+                ax.set_title(title)
                 ax.tick_params(labelsize=8)
 
             pos = ax.get_position()
@@ -86,40 +60,12 @@ def plot_components(utime, mlat, mlon, vector, covariance, param='V', titles=Non
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         # fig.text(0.1, 0.95, datestr, fontsize=12)
         fig.suptitle(datestr, fontsize=12)
-        savename = os.path.splitext(savenamebase)[0]+'-%svec' % param.lower()
-        if not day_ind is None:
-            savename += '-byDay-%d' % day_ind
-        savename += '.png'
-        # filename = os.path.join(savedir,'{}comps_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
-        filename = os.path.join(savedir,savename)
+
         fig.savefig(filename,bbox_inches='tight')
         plt.close(fig)
 
 
-def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V', titles=None, clim=None, cmap=None, savedir=None,savenamebase=None,day_ind=None):
-
-    # set defaults
-    defaults = {'V': {'titles':['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', ''],
-                      'clim':[[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]],
-                      'cmap':['viridis', 'viridis', 'hsv', 'viridis']},
-                'E': {'titles':['E mag. (mV/m)', 'E mag err (mV/m)', 'E dir (deg)', 'E dir err (deg)', ''],
-                      'clim':[[0.,75.],[0., 15.],[-180., 180.],[0., 35.]],
-                      'cmap':['viridis', 'viridis', 'hsv', 'viridis']}}
-
-    # if titles, color limits, and color maps are not specified in function call, use defaults
-    if not titles:
-        titles = defaults[param]['titles']
-    if not clim:
-        clim = defaults[param]['clim']
-    if not cmap:
-        cmap = defaults[param]['cmap']
-    if not savedir:
-        savedir = os.getcwd()
-
-    # for electric field, multiply values by 1000 to get units of mV/m instead of V/m
-    if param == 'E':
-        vmag = vmag*1000.
-        dvmag = dvmag*1000.
+def plot_magnitude(utime, ybins, vmag, dvmag, vdir, dvdir, chi2, err_thres=None, mag_thres=None, titles=None, ylabel=None, clim=None, cmap=None, filename=None):
 
     # pad time gaps
     utime, [vmag, dvmag, vdir, dvdir, chi2] = timegaps(utime, [vmag, dvmag, vdir, dvdir, chi2])
@@ -127,13 +73,8 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V',
     # get x-axis (time) tick locations and labels
     time, xticks, xlims = get_time_ticks(utime)
 
-    # get y-axis (bin) tick locations and labels
-    yticks = np.arange(len(mlat))+0.5
-    # binloc = ['({:.1f} N, {:.1f} E)'.format(lat, lon) for lat, lon in zip(mlat, mlon)]
-    binmlat = ['{:.2f} N'.format(ml) for ml in mlat]
-
     xedge = np.append(utime[:,0],utime[-1,1])
-    yedge = np.arange(len(mlat)+1)
+    yedge = calculate_yedge(ybins)
 
     # loop over every day of experiment
     for xlim in xlims:
@@ -147,27 +88,14 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V',
             f = ax.pcolormesh(xedge, yedge, A.T, vmin=clim[i][0], vmax=clim[i][1], cmap=plt.get_cmap(cmap[i]))
             ax.set_xticks(xticks)
             ax.set_xticklabels([])
-            # ax.set_xticklabels(time)
-            ax.set_yticks(yticks[::2])
-            ax.set_yticklabels(binmlat[::2])
             ax.set_xlim(xlim)
-            # ax.set_xlabel('Universal Time')
-            ax.set_ylabel('Apex MLAT')
-            # ax.set_title(titles[i])
+            ax.set_ylabel(ylabel)
             pos = ax.get_position()
             cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
             cbar = fig.colorbar(f, cax=cax)
             cbar.set_label(titles[i])
 
-        # filter the quivers by errors so we don't plot crazy looking vectors
-        if param == 'E':
-            err_thres = 5
-            mag_thres = 5
-        else:
-            err_thres = 100.0
-            mag_thres = 100.0
-
-        cond1 = (~np.isfinite(chi2)) | (chi2 > 5) | (chi2 < 0.2)  # chi-squared filter
+        cond1 = (~np.isfinite(chi2)) | (chi2 > 10) | (chi2 < 0.1)  # chi-squared filter
         cond2 = ((dvmag > err_thres) & (vmag > mag_thres))  # absolute error bar filter
         cond3 = (dvmag / vmag > 1) # relative error bar filter
         inds = np.where(cond1 | cond2 | cond3)
@@ -175,14 +103,12 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V',
 
         # plot quivers
         ax = plt.subplot(gs[4])
-        f = ax.quiver(xedge[:-1], yedge[:-1], vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'))
+        f = ax.quiver(xedge[:-1], yedge[:-1], vmag.T*np.sin(vdir.T*np.pi/180.), vmag.T*np.cos(vdir.T*np.pi/180.), np.sin(vdir.T*np.pi/180.), cmap=plt.get_cmap('coolwarm'), norm=plt.Normalize(vmin=-1,vmax=1))
         ax.set_xticks(xticks)
         ax.set_xticklabels(time)
-        ax.set_yticks(np.arange(len(mlat))[::2])
-        ax.set_yticklabels(binmlat[::2])
         ax.set_xlim(xlim)
         ax.set_xlabel('Universal Time')
-        ax.set_ylabel('Apex MLAT')
+        ax.set_ylabel(ylabel)
         pos = ax.get_position()
         cax = fig.add_axes([0.91, pos.y0, 0.015, pos.y1-pos.y0])
         cbar = fig.colorbar(f, cax=cax, ticks=[-0.9,0,0.9])
@@ -208,12 +134,7 @@ def plot_magnitude(utime, mlat, mlon, vmag, dvmag, vdir, dvdir, chi2, param='V',
         datestr = '{:%Y-%m-%d %H:%M:%S} - {:%Y-%m-%d %H:%M:%S}'.format(dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1]))
         # fig.text(0.1, 0.95, datestr, fontsize=12)
         fig.suptitle(datestr, fontsize=12)
-        savename = os.path.splitext(savenamebase)[0]+'-%smag' % param.lower()
-        if not day_ind is None:
-            savename += '-byDay-%d' % day_ind
-        savename += '.png'
-        # filename = os.path.join(savedir,'{}magnitude_{:%Y%m%d-%H%M%S}_{:%Y%m%d-%H%M%S}.png'.format(param,dt.datetime.utcfromtimestamp(xlim[0]),dt.datetime.utcfromtimestamp(xlim[1])))
-        filename = os.path.join(savedir,savename)
+
         fig.savefig(filename,bbox_inches='tight')
         plt.close(fig)
 
@@ -300,3 +221,9 @@ def timegaps(time, data_arrays):
         data_arrays2.append(data2)
 
     return time2, data_arrays2
+
+def calculate_yedge(ybins):
+    yedge = (ybins[:-1]+ybins[1:])/2.
+    yedge = np.insert(yedge, 0, ybins[0]-(yedge[0]-ybins[0]))
+    yedge = np.append(yedge, ybins[-1]+(ybins[-1]-yedge[-1]))
+    return yedge
