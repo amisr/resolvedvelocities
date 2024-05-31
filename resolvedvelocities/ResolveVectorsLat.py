@@ -51,7 +51,12 @@ class ResolveVectorsLat(object):
     def run(self):
 
         self.transform()
-        self.bin_data()
+        if self.binmlatdef:
+            self.bin_data_mlat()
+        elif self.binvertdef:
+            self.bin_data_vert()
+        else:
+            raise ValueError('Bins must be defined in the config file, either though BINMLATDEF or BINVERTDEF.')
         self.compute_vector_velocity()
         if self.marpnull:
             self.compute_apex_velocity()
@@ -84,11 +89,8 @@ class ResolveVectorsLat(object):
         self.use_beams = config.getlist('OPTIONS', 'USE_BEAMS') if config.has_option('OPTIONS', 'USE_BEAMS') else None
 
         # latitude-resolved vector velocities specific options
-        self.binvert = eval(config.get('VVELSLAT', 'BIN_VERT')) if config.has_option('VVELSLAT', 'BIN_VERT') else None
-        if not self.binvert:
-            mlon_bin_def = config.get('VVELSLAT', 'BIN_REG_MLON') if config.has_option('VVELSLAT', 'BIN_REG_MLON') else None
-            mlat_bin_def = config.get('VVELSLAT', 'BIN_REG_MLAT') if config.has_option('VVELSLAT', 'BIN_REG_MLAT') else None
-            self.binvert = self.create_binvert(mlon_bin_def, mlat_bin_def)
+        self.binmlatdef = config.getlist('VVELSLAT', 'BINMLATDEF') if config.has_option('VVELSLAT', 'BINMLATDEF') else None
+        self.binvertdef = eval(config.get('VVELSLAT', 'BINVERTDEF')) if config.has_option('VVELSLAT', 'BINVERTDEF') else None
         self.marpnull = config.getlist('VVELSLAT', 'MARPNULL') if config.has_option('VVELSLAT', 'MARPNULL') else None
         self.altlim = config.getlist('VVELSLAT', 'ALTLIM') if config.has_option('VVELSLAT', 'ALTLIM') else None
         self.out_alts_def = config.get('VVELSLAT', 'OUTALTS')
@@ -99,42 +101,6 @@ class ResolveVectorsLat(object):
         self.plotsavedir = config.get('PLOTTING', 'PLOTSAVEDIR') if config.has_option('PLOTTING', 'PLOTSAVEDIR') else None
         self.plotprefix = config.get('PLOTTING', 'PLOTPREFIX') if config.has_option('PLOTTING', 'PLOTPREFIX') else ''
 
-
-    def create_binvert(self, mlon_bin_def, mlat_bin_def):
-
-        mlonarr_start = np.empty((0,))
-        mlonarr_end = np.empty((0,))
-        groups = mlon_bin_def.split(';')
-        for i,group in enumerate(groups):
-            start, stop, step, stride = [float(i) for i in group.split(',')]
-            arr = np.arange(start, stop, step)
-            mlonarr_start = np.append(mlonarr_start, arr)
-            mlonarr_end = np.append(mlonarr_end, arr+stride)
-
-        #print(mlonarr)
-
-        mlatarr_start = np.empty((0,))
-        mlatarr_end = np.empty((0,))
-        groups = mlat_bin_def.split(';')
-        for i,group in enumerate(groups):
-            start, stop, step, stride = [float(i) for i in group.split(',')]
-            arr = np.arange(start, stop, step)
-            mlatarr_start = np.append(mlatarr_start, arr)
-            mlatarr_end = np.append(mlatarr_end, arr+stride)
-
-        #print(mlatarr)
-
-        binvert = list()
-        for mlon1, mlon2 in zip(mlonarr_start, mlonarr_end):
-            for mlat1, mlat2 in zip(mlatarr_start, mlatarr_end):
-                #print(mlat, mlon, mlat2, mlon2)
-                binvert.append([[mlat1, mlon1], [mlat1, mlon2], [mlat2, mlon2], [mlat2, mlon1]])
-#        mlon_grid, mlat_grid = np.meshgrid(mlonarr, mlatarr)
-#        print(mlon_grid.shape, mlat_grid.shape)
-#        for mlon, mlat in zip(mlon_grid.ravel(), mlat_grid.ravel()):
-#            print(mlon, mlat)
-
-        return binvert
 
 
     def create_alt_array(self):
@@ -159,11 +125,13 @@ class ResolveVectorsLat(object):
                 self.magcoord = Marp(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]), null=self.marpnull, alt=0., coords='geo')
                 self.mlat, self.mlon = self.magcoord.geo2marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
                 d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_marp(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+                self.site_mlat, self.site_mlon = self.magcoord.geo2marp(*self.datahandler.site)
             else:
                 # Use Apex for magnetic coordinate system if no rotation angle specified
                 self.magcoord = Apex(date=dt.datetime.utcfromtimestamp(self.datahandler.utime[0,0]))
                 self.mlat, self.mlon = self.magcoord.geo2apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
                 f1, f2, f3, g1, g2, g3, d1, d2, d3, e1, e2, e3 = self.magcoord.basevectors_apex(self.datahandler.lat, self.datahandler.lon, self.datahandler.alt)
+                self.site_mlat, self.site_mlon = self.magcoord.geo2apex(*self.datahandler.site)
 
         e = np.array([e1,e2,e3]).T
 
@@ -201,25 +169,15 @@ class ResolveVectorsLat(object):
 
 
 
-    def bin_data(self):
-        # divide data into an arbitrary number of bins
-        # bins defined in config file by a list of bin verticies in apex magnetic coordinates
-        # the center of each bin is defined as the average of the verticies
-
-        # import matplotlib.pyplot as plt
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111)
-        # ax.scatter(self.mlon, self.mlat, c=self.datahandler.vlos[0])
+    def bin_data_vert(self):
+        # divide data into arbitrary bins based on vertices specified in config file
 
         self.bin_mlat = []
         self.bin_mlon = []
         self.bin_idx = []
-        for vert in self.binvert:
+        for vert in self.binvertdef:
             vert = np.array(vert)
             hull = Delaunay(vert)
-
-            # print(vert[:,1], vert[:,0])
-            # ax.plot(vert[:,1], vert[:,0])
 
             self.bin_mlat.append(np.nanmean(vert[:,0]))
             self.bin_mlon.append(np.nanmean(vert[:,1]))
@@ -228,8 +186,25 @@ class ResolveVectorsLat(object):
         self.bin_mlat = np.array(self.bin_mlat)
         self.bin_mlon = np.array(self.bin_mlon)
 
-        # plt.show()
 
+    def bin_data_mlat(self):
+        # divide data into regular MLAT bins based on step and stride specified in config file
+
+        # create bin boundaries based on current radar mlat and specified step/stride
+        bin_center_south = np.arange(self.site_mlat, np.nanmin(self.mlat)-self.binmlatdef[0], -self.binmlatdef[0])
+        bin_center_north = np.arange(self.site_mlat, np.nanmax(self.mlat)+self.binmlatdef[0], self.binmlatdef[0])
+        bin_center = np.concatenate((bin_center_south[:-1:-1], bin_center_north))
+        self.binedge = np.array([bin_center-self.binmlatdef[1]/2., bin_center+self.binmlatdef[1]/2.]).T
+
+        # bin data
+        self.bin_idx = []
+        for lb, ub in self.binedge:
+            idx = np.argwhere((self.mlat>=lb) & (self.mlat<ub)).flatten()
+            self.bin_idx.append(idx)
+
+        # calculate bin centers (use radar location for magnetic longitude)
+        self.bin_mlat = bin_center
+        self.bin_mlon = np.full(self.bin_mlat.shape, self.site_mlon)
 
 
     def compute_vector_velocity(self):

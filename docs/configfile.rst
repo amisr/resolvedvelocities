@@ -28,11 +28,9 @@ The configuration file provides important specifications about how the `resolved
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`USE_BEAMS <use_beams>` \+       | Beam codes to use              | 64016, 64157, 64964                          |
 +----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
-| VVELSLAT | :ref:`BIN_VERT <bin_vert>`            | Vertices of each mlat bin      | see :ref:`Velocity Bins <bins>`              |
+| VVELSLAT | :ref:`BINMLATDEF <binmlondef>`        | MLAT steps for regular bins    | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`BIN_REG_MLON <bin_reg_mlon>`    | MLON for regular bin spacing   | see :ref:`Velocity Bins <bins>`              |
-|          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`BIN_REG_MLAT <bin_reg_mlat>`    | MLAT for regular bin spacing   | see :ref:`Velocity Bins <bins>`              |
+|          | :ref:`BINVERTDEF <binvertdef>`        | Vertices of each mlat bin      | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`MARPROT <marprot>` \+           | MARP rotation coordinates      | 0.0, 0.0      | 74.7, -94.4  | 74.7, -94.4   |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
@@ -103,17 +101,13 @@ INTTIME: (Optional) Post-integration period (in seconds) that should be used to 
 
 USE_BEAMS: (Optional) A list of specific beam codes that should be used for the velocity reconstruction.  If this field is omitted, all available beams from the experiment will be used.
 
-.. _bin_vert:
+.. _binmlatdef:
 
-BIN_VERT: The list of vertices that define each bin.  These should be given in magnetic coordinates.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
+BINMLATDEF:
 
-.. _bin_reg_mlon:
+.. _binvertdef: The description of magnetic latitude spacing for regular mlat bins.  The format is "step, stride" where the start and stop points are determined dynamically by the available data and bins are centered around the radar site.  See the :ref:`Velocity Bins <bins>` page for more details.
 
-BIN_REG_MLON: The description of magnetic longitude spaceing for regular bins.  The format is "start,stop,step,stride;" with different groups separated by a semicolon.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
-
-.. _bin_reg_mlat:
-
-BIN_REG_MLAT: The description of magnetic latitude spaceing for regular bins.  The format is "start,stop,step,stride;" with different groups separated by a semicolon.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
+BINVERTDEF: The list of vertices that define each bin.  These should be given in magnetic coordinates.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
 
 .. _marprot:
 
