@@ -379,10 +379,20 @@ class ResolveVectorsLat(object):
             save_carray(outfile, '/VvelsGeoCoords/errEdir', self.Egd_dir_err, {'TITLE':'Electric Field Direction Error', 'Size':'Nrecords x Nalts x Nbins', 'Units':'Degrees'})
 
 
-            outfile.create_group('/', 'ProcessingParams')
+            pp_group = outfile.create_group('/', 'ProcessingParams')
 
             save_carray(outfile, '/ProcessingParams/Chi2', self.ChiSquared, {'TITLE':'Reduced Chi-Squared', 'Size':'Nrecords x Nbins'})
             save_carray(outfile, '/ProcessingParams/NumPoints', self.NumPoints, {'TITLE':'Number of input data points used to estimate the vector', 'Size':'Nrecords x Nbins'})
+            if self.binmlatdef:
+                save_carray(outfile, '/ProcessingParams/BinEdge', self.binedge, {'TITLE': 'MLAT boundaries of each bin', 'Size':'Nbins x 2'})
+            elif self.binvertdef:
+                atom = tables.FloatAtom(shape=(2))
+                vlarr = outfile.create_vlarray(pp_group, 'BinVert', atom, expectedrows=len(self.binvertdef))
+                for row in self.binvertdef:
+                    vlarr.append(row)
+                outfile.set_node_attr('/ProcessingParams/BinVert', 'TITLE', 'MLAT/MLON vertices for each bin')
+                outfile.set_node_attr('/ProcessingParams/BinVert', 'Size', 'Nbins x variable x 2')
+
 
             outfile.create_group('/ProcessingParams', 'Apexpy')
 
