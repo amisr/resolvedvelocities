@@ -7,12 +7,18 @@ from apexpy import Apex
 import tables
 import os
 import warnings
+
 try:
     from importlib import resources as importlib_resources
+    importlib_resources.files # this fails in python 3.8
+except:
+    import importlib_resources
+
+try:
     from importlib import metadata as importlib_metadata
 except ImportError:
-    import importlib_resources
     import importlib_metadata
+
 import socket
 import getpass
 import platform
@@ -29,15 +35,15 @@ def vvels(vlos, dvlos, A, cov, minnumpoints=1):
     # Only attempt to find solution if there are vaild points
     if num_points > 0:
         dof = num_points - 3 # solving for 3 components
-    
+
         # Filter inputs to only use finite valued data
         vlos = vlos[finite]
         dvlos = dvlos[finite]
         A = A[finite]
-    
+
         SigmaE = np.diagflat(dvlos**2)
         SigmaV = np.diagflat(cov)
-    
+
         try:
             # measurement errors and a priori covariance, terms in the inverse
             # (Heinselman and Nicolls 2008 eqn 12)
