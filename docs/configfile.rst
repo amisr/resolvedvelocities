@@ -28,7 +28,7 @@ The configuration file provides important specifications about how the `resolved
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`USE_BEAMS <use_beams>` \+       | Beam codes to use              | 64016, 64157, 64964                          |
 +----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
-| VVELSLAT | :ref:`BINMLATDEF <binmlondef>`        | MLAT steps for regular bins    | see :ref:`Velocity Bins <bins>`              |
+| VVELSLAT | :ref:`BINMLATDEF <binmlatdef>`        | MLAT steps for regular bins    | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`BINVERTDEF <binvertdef>`        | Vertices of each mlat bin      | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
@@ -103,15 +103,16 @@ USE_BEAMS: (Optional) A list of specific beam codes that should be used for the 
 
 .. _binmlatdef:
 
-BINMLATDEF:
+BINMLATDEF: The description of magnetic latitude spacing for regular mlat bins.  The format is "step, stride" where the start and stop points are determined dynamically by the available data and bins are centered around the radar site.  See the :ref:`Velocity Bins <bins>` page for more details.
 
-.. _binvertdef: The description of magnetic latitude spacing for regular mlat bins.  The format is "step, stride" where the start and stop points are determined dynamically by the available data and bins are centered around the radar site.  See the :ref:`Velocity Bins <bins>` page for more details.
+
+.. _binvertdef:
 
 BINVERTDEF: The list of vertices that define each bin.  These should be given in magnetic coordinates.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
 
 .. _marprot:
 
-MARPROT: (Optional) The rotation coordinates for the MARP coordinate system.  These should be given in geodetic latitude, longitude at an assumed altitude of 300 km.
+MARPROT: (Optional) The rotation coordinates for the MARP coordinate system (geodetic latitude of the new Null Island, geodetic longitude of the new Null Island, and azimuth of the new North direction).  Typically, the site latitude and longitude and the radar boresight direction will be appropriate.  This option is generally only used for the Resolute Bay radars.
 
 .. _altlim:
 

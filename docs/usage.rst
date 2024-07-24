@@ -1,7 +1,7 @@
 Usage
 =====
 
-Both varieties of `resolvedvelocities` are designed to be run as command line programs with an input configuration file provided::
+Both varieties of `resolvedvelocities` are designed to be run as command line programs with an input configuration file provided.
 
 Latitude-Binned Resolved Velocities (Vvels-Lat)::
 
