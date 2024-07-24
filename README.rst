@@ -23,7 +23,7 @@ Altitude-Binned Resolved Velocities (Vvels-Alt)::
 
 
 **Note**:
-The `apexpy <https://apexpy.readthedocs.io/en/latest/>`_ dependency MUST be installed from commit 94e63c3af524b60dd652eb1c92df786e7ac9076a. This version includes the function ``bvectors_apex``, which returns the value of Be3, necessary to convert the plasma drift velocity to the electric field.
+This package requires `numpy <https://numpy.readthedocs.io/en/latest/>`_ and `apexpy <https://apexpy.readthedocs.io/en/latest/>`_, which may not install correctly automatically on some systems.  If you encounter problems installing this package, try installing both of these packages independently first following their own installation instructions before attempting to reinstall `resolvedvelocities`.
 
 Documentation
 -------------
