@@ -28,13 +28,11 @@ The configuration file provides important specifications about how the `resolved
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`USE_BEAMS <use_beams>` \+       | Beam codes to use              | 64016, 64157, 64964                          |
 +----------+---------------------------------------+--------------------------------+---------------+--------------+---------------+
-| VVELSLAT | :ref:`BIN_VERT <bin_vert>`            | Vertices of each mlat bin      | see :ref:`Velocity Bins <bins>`              |
+| VVELSLAT | :ref:`BINMLATDEF <binmlatdef>`        | MLAT steps for regular bins    | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`BIN_REG_MLON <bin_reg_mlon>`    | MLON for regular bin spacing   | see :ref:`Velocity Bins <bins>`              |
+|          | :ref:`BINVERTDEF <binvertdef>`        | Vertices of each mlat bin      | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`BIN_REG_MLAT <bin_reg_mlat>`    | MLAT for regular bin spacing   | see :ref:`Velocity Bins <bins>`              |
-|          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`MARPROT <marprot>` \+           | MARP rotation coordinates      | 0.0, 0.0      | 74.7, -94.4  | 74.7, -94.4   |
+|          | :ref:`MARPROT <marprot>` \+           | MARP rotation coordinates      | 0.0, 0.0, 0.0 | 74.7, -94.4, 26.0            |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`ALTLIM <altlim>` \+             | Altitude limits                | 150., 400. \*                                |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
@@ -57,7 +55,7 @@ The configuration file provides important specifications about how the `resolved
 
 \* Value is recommended for most normal use cases
 
-An `example configuration file <https://github.com/amisr/resolvedvelocities/blob/master/example_config.ini>`_ is provided that can be copied and adapted as necessary.
+Example configuration file for PFISR and RISR-N are provided in the root of the `source code directory <https://github.com/amisr/resolvedvelocities>`_.  These can be copied and adapted as necessary.
 
 
 Detailed Descriptions
@@ -103,21 +101,18 @@ INTTIME: (Optional) Post-integration period (in seconds) that should be used to 
 
 USE_BEAMS: (Optional) A list of specific beam codes that should be used for the velocity reconstruction.  If this field is omitted, all available beams from the experiment will be used.
 
-.. _bin_vert:
+.. _binmlatdef:
 
-BIN_VERT: The list of vertices that define each bin.  These should be given in magnetic coordinates.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
+BINMLATDEF: The description of magnetic latitude spacing for regular mlat bins.  The format is "step, stride" where the start and stop points are determined dynamically by the available data and bins are centered around the radar site.  See the :ref:`Velocity Bins <bins>` page for more details.
 
-.. _bin_reg_mlon:
 
-BIN_REG_MLON: The description of magnetic longitude spaceing for regular bins.  The format is "start,stop,step,stride;" with different groups separated by a semicolon.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
+.. _binvertdef:
 
-.. _bin_reg_mlat:
-
-BIN_REG_MLAT: The description of magnetic latitude spaceing for regular bins.  The format is "start,stop,step,stride;" with different groups separated by a semicolon.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
+BINVERTDEF: The list of vertices that define each bin.  These should be given in magnetic coordinates.  See the :ref:`Velocity Bins <bins>` page for more details about how to specify these.
 
 .. _marprot:
 
-MARPROT: (Optional) The rotation coordinates for the MARP coordinate system.  These should be given in geodetic latitude, longitude at an assumed altitude of 300 km.
+MARPROT: (Optional) The rotation coordinates for the MARP coordinate system (geodetic latitude of the new Null Island, geodetic longitude of the new Null Island, and azimuth of the new North direction).  Typically, the site latitude and longitude and the radar boresight direction will be appropriate.  This option is generally only used for the Resolute Bay radars.
 
 .. _altlim:
 

@@ -10,18 +10,17 @@ Specifying Bins
 
 There are two ways to specify bins int the :ref:`configuration file <configfile>`.
 
-Arbitrary vertices for bins can be specified through the :ref:`BIN_VERT <bin_vert>` parameter.  Vertices should be given in magnetic coordinates.  It is not nessisary for bins to form regular rectangles and any number of vertices may be provided for each bin.  This gives maximum flexibility at the expense of an unwiedy field in the config file.  For regular bins, using the BIN_REG_MLON and BIN_REG_MLAT parameters (see below) are recommended. Use the syntax of a Python nested list, where each element of the list represents a single bin and each element of that list list is the magnetic latitude and longitude of a vertex::
+Regular magnetic latitude bins can be specified through the :ref:`BINMLATDEF <binmlatdef>` parameter. This field takes two parameters, `step, stride`. The `step` parameter refers to the distance between the start of each bin while the `stride` parameter is the width of each bin. Bins start at the magnetic latitude of the radar and spread both north and south to cover the entire range of data available for that paritular experiment. If `step < stride`, the bins will overlap, which is normal and helps achieve a higher spatial resolution with lower error on each bin.  Below is an example of a relatively standard setup with only one bin in magnetic longitude and several overlapping bins in magnetic latitude::
 
-  BIN_VERT = [[[65.0,-95.],[65.0,-88.],[65.5,-88.],[65.5,-95.]],
+  BINMLATDEF = 0.25, 0.5
+
+Arbitrary vertices for bins can be specified through the :ref:`BINVERTDEF <binvertdef>` parameter.  Vertices should be given in magnetic coordinates.  It is not necessary for bins to form regular rectangles and any number of vertices may be provided for each bin.  This gives maximum flexibility at the expense of an unwieldy field in the config file.  Use the syntax of a Python nested list, where each element of the list represents a single bin and each element of that list list is the magnetic latitude and longitude of a vertex::
+
+  BINVERTDEF = [[[65.0,-95.],[65.0,-88.],[65.5,-88.],[65.5,-95.]],
    [[65.5,-95.],[65.5,-88.],[66.0,-88.],[66.0,-95.]],
    [[66.0,-95.],[66.0,-88.],[66.5,-88.],[66.5,-95.]],
    [[66.5,-95.],[66.5,-88.],[67.0,-88.],[67.0,-95.]],
    [[67.0,-95.],[67.0,-88.],[67.5,-88.],[67.5,-95.]]]
-
-Regular rectangular bins can be specified much more easily through the :ref:`BIN_REG_MLON <bin_reg_mlon>` and :ref:`BIN_REG_MLAT <bin_reg_mlat>` parameters.  Both of these fields take groups of `start, stop, step, stride;` where groups have are separated by `;`. The `step` parameter refers to the distance between the start of each bin while the `stride` parameter is the width of each bin.  If `step < stride`, the bins will overlap, which is normal and helps achieve a higher spatial resolution with lower error on each bin.  Below is an example of a relatively standard setup with only one bin in magnetic longitude and several overlapping bins in magnetic latitude::
-
-  BIN_REG_MLON = -95., -88., 7., 7.
-  BIN_REG_MLAT = 65., 68., 0.25, 0.5
 
 Auroral Zone
 ------------
@@ -33,4 +32,4 @@ Polar Cap
 
 Choosing appropriate bins in the polar cap (RISR-N and RISR-C) can be much more challenging because it is rarely appropriate to assume flows align along lines of magnetic latitude in regions dominated by magnetosphere-driven convection on open field lines.  In fact, the proximity of Resolute Bay to the magnetic pole introduces additional complications purely due to the singularity in the coordinate system.  To resolve this, the resolved velocities algorithm is usually run in the Modified Apex Rotated Poles (MARP) coordinate system, which is an analogous magnetic coordinate system to the Modified Apex coordinate system used at PFISR but rotated so that Resolute Bay is located on the equator of the coordinate system.
 
-When running `resolvedvelocities` on RISR-N or RISR-C data, make sure to specify rotation coordinates in the :ref:`MARPROT <marprot>` parameter in the :ref:`configuration file <configfile>` (setting MARPROT to the Apex coordinates of Resolute Bay generally work well).  Then, define bin vertices in MARP coordinate.  In this coordinate system, most bins should be very close to the equator.
+When running `resolvedvelocities` on RISR-N or RISR-C data, make sure to specify rotation coordinates in the :ref:`MARPROT <marprot>` parameter in the :ref:`configuration file <configfile>` (setting MARPROT to the geodetic coordinates of Resolute Bay and the radar boresight generally works well).  Then, define bin vertices in MARP coordinate.  In this coordinate system, most bins should be very close to the equator.  When this option is used, bin coordinates are transformed back to standard Apex before being saved to the output datafile to simplify the data product for the end user.
