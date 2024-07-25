@@ -32,7 +32,7 @@ The configuration file provides important specifications about how the `resolved
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`BINVERTDEF <binvertdef>`        | Vertices of each mlat bin      | see :ref:`Velocity Bins <bins>`              |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
-|          | :ref:`MARPROT <marprot>` \+           | MARP rotation coordinates      | 0.0, 0.0      | 74.7, -94.4  | 74.7, -94.4   |
+|          | :ref:`MARPROT <marprot>` \+           | MARP rotation coordinates      | 0.0, 0.0, 0.0 | 74.7, -94.4, 26.0            |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
 |          | :ref:`ALTLIM <altlim>` \+             | Altitude limits                | 150., 400. \*                                |
 |          +---------------------------------------+--------------------------------+---------------+--------------+---------------+
@@ -55,7 +55,7 @@ The configuration file provides important specifications about how the `resolved
 
 \* Value is recommended for most normal use cases
 
-An `example configuration file <https://github.com/amisr/resolvedvelocities/blob/master/example_config.ini>`_ is provided that can be copied and adapted as necessary.
+Example configuration file for PFISR and RISR-N are provided in the root of the `source code directory <https://github.com/amisr/resolvedvelocities>`_.  These can be copied and adapted as necessary.
 
 
 Detailed Descriptions
