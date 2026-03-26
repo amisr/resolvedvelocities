@@ -23,9 +23,9 @@ from .utils import *
 
 config_file_help = """Calculate 3D resolved plasma drift velocity and electric
 field vectors from the LoS measurments in a fitted AMISR file in bins of
-magnetic latitude.
+magnetic latitude."""
 
-Requires a configuration file containing the following example format:""" + get_example_config()
+#Requires a configuration file containing the following example format:""" + get_example_config()
 
 
 
