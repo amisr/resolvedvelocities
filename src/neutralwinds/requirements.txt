@@ -1,0 +1,5 @@
+numexpr==2.7.3
+numpy==1.16.6
+requests==2.27.1
+scipy==1.2.3
+tables==3.5.2
