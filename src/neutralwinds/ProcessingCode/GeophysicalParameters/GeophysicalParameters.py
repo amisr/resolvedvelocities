@@ -20,8 +20,8 @@ class GeophysicalParameters:
         self.MagFileLocation = MagFileLocation
         self.DelayTime = DelayTime
 
-        with open(os.path.join(self.DirIn,self.InFile), 'r') as f:
-            self.AP_KP_data = pickle.load(f)
+        with open(os.path.join(self.DirIn,self.InFile), 'rb') as f:
+            self.AP_KP_data = pickle.load(f, encoding="latin1")
 
         self.AP_KP_UnixStartTime = numpy.array([x['UnixStartTime'] for x in self.AP_KP_data])
         self.AP_KP_UnixEndTime = numpy.array([x['UnixEndTime'] for x in self.AP_KP_data])
@@ -112,7 +112,7 @@ class GeophysicalParameters:
 
         tStart = datetime.datetime.utcfromtimestamp(tUnixStart)
         tEnd = datetime.datetime.utcfromtimestamp(tUnixEnd)
-        t1970 = datetime.datetime(1970,01,01,00,00,00)
+        t1970 = datetime.datetime(1970,1,1,00,00,00)
         # rootStr = 'https://www.asf.alaska.edu/magnetometer/archive/'
         # updated on 4/10/2020
         rootStr = 'https://www.gi.alaska.edu/api/magnetometer/DATA/www/'
@@ -132,7 +132,7 @@ class GeophysicalParameters:
 
         urlList = numpy.unique(numpy.array(urlList))
         for iurl in urlList:
-            print iurl
+            print(iurl)
             # check if file exists on remote server, if not skip
 
             # had an idea, will check if file exists locally first.
@@ -141,14 +141,14 @@ class GeophysicalParameters:
             localFileLocation = os.path.join(self.MagFileLocation,iurl.split('/')[-1])
 
             if os.path.isfile(localFileLocation):
-                print 'Grabbing Mag File Locally'
+                print('Grabbing Mag File Locally')
                 dataIn = numpy.loadtxt(localFileLocation, delimiter=',', usecols=[1,2,3,4])
                 UnixTime.extend(tmpUnixTime + numpy.array(dataIn[::30,0])*3600.)
                 H.extend(dataIn[::30,1])
                 D.extend(dataIn[::30,2])
                 Z.extend(dataIn[::30,3])
             else:
-                print 'Grabbing Mag File From Server'
+                print('Grabbing Mag File From Server')
                 time.sleep(self.DelayTime)
                 mkrequest = requests.head(iurl)
                 if mkrequest.status_code == requests.codes.ok:
@@ -188,7 +188,7 @@ if __name__ == '__main__':
     # test script
 
     t1970 = datetime.datetime(1970,1,1,0,0,0)
-    t2014 = datetime.datetime(2014,1,1,00,00,01)
+    t2014 = datetime.datetime(2014,1,1,00,00,1)
 
     t = (t2014-t1970).total_seconds()+numpy.arange(0,3600*36,180)
     GeoPhyClass = GeophysicalParameters()

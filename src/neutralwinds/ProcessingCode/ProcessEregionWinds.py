@@ -51,7 +51,7 @@ class ProcessEregionNeutralWinds:
         return
 
     def main(self,fname_ac, fname_lp,oname):
-        print 'main'
+        print('main')
 
         # make sure that the files exist
         if os.path.isfile(fname_ac):
@@ -87,13 +87,13 @@ class ProcessEregionNeutralWinds:
         BMCODES = acDict['BMCODES']
         Ibm = numpy.where((BMCODES[:,2]>=50.0) & (BMCODES[:,2]<=90.0) & (BMCODES[:,1]>=-180.0) & (BMCODES[:,1]<=180.0))[0]
         Nbeams1 = len(Ibm)
-        print Nbeams1
+        print(Nbeams1)
 
 
         for itime in range(acDict['UnixTime'].shape[0]):
             # getting all the Alternating code
 
-            print 'itime', itime,acDict['UnixTime'].shape[0]
+            print('itime', itime,acDict['UnixTime'].shape[0])
 
             AllBabs = numpy.ravel(acDict['Babs'][Ibm,:])
             Alldip = numpy.ravel(acDict['dip'][Ibm,:])
@@ -146,21 +146,21 @@ class ProcessEregionNeutralWinds:
 
 
 
-            print 'itime', itime
-            print 'I', I
-            print 'LPabs.shape', LPBabs.shape
-            print 'LPAbs', LPBabs.shape
-            print 'LPdec', LPdec.shape
-            print 'LPdip', LPdip.shape
-            print 'LPk1', lpDict['k1'].shape
-            print 'LPk1', LPk1.shape, Ibm.shape
-            print 'LPk1 2', LPk1.shape, Ibm.shape[0], len(I),lpDict['NAltitudes']
-            print 'LPk1', LPk1.shape
-            print 'vlos shape', lpDict['Vlos'].shape
-            print 'LPVlos', LPVlos.shape
-            print 'LPdVlos', LPdVlos.shape
-            print 'LPmob', LPmob.shape
-            print 'LPkappa', LPkappa.shape
+            print('itime', itime)
+            print('I', I)
+            print('LPabs.shape', LPBabs.shape)
+            print('LPAbs', LPBabs.shape)
+            print('LPdec', LPdec.shape)
+            print('LPdip', LPdip.shape)
+            print('LPk1', lpDict['k1'].shape)
+            print('LPk1', LPk1.shape, Ibm.shape)
+            print('LPk1 2', LPk1.shape, Ibm.shape[0], len(I),lpDict['NAltitudes'])
+            print('LPk1', LPk1.shape)
+            print('vlos shape', lpDict['Vlos'].shape)
+            print('LPVlos', LPVlos.shape)
+            print('LPdVlos', LPdVlos.shape)
+            print('LPmob', LPmob.shape)
+            print('LPkappa', LPkappa.shape)
         # io.SaveOutDict(oname,inDict,outDict)
 
             # do altitude filtering
@@ -209,7 +209,7 @@ class ProcessEregionNeutralWinds:
                 (htout,EstimatedWinds,CovEstimatedWind,LosVelEstimated,Iout) = winds.invertwinds(htout,AllAltitude,AllVlos,AlldVlos,Allk,\
                                                      Allmob,Allkappa,decAltGrid,dipAltGrid)
             except:
-                print 'failed to run invertWinds'
+                print('failed to run invertWinds')
                 break
             # print 'htout', htout
             # print 'EstimatedWinds', EstimatedWinds
@@ -293,13 +293,13 @@ class ProcessEregionNeutralWinds:
                 #I am going to hold off on doing the errors and the integrated terms
                 # only because the integrated terms should really be done along the
                 # the field line
-                print '\n ibeam', ibeam
-                print 'tmpVeast interpolated', Ve_onNeGrid
-                print 'Vest East original data', tempVest[:,0]
+                print('\n ibeam', ibeam)
+                print('tmpVeast interpolated', Ve_onNeGrid)
+                print('Vest East original data', tempVest[:,0])
                 # print 'Alt', acDict['Altitude'][ibeam,:]/1000.
 
             # # print 'errWindGeo', outDict['errWindGeo']
-            print 'Ibm', Ibm
+            print('Ibm', Ibm)
         return outDict, acDict
 
 #main(fname_ac,fname_lp,oname)

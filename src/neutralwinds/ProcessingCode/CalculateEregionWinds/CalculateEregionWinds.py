@@ -17,24 +17,24 @@ class CalculateEregionWinds:
         Jac=numpy.zeros(input.shape,dtype=input.dtype)
 
         if direction==0:
-        	for ii in range(dec_all.size):
-        		dec=dec_all[ii]
-        		dip=dip_all[ii]
-        		Rgmag=numpy.array([
+            for ii in range(dec_all.size):
+                dec=dec_all[ii]
+                dip=dip_all[ii]
+                Rgmag=numpy.array([
         			[numpy.cos(dec),numpy.sin(dip)*numpy.sin(dec),-numpy.cos(dip)*numpy.sin(dec)],	# east
         			[-numpy.sin(dec),numpy.cos(dec)*numpy.sin(dip),-numpy.cos(dip)*numpy.cos(dec)], # north
         			[0.0,numpy.cos(dip),numpy.sin(dip)]])											# up
-        		Jac[ii*3:ii*3+3,ii*3:ii*3+3]=Rgmag
+                Jac[ii*3:ii*3+3,ii*3:ii*3+3]=Rgmag
 
         elif direction==1:
-        	for ii in range(dec_all.size):
-        		dec=dec_all[ii]
-        		dip=dip_all[ii]
-        		Rgeo=numpy.array([
+            for ii in range(dec_all.size):
+                dec=dec_all[ii]
+                dip=dip_all[ii]
+                Rgeo=numpy.array([
         			[numpy.cos(dec),-numpy.sin(dec),0.0],	# perp east
         			[numpy.sin(dec)*numpy.sin(dip),numpy.cos(dec)*numpy.sin(dip),numpy.cos(dip)], # perp north
         			[-numpy.sin(dec)*numpy.cos(dip),-numpy.cos(dec)*numpy.cos(dip),numpy.sin(dip)]]) # par
-        		Jac[ii*3:ii*3+3,ii*3:ii*3+3]=Rgeo
+                Jac[ii*3:ii*3+3,ii*3:ii*3+3]=Rgeo
 
         Jac=numpy.matrix(Jac)
         covar=Jac*numpy.matrix(input)*numpy.transpose(Jac)
@@ -48,18 +48,18 @@ class CalculateEregionWinds:
 
         output=[]
         if direction==0:
-        	Rgmag=numpy.matrix([
+            Rgmag=numpy.matrix([
         		[numpy.cos(dec),numpy.sin(dip)*numpy.sin(dec),-numpy.cos(dip)*numpy.sin(dec)],	# east
         		[-numpy.sin(dec),numpy.cos(dec)*numpy.sin(dip),-numpy.cos(dip)*numpy.cos(dec)], # north
         		[0.0,numpy.cos(dip),numpy.sin(dip)]])											# up
-        	output=Rgmag*numpy.matrix(input)
+            output=Rgmag*numpy.matrix(input)
 
         elif direction==1:
-        	Rgeo=numpy.matrix([
+            Rgeo=numpy.matrix([
         		[numpy.cos(dec),-numpy.sin(dec),0.0],	# perp east
         		[numpy.sin(dec)*numpy.sin(dip),numpy.cos(dec)*numpy.sin(dip),numpy.cos(dip)], # perp north
         		[-numpy.sin(dec)*numpy.cos(dip),-numpy.cos(dec)*numpy.cos(dip),numpy.sin(dip)]]) # par
-        	output=Rgeo*numpy.matrix(input)
+            output=Rgeo*numpy.matrix(input)
 
         return output
 
@@ -111,7 +111,7 @@ class CalculateEregionWinds:
         mob = mob[I]
         kappa = kappa[I]
         Iout = I
-        print 'Vlos after filter', Vlos.shape
+        print('Vlos after filter', Vlos.shape)
 
         Nmeas=Vlos.size
         Neqs=htout.shape[0]*3+3
@@ -151,11 +151,11 @@ class CalculateEregionWinds:
         # build the A matrix
         Amatrix=numpy.matrix(numpy.zeros((Nmeas,Neqs),dtype='float64'))
         for aa in range(Nmeas):
-        	Amatrix[aa,0:3]=mob[aa]*numpy.matrix(k[aa,:])*numpy.matrix(C[:,:,aa]) # electric field terms
+            Amatrix[aa,0:3]=mob[aa]*numpy.matrix(k[aa,:])*numpy.matrix(C[:,:,aa]) # electric field terms
         for aa in range(htout.shape[0]):
-        	I=numpy.where((ht>=htout[aa,0])&(ht<=htout[aa,1]))[0]
-        	for bb in range(len(I)):
-        		Amatrix[I[bb],((aa+1)*3):((aa+1)*3+3)]=numpy.matrix(k[I[bb],:])*numpy.matrix(C[:,:,I[bb]]) # neutral wind terms
+            I=numpy.where((ht>=htout[aa,0])&(ht<=htout[aa,1]))[0]
+            for bb in range(len(I)):
+                Amatrix[I[bb],((aa+1)*3):((aa+1)*3+3)]=numpy.matrix(k[I[bb],:])*numpy.matrix(C[:,:,I[bb]]) # neutral wind terms
 
         # error covariance matrix
         SigmaE=numpy.matrix(numpy.diagflat(dVlos*dVlos))
@@ -173,9 +173,9 @@ class CalculateEregionWinds:
             terr = numpy.linalg.inv(numpy.transpose(Amatrix)*numpy.linalg.inv(SigmaE)*Amatrix + numpy.linalg.inv(SigmaV)) # covariance matrix
             # print 'test', test
         except:
-        	print 'inversion failed in Invert Winds'
-        	test = numpy.nan*numpy.zeros((Neqs))
-        	terr = numpy.nan*numpy.zeros((Neqs,Neqs))
+            print('inversion failed in Invert Winds')
+            test = numpy.nan*numpy.zeros((Neqs))
+            terr = numpy.nan*numpy.zeros((Neqs,Neqs))
         # print 'test', test
         # print 'test shape', test.shape
         # print 'Amatrix shape', Amatrix.shape
@@ -204,36 +204,36 @@ class CalculateEregionWinds:
     	# It does care about the magnetic latitude that you choose for binning, so be wise, eh.
     	#
 
-    	if p:
-    		FracErrorOffset = p[0]
-    		FracErrorThreshold = p[1]
-    		AbsoluteErrorThreshold = p[3]
+        if p:
+            FracErrorOffset = p[0]
+            FracErrorThreshold = p[1]
+            AbsoluteErrorThreshold = p[3]
 
     	# this is the magnetic latitude over which the function bins the data
-    	plat_in = numpy.copy(PLAT)
-    	Nplout = plat_in.shape[0]
-    	plat_out = numpy.zeros((Nplout),dtype='Float64')
+        plat_in = numpy.copy(PLAT)
+        Nplout = plat_in.shape[0]
+        plat_out = numpy.zeros((Nplout),dtype='Float64')
 
-    	Nparms = Allk.shape[1]
+        Nparms = Allk.shape[1]
     	# print 'Nparams in vvels'
 
     	# a priori covariance matrix
-    	SigmaV = numpy.matrix(numpy.diagflat(covar))
+        SigmaV = numpy.matrix(numpy.diagflat(covar))
 
     	# srk comment - Ashton will probably not like this...
-    	fracerrs = numpy.absolute(AlldVlos)/(numpy.absolute(AllVlos)+FracErrorOffset)
-    	abserrs = numpy.absolute(AlldVlos)
+        fracerrs = numpy.absolute(AlldVlos)/(numpy.absolute(AllVlos)+FracErrorOffset)
+        abserrs = numpy.absolute(AlldVlos)
 
     	# loop over output latitudes (srk - or altitudes)
-    	Nmeas = numpy.zeros((Nplout))
-    	Vest = numpy.zeros((Nplout,Nparms),dtype=AllVlos.dtype)
-    	dVest = numpy.zeros((Nplout,Nparms),dtype=AllVlos.dtype)
-    	dVestAll = numpy.zeros((Nplout,Nparms,Nparms),dtype=AllVlos.dtype)
-    	status = numpy.ones(Nplout)
-    	for i in range(Nplout):
-    		plat_out[i] = (plat_in[i,0]+plat_in[i,1])/2.0
+        Nmeas = numpy.zeros((Nplout))
+        Vest = numpy.zeros((Nplout,Nparms),dtype=AllVlos.dtype)
+        dVest = numpy.zeros((Nplout,Nparms),dtype=AllVlos.dtype)
+        dVestAll = numpy.zeros((Nplout,Nparms,Nparms),dtype=AllVlos.dtype)
+        status = numpy.ones(Nplout)
+        for i in range(Nplout):
+            plat_out[i] = (plat_in[i,0]+plat_in[i,1])/2.0
     		# print 'plat_out', i, plat_out[i]
-    		I = numpy.where((AllPlat>plat_in[i,0]) & \
+            I = numpy.where((AllPlat>plat_in[i,0]) & \
     						(AllPlat<plat_in[i,1]) & \
     						(Allht>htmin) & \
     						(Allht<htmax) & \
@@ -241,27 +241,27 @@ class CalculateEregionWinds:
     						(fracerrs <= FracErrorThreshold) & \
     						(abserrs < AbsoluteErrorThreshold))[0]
     		# print 'I'
-    		Vest[i,:] = numpy.nan
-    		dVest[i,:] = numpy.nan
-    		if len(I) != 0:
-    			try:
-    				tvlos = numpy.transpose(numpy.matrix(AllVlos[I]))
-    				SigmaE = numpy.matrix(numpy.diagflat(AlldVlos[I]*AlldVlos[I]))
-    				A = numpy.matrix(Allk[I,:])
-    				tv = SigmaV*numpy.transpose(A)*numpy.linalg.inv(A*SigmaV*numpy.transpose(A) + SigmaE)*tvlos
-    				ts = numpy.linalg.inv(numpy.transpose(A)*numpy.linalg.inv(SigmaE)*A + numpy.linalg.inv(SigmaV))
-    				Vest[i,:] = numpy.reshape(numpy.array(tv),(1,Nparms))
-    				dVest[i,:] = numpy.reshape(numpy.sqrt(numpy.array(numpy.diag(ts))),(1,Nparms))
-    				dVestAll[i,:,:]=ts
-    				Nmeas[i]=len(I)
-    			except:
-    				status[i] = 0
-    				print 'failed Vvels Inversion'
+            Vest[i,:] = numpy.nan
+            dVest[i,:] = numpy.nan
+            if len(I) != 0:
+                try:
+                    tvlos = numpy.transpose(numpy.matrix(AllVlos[I]))
+                    SigmaE = numpy.matrix(numpy.diagflat(AlldVlos[I]*AlldVlos[I]))
+                    A = numpy.matrix(Allk[I,:])
+                    tv = SigmaV*numpy.transpose(A)*numpy.linalg.inv(A*SigmaV*numpy.transpose(A) + SigmaE)*tvlos
+                    ts = numpy.linalg.inv(numpy.transpose(A)*numpy.linalg.inv(SigmaE)*A + numpy.linalg.inv(SigmaV))
+                    Vest[i,:] = numpy.reshape(numpy.array(tv),(1,Nparms))
+                    dVest[i,:] = numpy.reshape(numpy.sqrt(numpy.array(numpy.diag(ts))),(1,Nparms))
+                    dVestAll[i,:,:]=ts
+                    Nmeas[i]=len(I)
+                except:
+                    status[i] = 0
+                    print('failed Vvels Inversion')
 
-    	if status.all() == False:
-    		statusOut = False
-    	else:
-    		statusOut = True
+        if status.all() == False:
+            statusOut = False
+        else:
+            statusOut = True
     		# print 'len I', len(I), i, Vest[i,:]
     		# else:
     		#	 print 'lenth eq 0'

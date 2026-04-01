@@ -101,19 +101,19 @@ class IOEregionWinds:
         Writing the outputs
         """
         if groupname == '':
-        	group=fhandle.root
+            group=fhandle.root
         else:
-        	if fhandle.__contains__('/'+groupname):
-        		group='/'+groupname
-        	else:
-        		group=fhandle.create_group(fhandle.root, groupname, 'Dataset')
+            if fhandle.__contains__('/'+groupname):
+                group='/'+groupname
+            else:
+                group=fhandle.create_group(fhandle.root, groupname, 'Dataset')
 
         if len(keys2do)==0:
             try:
                 fhandle.removeNode(group,name)
             except:
                 ''
-            print 'writing output', group, name
+            print('writing output', group, name)
             fhandle.create_array(group,name, dict2do, "Dataset")
         else:
             for key in keys2do:
@@ -145,7 +145,7 @@ class IOEregionWinds:
             else:
                 raise Exception( 'altitude arrays are not equal for Ti and Tn')
         else:
-            print 'in else'
+            print('in else')
             Ti=Tn
             Tr = (Tn+Ti)/2.0
         nu_in = 0.0
@@ -374,7 +374,7 @@ class IOEregionWinds:
 
 
         for i in range(mass.shape[0]):
-            print mass[i]
+            print(mass[i])
             tmpnuin,tmpnuen = self.compute_collfreq(nO,nN2,nO2,Tn,Ti=Ti[:,:,:,i],mj=mass[i])
             # print 'tmp nu in',tmpnuin.shape
             nuinISR[:,:,:,i] = tmpnuin
@@ -433,26 +433,26 @@ class IOEregionWinds:
         # fitted Parameters information
         inDict['Ne'] = dat1['/FittedParams']['Ne']
         ne1 = dat1['/FittedParams']['Ne']
-    	inDict['dNe'] = dat1['/FittedParams']['dNe']
-    	inDict['Vlos']= dat1['/FittedParams']['Fits'][:,:,:,0,3]
+        inDict['dNe'] = dat1['/FittedParams']['dNe']
+        inDict['Vlos']= dat1['/FittedParams']['Fits'][:,:,:,0,3]
         vlos1 = dat1['/FittedParams']['Fits'][:,:,:,0,3]
         inDict['Ti'] = dat1['/FittedParams']['Fits'][:,:,:,0,1]
         inDict['dTi'] = dat1['/FittedParams']['Errors'][:,:,:,0,1]
-    	inDict['dVlos']= dat1['/FittedParams']['Errors'][:,:,:,0,3]
+        inDict['dVlos']= dat1['/FittedParams']['Errors'][:,:,:,0,3]
         inDict['Altitude']=dat1['/FittedParams']['Altitude']
 
         # print dat1['/FittedParams']['Fits'][:,:,:,0,3],
 
 
-        print dat1['/FittedParams/FitInfo'].keys()
+        print(dat1['/FittedParams/FitInfo'].keys())
         # added fit information 10-15-2019
         inDict['chi2'] = dat1['/FittedParams/FitInfo']['chi2']
         inDict['fitcode'] = dat1['/FittedParams/FitInfo']['fitcode']
 
         # time information
         inDict['UnixTime']= dat1['/Time']['UnixTime']
-    	inDict['dtime']= dat1['/Time']['dtime']
-    	inDict['MLT'] = dat1['/Time']['MagneticLocalTimeSite']
+        inDict['dtime']= dat1['/Time']['dtime']
+        inDict['MLT'] = dat1['/Time']['MagneticLocalTimeSite']
 
         (Nrecs1,Nbeams1,Nhts1)=vlos1.shape
         inDict['Nrecs'] = Nrecs1
@@ -464,17 +464,18 @@ class IOEregionWinds:
         inDict['SNRRaw'] = dat1['/NeFromPower']['SNR']
 
 
-    	kpn1=dat1['/Geomag']['kpn']; kpe1=dat1['/Geomag']['kpe']; kpar1=dat1['/Geomag']['kpar']
-    	k1=numpy.zeros((Nbeams1,Nhts1,3),dtype=kpn1.dtype)
-    	k1[:,:,0]=kpe1; k1[:,:,1]=kpn1; k1[:,:,2]=kpar1
+        kpn1=dat1['/Geomag']['kpn']; kpe1=dat1['/Geomag']['kpe']; kpar1=dat1['/Geomag']['kpar']
+        k1=numpy.zeros((Nbeams1,Nhts1,3),dtype=kpn1.dtype)
+        k1[:,:,0]=kpe1; k1[:,:,1]=kpn1; k1[:,:,2]=kpar1
         inDict['k1'] = k1
         inDict['kpn'] = kpn1
         inDict['kpe'] = kpe1
         inDict['kpap'] = kpar1
 
         Babs1=dat1['/Geomag']['Babs'];
-    	if Babs1[0,0]<1.0e-5:
-    		Babs1=Babs1*1.0e5 # converting into Telsa?
+        if Babs1[0,0]<1.0e-5:
+            Babs1=Babs1*1.0e5 # converting into Telsa?
+
 
         inDict['Babs'] = Babs1
         inDict['dec'] = dat1['/Geomag']['Declination'];
@@ -534,7 +535,7 @@ class IOEregionWinds:
         nuin = numpy.zeros([mass.shape[0],nO.shape[0],nO.shape[1],nO.shape[2]])
         mob = numpy.zeros([mass.shape[0],nO.shape[0],nO.shape[1],nO.shape[2]])
         for imass in range(len(mass)):
-            print mass[imass]
+            print(mass[imass])
             tmpnuin = self.compute_ion_neutral_collfreq(densities,Tn,mass[imass])
             tmpnuin = tmpnuin*self.nuinScaler
             nuin[imass,:] = tmpnuin
@@ -614,9 +615,9 @@ class IOEregionWinds:
             pass
 
         # will set this with config files
-    	BMCODES=dat1['/']['BeamCodes']; Nbeams0=BMCODES.shape[0]
-    	Ibm=numpy.where((BMCODES[:,2]>=50.0) & (BMCODES[:,2]<=90.0) & (BMCODES[:,1]>=-180.0) & (BMCODES[:,1]<=180.0))[0]
-    	Nbeams1=len(Ibm)
+        BMCODES=dat1['/']['BeamCodes']; Nbeams0=BMCODES.shape[0]
+        Ibm=numpy.where((BMCODES[:,2]>=50.0) & (BMCODES[:,2]<=90.0) & (BMCODES[:,1]>=-180.0) & (BMCODES[:,1]<=180.0))[0]
+        Nbeams1=len(Ibm)
     	# print Nbeams1
     	# print BMCODES[Ibm,:]
 
@@ -808,8 +809,8 @@ class IOEregionWinds:
 
         # this contains all of the info you might need to do this
 
-        print 'inDict keys', inDict.keys()
-        print 'outDict keys', outDict.keys()
+        print('inDict keys', inDict.keys())
+        print('outDict keys', outDict.keys())
 
         for ikeys in self.DictList.keys():
 
@@ -823,12 +824,12 @@ class IOEregionWinds:
                 #     print 'ikeys,ilst,shape',ikeys,ilst
                     #self.write_outputfile(outh5file,inDict[ilst],groupname=ikeys,name=ilst)
                 if ilst in outDict.keys():
-                    print 'ikeys,ilst,shape',ikeys,ilst
+                    print('ikeys,ilst,shape',ikeys,ilst)
                     try:
                         self.write_outputfile(outh5file,outDict[ilst],groupname=ikeys,name=ilst)
                     except:
                         pass
 
         outh5file.close()
-        print 'output location final', oname
+        print('output location final', oname)
         return

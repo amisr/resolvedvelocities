@@ -219,17 +219,17 @@ class ProcessEregionNeutralWinds:
             for ikey in self.config[outterkey].keys():
                 if ikey in self.ProcessingListMaster:
                     # self.ProcessingTruthTable[k] = True
-                    print 'ikey pass:', ikey
+                    print('ikey pass:', ikey)
                 elif ikey in self.InvertWindsListMaster:
-                    print 'ikey pass:', ikey
+                    print('ikey pass:', ikey)
                 elif ikey in self.VVelsListMaster:
-                    print 'ikey pass', ikey
+                    print('ikey pass', ikey)
                 elif ikey in self.GeoPhysListMaster:
-                    print 'ikey pass:', ikey
+                    print('ikey pass:', ikey)
                 elif ikey in self.Default:
-                    print 'ikey pass:', ikey
+                    print('ikey pass:', ikey)
                 elif ikey in self.DataExclude:
-                    print 'ikey pass:', ikey
+                    print('ikey pass:', ikey)
                 else:
                     raise ValueError('%s -- Required Key not in Config File'%ikey)
                 k+=1
@@ -285,7 +285,7 @@ class ProcessEregionNeutralWinds:
             htout[:,1] = htout[:,1]+self.AltOffset
         htoutm=numpy.mean(htout,axis=1)
 
-        print 'htout', htout
+        print('htout', htout)
 
         # make the output dictionary
         outDict = self.io.MakeOutputDictionary(acDict,htout)
@@ -334,8 +334,8 @@ class ProcessEregionNeutralWinds:
         for itime in range(acDict['UnixTime'].shape[0]):
             # getting all the Alternating code
 
-            print 'itime', itime,acDict['UnixTime'].shape[0]
-            print 'datetime', datetime.datetime.utcfromtimestamp(acDict['UnixTime'][itime,0])
+            print('itime', itime,acDict['UnixTime'].shape[0])
+            print('datetime', datetime.datetime.utcfromtimestamp(acDict['UnixTime'][itime,0]))
 
             AllBabs = numpy.ravel(acDict['Babs'][Ibm,:])
             Alldip = numpy.ravel(acDict['dip'][Ibm,:])
@@ -357,7 +357,7 @@ class ProcessEregionNeutralWinds:
             AllVlos[Iht] = numpy.nan
             AlldVlos[Iht] = numpy.nan
 
-            print 'Allchi2', Allchi2
+            print('Allchi2', Allchi2)
 
             # added 10-15-2019 naning out any LOS velocities which are deemed poor fits
             # based on conversation over email with Ashton
@@ -518,7 +518,7 @@ class ProcessEregionNeutralWinds:
                                                         EfieldCovar = self.config['INVERTWINDS']['Efield_ModelCovariance']\
                                                         )
             except:
-                print 'failed to run invertWinds'
+                print('failed to run invertWinds')
                 statusArr[itime] = -1
                 continue
                 # break
@@ -560,13 +560,13 @@ class ProcessEregionNeutralWinds:
             outDict['dVlos'][itime,0:NN] = numpy.ravel(dVlosOut)
             outDict['VlosEst'][itime,0:NN] = numpy.ravel(LosVelEstimated)
 
-            print htout
-            print htout.shape[0],htout.shape[1]
+            print(htout)
+            print(htout.shape[0],htout.shape[1])
             for iiht in range(htout.shape[0]):
                 qalt = numpy.where((AllAltitude >= htout[iiht,0]) & (AllAltitude <= htout[iiht,1]) )[0]
-                print 'htout', htout[iiht,0], htout[iiht,1]
-                print 'qalt', qalt
-                print AllVlos[qalt]
+                print('htout', htout[iiht,0], htout[iiht,1])
+                print('qalt', qalt)
+                print(AllVlos[qalt])
                 NN = numpy.ravel(AllVlos[qalt]).shape[0]
                 outDict['VlosAltGrid'][itime,iiht,0:NN] = numpy.ravel(AllVlos[qalt])
                 outDict['dVlosAltGrid'][itime,iiht,0:NN] = numpy.ravel(AlldVlos[qalt])
@@ -848,15 +848,15 @@ class ProcessEregionNeutralWinds:
                 VplasmaN = outDict['Efield'][itime,0]/0.495595*1e4
                 nMass = interp1d(tempVertAlt,numpy.ravel(acDict['nMass'][itime,qvert,:]),bounds_error=0)(htoutm)
 
-                print 'tmpHallCond', tmpHallCond
-                print 'BabsAltGrid', BabsAltGrid
-                print 'nmass', nMass
+                print('tmpHallCond', tmpHallCond)
+                print('BabsAltGrid', BabsAltGrid)
+                print('nmass', nMass)
 
                 alphaH = tmpHallCond*BabsAltGrid*BabsAltGrid/nMass
                 alphaP = tmpPedCond*BabsAltGrid*BabsAltGrid/nMass
 
-                print 'alphaP', alphaP
-                print 'alphaH', alphaH
+                print('alphaP', alphaP)
+                print('alphaH', alphaH)
 
                 outDict['HallDrag'][itime,:] = alphaH
                 outDict['PedersenDrag'][itime,:] = alphaP
@@ -868,7 +868,7 @@ class ProcessEregionNeutralWinds:
                 outDict['Lorentz'][itime,:,1] = FLorentzN
 
 
-                print 'FLorentzN', FLorentzN
+                print('FLorentzN', FLorentzN)
 
 
                 tmpkappa = interp1d(tempVertAlt,numpy.ravel(acDict['kappa'][itime,qvert,:]),bounds_error=0)(htoutm)
@@ -879,8 +879,8 @@ class ProcessEregionNeutralWinds:
                 tmpTi = interp1d(tempVertAlt,numpy.ravel(acDict['Ti'][itime,qvert,:]),bounds_error=0)(htoutm)
                 tmpdTi = interp1d(tempVertAlt,numpy.ravel(acDict['dTi'][itime,qvert,:]),bounds_error=0)(htoutm)
                 tmpTn = interp1d(tempVertAlt,numpy.ravel(acDict['Tn'][itime,qvert,:]),bounds_error=0)(htoutm)
-                print 'Kappa', tmpkappa
-                print '\n\n'
+                print('Kappa', tmpkappa)
+                print('\n\n')
 
                 outDict['Vertical_nuin'][itime,:] = tmpnuin
                 outDict['Vertical_nuin_Brekke'][itime,:] = tmpnuinBrekke
@@ -1001,7 +1001,7 @@ class ProcessEregionNeutralWinds:
         UnixTimeMean = numpy.mean(acDict['UnixTime'], axis=1)
 
         if self.config['GEOPHYSICALPARAMETERS']['ByPass'] == True:
-            print 'bypassing geophys params'
+            print('bypassing geophys params')
         else:
             KP_AP_Dict = self.geoparams.GetGeophysicalParameters(UnixTimeMean)
             for ikey in KP_AP_Dict.keys():
@@ -1016,8 +1016,10 @@ class ProcessEregionNeutralWinds:
         outDict['Version'] = VersionNumber
         now = datetime.datetime.now()
         outDict['FileCreationDateTime'] = now.strftime('%Y/%m/%d %H:%M:%S')
-        outDict['ExperimentName'] = fname_ac.split('/')[-3]
-        outDict['ExperimentDirectory'] = fname_ac.split('/')[-2]
+        print(fname_ac.split('/'))
+        #unsure if this is correct
+        outDict['ExperimentName'] = fname_ac.split('/')[-1]
+        outDict['ExperimentDirectory'] = fname_ac.split('/')[0]
         outDict['LongPulseFile'] = fname_lp
         outDict['AlternatingCodeFile'] = fname_ac
         outDict['ConfigFile'] = self.configFile
@@ -1025,11 +1027,11 @@ class ProcessEregionNeutralWinds:
         nuInNumber = float(self.nuinScaler)
         oname_str = (oname+'_'+FnameOut+'_winds_'+'nuin%0.1f_'+VersionNumber+'.h5')%nuInNumber
         OutLocation = os.path.join(FullPathOut, oname_str)
-        print '\n OutLocation', OutLocation
+        print('\n OutLocation', OutLocation)
         self.io.SaveOutDict(OutLocation,acDict,outDict)
             # # print 'errWindGeo', outDict['errWindGeo']
             # print 'Ibm', Ibm
-        print '\nCOMPLETE\n'
+        print('\nCOMPLETE\n')
         os.remove(lock_location)
         return outDict, acDict
 
