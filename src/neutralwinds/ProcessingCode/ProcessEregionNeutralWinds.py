@@ -486,9 +486,9 @@ class ProcessEregionNeutralWinds:
 
 
             # averaging over the declination and the dip angle
-            decAltGrid=numpy.zeros(htout.shape[0],dtype='Float64')
-            dipAltGrid=numpy.zeros(htout.shape[0],dtype='Float64')
-            BabsAltGrid=numpy.zeros(htout.shape[0],dtype='Float64')
+            decAltGrid=numpy.zeros(htout.shape[0],dtype='float64')
+            dipAltGrid=numpy.zeros(htout.shape[0],dtype='float64')
+            BabsAltGrid=numpy.zeros(htout.shape[0],dtype='float64')
             for bb in range(htout.shape[0]):
                 I=numpy.where((AllAltitude>=htout[bb,0])&(AllAltitude<=htout[bb,1]))[0]
                 decAltGrid[bb]=numpy.nanmean(Alldec[I])

@@ -212,7 +212,7 @@ class CalculateEregionWinds:
     	# this is the magnetic latitude over which the function bins the data
         plat_in = numpy.copy(PLAT)
         Nplout = plat_in.shape[0]
-        plat_out = numpy.zeros((Nplout),dtype='Float64')
+        plat_out = numpy.zeros((Nplout),dtype='float64')
 
         Nparms = Allk.shape[1]
     	# print 'Nparams in vvels'
