@@ -23,7 +23,9 @@ keywords = ["velocity", "ionosphere", "plasma drift", "AMISR"]
 authors = [
     {name = "M. Nicolls"},
     {name = "L. Lamarche", email="leslie.lamarche@sri.com"},
-    {name = "A. Reimer"}
+    {name = "A. Reimer"},
+    {name = "C. Acomb"},
+    {name = "S. Kaeppler"},
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -42,7 +44,8 @@ Issues = "https://github.com/amisr/resolvedvelocities/issues"
 
 
 [project.scripts]
-resolvedvelocities-lat = "resolvedvelocities.ResolveVectorsLat:main"
-resolvedvelocities-alt = "resolvedvelocities.ResolveVectorsAlt:main"
+resolvedvelocities-lat = "resolvedvelocities.iondrifts.ResolveVectorsLat:main"
+resolvedvelocities-alt = "resolvedvelocities.iondrifts.ResolveVectorsAlt:main"
+resolvedvelocities-nw = "resolvedvelocities.neutralwinds.ProcessEregionNeutralWinds:main"
 
 
