@@ -3,7 +3,11 @@ resolvedvelocities
 
 Overview
 --------
-`resolvedvelocities` is a Python implementation of the Heinselman and Nicolls Bayesian reconstruction algorithm [1]_ used to resolved 3D ion drift velocity and electric field vectors from AMISR line-of-sight measurements. There are two flavors of this algorithm, one which bins points by magnetic latitude and is typically used in the F-region to get local plasma convection velocities, and one which bins point by altitude and is typically used in the E-region to get altitude profiles of velocity.  This package contains programs to run both.
+`resolvedvelocities` is a Python implementation of the Heinselman and Nicolls Bayesian reconstruction algorithm [1]_ used to resolved 3D ion velocity from AMISR line-of-sight measurements. The package contains two modules:
+
+*iondrifts* calculates the ExB ion drift velocity and corresponding electric field at altitudes where the plasma is magnitized.  There are two flavors of this algorithm, one which bins points by magnetic latitude and is typically used in the F-region to get local plasma convection velocities, and one which bins point by altitude and is typically used in the E-region to get altitude profiles of velocity.
+
+*neutralwinds* calculates the ion velocity, neutral wind velocity, and electric field in a altitude colum where the plasma is collisional.  This can typically only be used in the lower E-region, but requires data from higher altitude to estimate the electric field.
 
 Quick Start
 -----------
@@ -20,6 +24,12 @@ Latitude-Binned Resolved Velocities (Vvels-Lat)::
 Altitude-Binned Resolved Velocities (Vvels-Alt)::
 
 	resolvedvelocities-alt config.ini
+
+Altitude-Binned Neutral Winds::
+
+        resolvedvelocities-nw config.ini
+
+Note that a different config file is currently needed for the neutral winds processing.
 
 
 **Note**:
