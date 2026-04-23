@@ -181,55 +181,55 @@ class ConfigReader:
         # Formatted file list
         files = self.format_args(args)
         
+        print(files)
+        #for file in files:
+            
+        ## Get the name of the file
+        #name = os.path.basename(file).split('.')[0]
         
-        for file in files:
-            
-            # Get the name of the file
-            name = os.path.basename(file).split('.')[0]
-            
-            # Read the config file
-            self.Config.read(file)
-            self.RawConfig.read(file)
+        # Read the config file
+        self.Config.read(files)
+        self.RawConfig.read(files)
     
-            # Grab all the sections in the file
-                        
-            sections = {}
+        # Grab all the sections in the file
+                    
+        sections = {}
+        
+        sections.update(dict(self.Config._sections))
+
+        
+        # Loop through sections and parse using Config.get, which will handle 
+        # interpolation of values such as %(path)/more_path
+
+        for section, content in sections.items():
+            content.pop("__name__", None)
+            for key,value in content.items():
+                try:
+                    sections[section][key] = self.format_values(self.Config.get(section, key))
+                except:
+                    sections[section][key] = self.format_values(self.RawConfig.get(section, key))
+
+        # add default (from [DEFAULT] heading) which configparser handles as a special case
+        if self.Config._defaults:
+            sections["DEFAULT"] = {}
+            for key, value in self.Config._defaults.items():
+                sections["DEFAULT"][key] = self.format_values(self.Config._defaults[key])
+        else:
+            self.logger.debug("No DEFAULT section found in %s, ignoring..." % (file))
             
-            sections.update(dict(self.Config._sections))
-
             
-            # Loop through sections and parse using Config.get, which will handle 
-            # interpolation of values such as %(path)/more_path
-
-            for section, content in sections.items():
-                content.pop("__name__", None)
-                for key,value in content.items():
-                    try:
-                        sections[section][key] = self.format_values(self.Config.get(section, key))
-                    except:
-                        sections[section][key] = self.format_values(self.RawConfig.get(section, key))
-
-            # add default (from [DEFAULT] heading) which configparser handles as a special case
-            if self.Config._defaults:
-                sections["DEFAULT"] = {}
-                for key, value in self.Config._defaults.items():
-                    sections["DEFAULT"][key] = self.format_values(self.Config._defaults[key])
-            else:
-                self.logger.debug("No DEFAULT section found in %s, ignoring..." % (file))
-                
-                
-                
-                
-            if len(files) > 1:
-                self.cfg[name] = sections
-                
-                # Needs to be reset
-                self.Config = configparser.ConfigParser()
-                # Keeps case sensitivity
-                self.Config.optionxform=str
-                
-            else:
-                self.cfg = sections
+            
+            
+        #if len(files) > 1:
+        #    self.cfg[name] = sections
+        #    
+        #    # Needs to be reset
+        #    self.Config = configparser.ConfigParser()
+        #    # Keeps case sensitivity
+        #    self.Config.optionxform=str
+        #    
+        #else:
+        self.cfg = sections
                         
         
         # Parse optional parameters
@@ -238,18 +238,18 @@ class ConfigReader:
 
         
         # DEBUG statements
-        if len(files) >1:
-            for filename, contents in self.cfg.items():
-                self.logger.debug("%s:", filename)
-                for sections, keys in contents.items():
-                    self.logger.debug("\t[%s]" %(sections))
-                    for key, value in keys.items():
-                        self.logger.debug("\t\t%s : %s" %(key,value))
-        else:
-            for sections, keys in self.cfg.items():
-                self.logger.debug("\t[%s]" %(sections))
-                for key, value in keys.items():
-                    self.logger.debug("\t\t%s : %s" %(key,value))
+        #if len(files) >1:
+        #    for filename, contents in self.cfg.items():
+        #        self.logger.debug("%s:", filename)
+        #        for sections, keys in contents.items():
+        #            self.logger.debug("\t[%s]" %(sections))
+        #            for key, value in keys.items():
+        #                self.logger.debug("\t\t%s : %s" %(key,value))
+        #else:
+        for sections, keys in self.cfg.items():
+            self.logger.debug("\t[%s]" %(sections))
+            for key, value in keys.items():
+                self.logger.debug("\t\t%s : %s" %(key,value))
         
         if 'type' not in kwargs:
             # Default will return dict
@@ -299,7 +299,7 @@ class ConfigReader:
                 files.append(arg)
         
         
-        files = set(files)
+        #files = set(files)
         return files
         
         

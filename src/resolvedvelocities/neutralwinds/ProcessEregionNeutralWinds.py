@@ -185,15 +185,17 @@ class ProcessEregionNeutralWinds:
 
         self.configFile = configFile
         if configFile:
-            if os.path.isfile(configFile):
-                self.config = self.ConfigReader.read(configFile)
-                self._check_config()
-            else:
-                raise Exception('Error: Check config file parameters')
+            #if os.path.isfile(configFile):
+            self.config = self.ConfigReader.read(configFile)
+            print(self.config.keys())
+            self._check_config()
+            #else:
+            #    raise Exception('Error: Check config file parameters')
 
             # parse config file at this point
 
         else:
+            # The situation of no config file specified should have been caught several times before?
             raise Exception('Error: No Config File Specified - exiting')
             sys.exit()
             #if no config file specified use standard inputs
@@ -1060,7 +1062,7 @@ def main():
     # Build the argument parser tree
     parser = ArgumentParser(description=config_file_help,
                             formatter_class=RawDescriptionHelpFormatter)
-    arg = parser.add_argument('config_file',help='A configuration file.')
+    arg = parser.add_argument('config_file', nargs='+', help='A configuration file.')
 
     args = vars(parser.parse_args())
 
