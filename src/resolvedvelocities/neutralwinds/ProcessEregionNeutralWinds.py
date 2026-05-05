@@ -135,6 +135,7 @@ from scipy.interpolate import interp1d
 from scipy.constants import elementary_charge
 from .tools.loggerinit.LoggerInit import *
 from .tools.configreader.ConfigReader import *
+from . import summary_plots
 import os
 import sys
 import datetime
@@ -1043,6 +1044,8 @@ class ProcessEregionNeutralWinds:
         outDict['AlternatingCodeFile'] = fname_ac
         outDict['ConfigFile'] = self.configFile
 
+        self.create_plots(outDict)
+
         nuInNumber = float(self.nuinScaler)
         #oname_str = (FnameOut+'_winds_'+'nuin%0.1f_'+VersionNumber+'.h5')%nuInNumber
         OutLocation = os.path.join(FullPathOut, FnameOut)
@@ -1053,6 +1056,99 @@ class ProcessEregionNeutralWinds:
         print('\nCOMPLETE\n')
         os.remove(lock_location)
         return outDict, acDict
+
+
+    def create_plots(self, outDict):
+
+        self.plotprefix='temp_'
+        #os.makedirs(os.path.abspath(self.plotsavedir),exist_ok=True)
+        os.makedirs('temp_plots',exist_ok=True)
+
+        # break up arrays into chunks of time no bigger than 24 hours
+        chunks_to_plot = list()
+
+        num_times = len(outDict['UnixTime'])
+        start_ind = 0
+        start_time = outDict['UnixTime'][0,0]
+        for i,time_pair in enumerate(outDict['UnixTime']):
+            temp_start_time, temp_end_time = time_pair
+            time_diff = temp_end_time - start_time
+            # Add chunk if over 24 hours elapsed
+            if (time_diff >= 24*3600):
+                chunks_to_plot.append([start_ind,i])
+                start_ind = i
+                start_time = temp_start_time
+        chunks_to_plot.append([start_ind, num_times])
+
+        num_chunks = len(chunks_to_plot)
+        for t, [start_ind,end_ind] in enumerate(chunks_to_plot):
+            # if only 1 day worth of data, set t=None so we don't have a
+            # 'byDay' in the plot file names
+            if (num_chunks == 1):
+                #vcom_fname = '{}vvelsnw_vel_comp.png'.format(self.plotprefix)
+                wcom_fname = '{}vvelsnw_winds_comp.png'.format(self.plotprefix)
+                #vmag_fname = '{}vvelsnw_vel_mag.png'.format(self.plotprefix)
+                wmag_fname = '{}vvelsnw_winds_mag.png'.format(self.plotprefix)
+            else:
+                #vcom_fname = '{}vvelsnw_vel_comp_{}.png'.format(self.plotprefix, t)
+                wcom_fname = '{}vvelsnw_winds_comp_{}.png'.format(self.plotprefix, t)
+                #vmag_fname = '{}vvelsnw_vel_mag_{}.png'.format(self.plotprefix, t)
+                wmag_fname = '{}vvelsnw_winds_mag_{}.png'.format(self.plotprefix, t)
+
+            # make vector plots
+            times = outDict['UnixTime'][start_ind:end_ind,:]
+
+            #vels = self.Velocity[start_ind:end_ind,:]
+            #covvels = self.VelocityCovariance[start_ind:end_ind,:]
+            winds = outDict['WindGeo'][start_ind:end_ind,:]*1000.
+            #covwinds = self.ElectricFieldCovariance[start_ind:end_ind,:]*1000.*1000.
+            covwinds = numpy.ones(outDict['WindGeo'].shape+(3,))
+
+            summary_plots.plot_components(times, outDict['Altitude'], winds, covwinds,
+                            titles=['UE (m/s)','UN (m/s)','UU (m/s)'],
+                            ylabel='Alt', clim=[[-150.,150.], [0.,35.]],
+                            cmap=['coolwarm', 'turbo'],
+                            filename=os.path.join('temp_plots',wcom_fname), scale_factors=[1,1,10])
+
+#            summary_plots.plot_components(times, self.bin_mlat, efs, covefs,
+#                            titles=['Ed1 (mV/m)','Ed2 (mV/m)','Ed3 (mV/m)'],
+#                            ylabel='Apex MLAT', clim=[[-75., 75.], [0., 15.]],
+#                            cmap=['coolwarm', 'turbo'],
+#                            filename=os.path.join(self.plotsavedir,ecom_fname), scale_factors=[1,1,10])
+
+
+
+            ## make magnitude plots
+            ## find index of altitude bin that is closest to alt
+            #i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
+            #vmag = self.Vgd_mag[start_ind:end_ind,i,:]
+            #dvmag = self.Vgd_mag_err[start_ind:end_ind,i,:]
+            #vdir = self.Vgd_dir[start_ind:end_ind,i,:]
+            #dvdir = self.Vgd_dir_err[start_ind:end_ind,i,:]
+            #emag = self.Egd_mag[start_ind:end_ind,i,:]*1000.
+            #demag = self.Egd_mag_err[start_ind:end_ind,i,:]*1000.
+            #edir = self.Egd_dir[start_ind:end_ind,i,:]
+            #dedir = self.Egd_dir_err[start_ind:end_ind,i,:]
+            #chi2 = self.ChiSquared[start_ind:end_ind,:]
+
+            #titles = ['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', '']
+            #clim = [[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]]
+            #cmap = ['viridis', 'turbo', 'twilight', 'turbo']
+
+            #summary_plots.plot_magnitude(times, self.bin_mlat, vmag, dvmag, vdir, dvdir, chi2,
+            #                err_thres=100., mag_thres=100., titles=titles,
+            #                ylabel='Apex MLAT', clim=clim, cmap=cmap,
+            #                filename=os.path.join(self.plotsavedir,vmag_fname))
+
+            #titles = ['E mag. (mV/m)', 'E mag err (mV/m)', 'E dir (deg)', 'E dir err (deg)', '']
+            #clim = [[0.,75.],[0., 15.],[-180., 180.],[0., 35.]]
+            #cmap = ['viridis', 'turbo', 'twilight', 'turbo']
+
+            #summary_plots.plot_magnitude(times, self.bin_mlat, emag, demag, edir, dedir, chi2,
+            #                err_thres=5., mag_thres=5., titles=titles,
+            #                ylabel='Apex MLAT', clim=clim, cmap=cmap,
+            #                filename=os.path.join(self.plotsavedir,emag_fname))
+
 
 
 
