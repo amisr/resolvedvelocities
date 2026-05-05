@@ -344,11 +344,11 @@ class ProcessEregionNeutralWinds:
         outDict['AltitudeJH'] = htoutm
         statusArr = numpy.ones(acDict['UnixTime'].shape[0])
 
-        # added on 11 20 2018
-        outDict['PedersenConductivity'] = acDict['PedersenConductivity']
-        outDict['HallConductivity'] = acDict['HallConductivity']
-        outDict['F107A'] = acDict['F107A']
-        outDict['F107Raw'] = acDict['F107Raw']
+        ## added on 11 20 2018
+        #outDict['PedersenConductivity'] = acDict['PedersenConductivity']
+        #outDict['HallConductivity'] = acDict['HallConductivity']
+        #outDict['F107A'] = acDict['F107A']
+        #outDict['F107Raw'] = acDict['F107Raw']
 
         for itime in range(acDict['UnixTime'].shape[0]):
             # getting all the Alternating code
@@ -643,60 +643,60 @@ class ProcessEregionNeutralWinds:
             if statusOut == False:
                 statusArr[itime] = -2
 
-            # print 'tmpVest.shape', tempVest.shape
-            outDict['VestGmag'][itime,:,:] = tempVest
-            outDict['errVestGmag'][itime,:,:] = tempdVest
+            ## print 'tmpVest.shape', tempVest.shape
+            #outDict['VestGmag'][itime,:,:] = tempVest
+            #outDict['errVestGmag'][itime,:,:] = tempdVest
 
-            # note this is different from what Mike N Did
-            # you don't which beams were chosen, so you need to loop through the chosen
-            # beams and get their index correct
+            ## note this is different from what Mike N Did
+            ## you don't which beams were chosen, so you need to loop through the chosen
+            ## beams and get their index correct
 
-            tmphtout = numpy.array([[200.,400.]])
-            (alt_out1,tempVest,tempdVest,\
-            tempdVestAll,Foo,statusOut) = self.winds.compute_velvec2(tmphtout,\
-                                                AllVlos,AlldVlos,Allk,\
-                                                AllAltitude, [],AllAltitude,\
-                                                htmin = self.config['VVELS']['Velocity_MinAltitude'],\
-                                                htmax = self.config['VVELS']['Velocity_MaxAltitude'],\
-                                                covar = self.config['VVELS']['Velocity_ModelCovariance'],\
-                                                FracErrorOffset = self.config['VVELS']['FracErrorOffset'], \
-                                                FracErrorThreshold =  self.config['VVELS']['FracErrorThreshold'], \
-                                                AbsoluteErrorThreshold = self.config['VVELS']['AbsoluteErrorThreshold'])
-            #
-            if statusOut == False:
-                statusArr[itime] = -3
+            #tmphtout = numpy.array([[200.,400.]])
+            #(alt_out1,tempVest,tempdVest,\
+            #tempdVestAll,Foo,statusOut) = self.winds.compute_velvec2(tmphtout,\
+            #                                    AllVlos,AlldVlos,Allk,\
+            #                                    AllAltitude, [],AllAltitude,\
+            #                                    htmin = self.config['VVELS']['Velocity_MinAltitude'],\
+            #                                    htmax = self.config['VVELS']['Velocity_MaxAltitude'],\
+            #                                    covar = self.config['VVELS']['Velocity_ModelCovariance'],\
+            #                                    FracErrorOffset = self.config['VVELS']['FracErrorOffset'], \
+            #                                    FracErrorThreshold =  self.config['VVELS']['FracErrorThreshold'], \
+            #                                    AbsoluteErrorThreshold = self.config['VVELS']['AbsoluteErrorThreshold'])
+            ##
+            #if statusOut == False:
+            #    statusArr[itime] = -3
 
-            outDict['VestGmag_300km'][itime,:] = tempVest
-            outDict['errVestGmag_300km'][itime,:] = tempdVest
-            dotprod = outDict['VestGmag'][itime,:,0]*outDict['VestGmag_300km'][itime,0]+\
-                    outDict['VestGmag'][itime,:,1]*outDict['VestGmag_300km'][itime,1]+\
-                    outDict['VestGmag'][itime,:,2]*outDict['VestGmag_300km'][itime,2]
-            normVest = numpy.sqrt(outDict['VestGmag'][itime,:,0]**2 + outDict['VestGmag'][itime,:,1]**2 + outDict['VestGmag'][itime,:,2]**2)
-            normV300 = numpy.sqrt(outDict['VestGmag_300km'][itime,0]**2 + outDict['VestGmag_300km'][itime,1]**2 + outDict['VestGmag_300km'][itime,2]**2)
-            outDict['Angle'][itime,:] = numpy.rad2deg(numpy.arccos(dotprod/(normVest*normV300)))
+            #outDict['VestGmag_300km'][itime,:] = tempVest
+            #outDict['errVestGmag_300km'][itime,:] = tempdVest
+            #dotprod = outDict['VestGmag'][itime,:,0]*outDict['VestGmag_300km'][itime,0]+\
+            #        outDict['VestGmag'][itime,:,1]*outDict['VestGmag_300km'][itime,1]+\
+            #        outDict['VestGmag'][itime,:,2]*outDict['VestGmag_300km'][itime,2]
+            #normVest = numpy.sqrt(outDict['VestGmag'][itime,:,0]**2 + outDict['VestGmag'][itime,:,1]**2 + outDict['VestGmag'][itime,:,2]**2)
+            #normV300 = numpy.sqrt(outDict['VestGmag_300km'][itime,0]**2 + outDict['VestGmag_300km'][itime,1]**2 + outDict['VestGmag_300km'][itime,2]**2)
+            #outDict['Angle'][itime,:] = numpy.rad2deg(numpy.arccos(dotprod/(normVest*normV300)))
 
 
-            """
-            Coriolis and Centrifugal terms
-            """
-            # calculate the colatitude
-            ThetaRadian = numpy.deg2rad(90.-acDict['SiteLatitude'])
-            # radius array
-            rArr = (6371.+htoutm)*1000. # meters
-            # outDict['WindGeo'][itime,ii,:]
-            # derived this expression and it is in Fuller-Rowell and Rees, 1984
-            AcentrifugalN = -(outDict['WindGeo'][itime,:,0]**2.)*numpy.cos(ThetaRadian)/(rArr*numpy.sin(ThetaRadian))
-            AcentrifugalU = -(outDict['WindGeo'][itime,:,0]**2.)/rArr
+            #"""
+            #Coriolis and Centrifugal terms
+            #"""
+            ## calculate the colatitude
+            #ThetaRadian = numpy.deg2rad(90.-acDict['SiteLatitude'])
+            ## radius array
+            #rArr = (6371.+htoutm)*1000. # meters
+            ## outDict['WindGeo'][itime,ii,:]
+            ## derived this expression and it is in Fuller-Rowell and Rees, 1984
+            #AcentrifugalN = -(outDict['WindGeo'][itime,:,0]**2.)*numpy.cos(ThetaRadian)/(rArr*numpy.sin(ThetaRadian))
+            #AcentrifugalU = -(outDict['WindGeo'][itime,:,0]**2.)/rArr
 
-            outDict['Centrifugal'][itime,:,1] = AcentrifugalN
-            outDict['Centrifugal'][itime,:,2] = AcentrifugalU
+            #outDict['Centrifugal'][itime,:,1] = AcentrifugalN
+            #outDict['Centrifugal'][itime,:,2] = AcentrifugalU
 
-            # angular velocity of earth's rotation
-            OmegaE = 7.2921150e-5 #rads/s
-            AcoriolisE = outDict['WindGeo'][itime,:,1]*OmegaE*numpy.cos(ThetaRadian)
-            AcoriolisN = -outDict['WindGeo'][itime,:,0]*OmegaE*numpy.cos(ThetaRadian)
-            outDict['Coriolis'][itime,:,0] = AcoriolisE
-            outDict['Coriolis'][itime,:,1] = AcoriolisN
+            ## angular velocity of earth's rotation
+            #OmegaE = 7.2921150e-5 #rads/s
+            #AcoriolisE = outDict['WindGeo'][itime,:,1]*OmegaE*numpy.cos(ThetaRadian)
+            #AcoriolisN = -outDict['WindGeo'][itime,:,0]*OmegaE*numpy.cos(ThetaRadian)
+            #outDict['Coriolis'][itime,:,0] = AcoriolisE
+            #outDict['Coriolis'][itime,:,1] = AcoriolisN
 
             """
             The Joule Heating Calculations
@@ -709,50 +709,50 @@ class ProcessEregionNeutralWinds:
                 Un_onNeGrid = interp1d(htoutm,outDict['WindGmag'][itime,:,1],bounds_error=0)(acDict['Altitude'][ibeam,:]/1000.)
                 tempB = interp1d(htoutm,BabsAltGrid,bounds_error=0)(acDict['Altitude'][ibeam,:]/1000.)
 
-                # print 'Vn_onNeGrid',  Vn_onNeGrid, Ve_onNeGrid, outDict['Efield'][itime,1]/tempB, outDict['Efield'][itime,0]/tempB
-                # for ialt in range(acDict['Altitude'].shape[-1]):
-                #     print 'Ue_onNeGrid', Ue_onNeGrid[ialt],acDict['Altitude'][ibeam,ialt]/1000.
-                # sys.exit()
+                ## print 'Vn_onNeGrid',  Vn_onNeGrid, Ve_onNeGrid, outDict['Efield'][itime,1]/tempB, outDict['Efield'][itime,0]/tempB
+                ## for ialt in range(acDict['Altitude'].shape[-1]):
+                ##     print 'Ue_onNeGrid', Ue_onNeGrid[ialt],acDict['Altitude'][ibeam,ialt]/1000.
+                ## sys.exit()
 
-                # fill the variables
-                # see equation Thayer 1998, JGR, equation 8
-                #east = x, north = y
-                outDict['CurrentGmag'][itime,ibeam,:,0] = elementary_charge*acDict['Ne'][itime,ibeam,:]*(Ve_onNeGrid + outDict['Efield'][itime,1]/tempB)
-                outDict['CurrentGmag'][itime,ibeam,:,1] = elementary_charge*acDict['Ne'][itime,ibeam,:]*(Vn_onNeGrid - outDict['Efield'][itime,0]/tempB)
+                ## fill the variables
+                ## see equation Thayer 1998, JGR, equation 8
+                ##east = x, north = y
+                #outDict['CurrentGmag'][itime,ibeam,:,0] = elementary_charge*acDict['Ne'][itime,ibeam,:]*(Ve_onNeGrid + outDict['Efield'][itime,1]/tempB)
+                #outDict['CurrentGmag'][itime,ibeam,:,1] = elementary_charge*acDict['Ne'][itime,ibeam,:]*(Vn_onNeGrid - outDict['Efield'][itime,0]/tempB)
 
-                # print outDict['CurrentGmag'][:,ibeam]
+                ## print outDict['CurrentGmag'][:,ibeam]
 
-                # joule heating, electric field only
-                outDict['JouleHeatingE'][itime,ibeam,:] = acDict['PedersenConductivity'][itime,ibeam,:]*(outDict['Efield'][itime,:]**2).sum()
-                indx = numpy.where(numpy.isfinite(outDict['JouleHeatingE'][itime,ibeam,:]) &\
-                                    numpy.isfinite(acDict['Altitude'][ibeam,:]) )[0]
-                outDict['IntegratedJouleHeatingE'][itime,ibeam] = trapz(outDict['JouleHeatingE'][itime,ibeam,indx],acDict['Altitude'][ibeam,indx])
+                ## joule heating, electric field only
+                #outDict['JouleHeatingE'][itime,ibeam,:] = acDict['PedersenConductivity'][itime,ibeam,:]*(outDict['Efield'][itime,:]**2).sum()
+                #indx = numpy.where(numpy.isfinite(outDict['JouleHeatingE'][itime,ibeam,:]) &\
+                #                    numpy.isfinite(acDict['Altitude'][ibeam,:]) )[0]
+                #outDict['IntegratedJouleHeatingE'][itime,ibeam] = trapz(outDict['JouleHeatingE'][itime,ibeam,indx],acDict['Altitude'][ibeam,indx])
 
-                # Joule heating with neutral wind
-                # see equation Thayer 1998, JGR, equation 1
-                # minor sign error fixed on Ue on 11/14/2018
-                # to be consistent with equation 1
-                outDict['JouleHeatingTotal'][itime,ibeam,:] = acDict['PedersenConductivity'][itime,ibeam,:]*\
-                                                            ((outDict['Efield'][itime,0] - Un_onNeGrid*tempB)**2 + \
-                                                            (outDict['Efield'][itime,1] + Ue_onNeGrid*tempB)**2)
-                indx = numpy.where(numpy.isfinite(outDict['JouleHeatingTotal'][itime,ibeam,:]) &\
-                                    numpy.isfinite(acDict['Altitude'][ibeam,:]) )[0]
-                outDict['IntegratedJouleHeatingTotal'][itime,ibeam] = trapz(outDict['JouleHeatingTotal'][itime,ibeam,indx],acDict['Altitude'][ibeam,indx])
+                ## Joule heating with neutral wind
+                ## see equation Thayer 1998, JGR, equation 1
+                ## minor sign error fixed on Ue on 11/14/2018
+                ## to be consistent with equation 1
+                #outDict['JouleHeatingTotal'][itime,ibeam,:] = acDict['PedersenConductivity'][itime,ibeam,:]*\
+                #                                            ((outDict['Efield'][itime,0] - Un_onNeGrid*tempB)**2 + \
+                #                                            (outDict['Efield'][itime,1] + Ue_onNeGrid*tempB)**2)
+                #indx = numpy.where(numpy.isfinite(outDict['JouleHeatingTotal'][itime,ibeam,:]) &\
+                #                    numpy.isfinite(acDict['Altitude'][ibeam,:]) )[0]
+                #outDict['IntegratedJouleHeatingTotal'][itime,ibeam] = trapz(outDict['JouleHeatingTotal'][itime,ibeam,indx],acDict['Altitude'][ibeam,indx])
 
-                ### add the mechanical heating terms
-                # added on 07 01 2020
-                # see notes.
-                # -jNorth*Ueast*B
-                UnJCrossB_East = -outDict['CurrentGmag'][itime,ibeam,:,1]*Ue_onNeGrid*tempB
+                #### add the mechanical heating terms
+                ## added on 07 01 2020
+                ## see notes.
+                ## -jNorth*Ueast*B
+                #UnJCrossB_East = -outDict['CurrentGmag'][itime,ibeam,:,1]*Ue_onNeGrid*tempB
 
-                # jEast*Unorth*tempB
-                UnJCrossB_North = outDict['CurrentGmag'][itime,ibeam,:,0]*Un_onNeGrid*tempB
-                tmpTotalMechanicalHeating = UnJCrossB_East+UnJCrossB_North
+                ## jEast*Unorth*tempB
+                #UnJCrossB_North = outDict['CurrentGmag'][itime,ibeam,:,0]*Un_onNeGrid*tempB
+                #tmpTotalMechanicalHeating = UnJCrossB_East+UnJCrossB_North
 
-                outDict['JouleHeatingMechanical'][itime,ibeam,:] = tmpTotalMechanicalHeating
-                indx = numpy.where(numpy.isfinite(outDict['JouleHeatingMechanical'][itime,ibeam,:]) &\
-                                    numpy.isfinite(acDict['Altitude'][ibeam,:]) )[0]
-                outDict['IntegratedJouleHeatingMechanical'][itime,ibeam] = trapz(outDict['JouleHeatingMechanical'][itime,ibeam,indx], acDict['Altitude'][ibeam,indx])
+                #outDict['JouleHeatingMechanical'][itime,ibeam,:] = tmpTotalMechanicalHeating
+                #indx = numpy.where(numpy.isfinite(outDict['JouleHeatingMechanical'][itime,ibeam,:]) &\
+                #                    numpy.isfinite(acDict['Altitude'][ibeam,:]) )[0]
+                #outDict['IntegratedJouleHeatingMechanical'][itime,ibeam] = trapz(outDict['JouleHeatingMechanical'][itime,ibeam,indx], acDict['Altitude'][ibeam,indx])
 
 
                 """
@@ -877,14 +877,14 @@ class ProcessEregionNeutralWinds:
                 print('alphaP', alphaP)
                 print('alphaH', alphaH)
 
-                outDict['HallDrag'][itime,:] = alphaH
-                outDict['PedersenDrag'][itime,:] = alphaP
+                #outDict['HallDrag'][itime,:] = alphaH
+                #outDict['PedersenDrag'][itime,:] = alphaP
 
                 # Larsen Waltersheid 1995 eq 5
                 FLorentzE = alphaH*(VplasmaN-outDict['WindGmag'][itime,:,1]) + alphaP*(VplasmaE-outDict['WindGmag'][itime,:,0])
                 FLorentzN = alphaP*(VplasmaN-outDict['WindGmag'][itime,:,1]) - alphaH*(VplasmaE-outDict['WindGmag'][itime,:,0])
-                outDict['Lorentz'][itime,:,0] = FLorentzE
-                outDict['Lorentz'][itime,:,1] = FLorentzN
+                #outDict['Lorentz'][itime,:,0] = FLorentzE
+                #outDict['Lorentz'][itime,:,1] = FLorentzN
 
 
                 print('FLorentzN', FLorentzN)
@@ -901,16 +901,16 @@ class ProcessEregionNeutralWinds:
                 print('Kappa', tmpkappa)
                 print('\n\n')
 
-                outDict['Vertical_nuin'][itime,:] = tmpnuin
-                outDict['Vertical_nuin_Brekke'][itime,:] = tmpnuinBrekke
-                outDict['VerticalTi'][itime,:] = tmpTi
-                outDict['VerticaldTi'][itime,:] = tmpdTi
-                outDict['VerticalTn'][itime,:] = tmpTn
+                #outDict['Vertical_nuin'][itime,:] = tmpnuin
+                #outDict['Vertical_nuin_Brekke'][itime,:] = tmpnuinBrekke
+                #outDict['VerticalTi'][itime,:] = tmpTi
+                #outDict['VerticaldTi'][itime,:] = tmpdTi
+                #outDict['VerticalTn'][itime,:] = tmpTn
 
                 tmpNe = interp1d(tempVertAlt,numpy.ravel(acDict['Ne'][itime,qvert,:]),bounds_error=0)(htoutm)
                 tmpdNe = interp1d(tempVertAlt,numpy.ravel(acDict['dNe'][itime,qvert,:]),bounds_error=0)(htoutm)
-                outDict['VerticalBeamNe'][itime,:] = tmpNe
-                outDict['errVerticalBeamNe'][itime,:] = tmpdNe
+                #outDict['VerticalBeamNe'][itime,:] = tmpNe
+                #outDict['errVerticalBeamNe'][itime,:] = tmpdNe
 
 
             # average over altitude grid
@@ -922,11 +922,11 @@ class ProcessEregionNeutralWinds:
             tmpPedCond = numpy.ravel(outDict['PedersenConductivity'][itime,:,:])
             outDict['AltitudeJHBeam'] = acDict['Altitude']
 
-            # add in the Thayer information
-            # outDict['EMTransferRateThayer'], outDict['JouleHeatingMechanicalThayer']
-            tmpJouleTotal_Thayer = numpy.ravel(outDict['JouleHeatingTotalThayer'][itime,:,:])
-            tmpEMTransfer_Thayer = numpy.ravel(outDict['EMTransferRateThayer'][itime,:,:])
-            tmpJouleMech_Thayer = numpy.ravel(outDict['JouleHeatingMechanicalThayer'][itime,:,:])
+            ## add in the Thayer information
+            ## outDict['EMTransferRateThayer'], outDict['JouleHeatingMechanicalThayer']
+            #tmpJouleTotal_Thayer = numpy.ravel(outDict['JouleHeatingTotalThayer'][itime,:,:])
+            #tmpEMTransfer_Thayer = numpy.ravel(outDict['EMTransferRateThayer'][itime,:,:])
+            #tmpJouleMech_Thayer = numpy.ravel(outDict['JouleHeatingMechanicalThayer'][itime,:,:])
 
             # adding in SNR and Ne - unfitted
             tmpAltitudeRaw = numpy.ravel(acDict['AltitudeRaw'])/1000.
@@ -942,64 +942,64 @@ class ProcessEregionNeutralWinds:
                 IRaw = numpy.where((tmpAltitudeRaw >= htout[bb,0]) & (tmpAltitudeRaw <= htout[bb,1]))[0]
                 Iend = I.shape[0]
                 IendRaw = IRaw.shape[0]
-                outDict['MedianJouleHeatingE'][itime,bb] = numpy.nanmedian(tmpJouleE[I])
-                outDict['MedianJouleHeatingTotal'][itime,bb] = numpy.nanmedian(tmpJouleTotal[I])
-                outDict['MedianJouleHeatingMechanical'][itime,bb] = numpy.nanmedian(tmpJouleMech[I])
-                outDict['MedianHallConductivity'][itime,bb] = numpy.nanmedian(tmpHallCond[I])
-                outDict['MedianPedersenConductivity'][itime,bb] = numpy.nanmedian(tmpPedCond[I])
+                #outDict['MedianJouleHeatingE'][itime,bb] = numpy.nanmedian(tmpJouleE[I])
+                #outDict['MedianJouleHeatingTotal'][itime,bb] = numpy.nanmedian(tmpJouleTotal[I])
+                #outDict['MedianJouleHeatingMechanical'][itime,bb] = numpy.nanmedian(tmpJouleMech[I])
+                #outDict['MedianHallConductivity'][itime,bb] = numpy.nanmedian(tmpHallCond[I])
+                #outDict['MedianPedersenConductivity'][itime,bb] = numpy.nanmedian(tmpPedCond[I])
 
-                # add in thayer stuff.
-                outDict['MedianJouleHeatingTotal_Thayer'][itime,bb] = numpy.nanmedian(tmpJouleTotal_Thayer[I])
-                outDict['MedianJouleHeatingMechanical_Thayer'][itime,bb] = numpy.nanmedian(tmpJouleMech_Thayer[I])
-                outDict['MedianEMTransfer_Thayer'][itime,bb] = numpy.nanmedian(tmpEMTransfer_Thayer[I])
-
-
-                outDict['MeanJouleHeatingE'][itime,bb] = numpy.nanmean(tmpJouleE[I])
-                outDict['MeanJouleHeatingTotal'][itime,bb] = numpy.nanmean(tmpJouleTotal[I])
-                outDict['MeanJouleHeatingMechanical'][itime,bb] = numpy.nanmean(tmpJouleMech[I])
-                outDict['MeanHallConductivity'][itime,bb] = numpy.nanmean(tmpHallCond[I])
-                outDict['MeanPedersenConductivity'][itime,bb] = numpy.nanmean(tmpPedCond[I])
-
-                outDict['MeanJouleHeatingTotal_Thayer'][itime,bb] = numpy.nanmean(tmpJouleTotal_Thayer[I])
-                outDict['MeanJouleHeatingMechanical_Thayer'][itime,bb] = numpy.nanmean(tmpJouleMech_Thayer[I])
-                outDict['MeanEMTransfer_Thayer'][itime,bb] = numpy.nanmean(tmpEMTransfer_Thayer[I])
+                ## add in thayer stuff.
+                #outDict['MedianJouleHeatingTotal_Thayer'][itime,bb] = numpy.nanmedian(tmpJouleTotal_Thayer[I])
+                #outDict['MedianJouleHeatingMechanical_Thayer'][itime,bb] = numpy.nanmedian(tmpJouleMech_Thayer[I])
+                #outDict['MedianEMTransfer_Thayer'][itime,bb] = numpy.nanmedian(tmpEMTransfer_Thayer[I])
 
 
-                outDict['MeanNeFitted'][itime,bb] = numpy.nanmean(tmpNeFitted[I])
-                outDict['MedianNeFitted'][itime,bb] = numpy.nanmedian(tmpNeFitted[I])
-                outDict['MeanSNR'][itime,bb] = numpy.nanmean(tmpSNRRaw[IRaw])
-                outDict['MedianSNR'][itime,bb] = numpy.nanmedian(tmpSNRRaw[IRaw])
-                outDict['MeanNeRaw'][itime,bb] = numpy.nanmean(tmpNeRaw[IRaw])
-                outDict['MedianNeRaw'][itime,bb] = numpy.nanmedian(tmpNeRaw[IRaw])
+                #outDict['MeanJouleHeatingE'][itime,bb] = numpy.nanmean(tmpJouleE[I])
+                #outDict['MeanJouleHeatingTotal'][itime,bb] = numpy.nanmean(tmpJouleTotal[I])
+                #outDict['MeanJouleHeatingMechanical'][itime,bb] = numpy.nanmean(tmpJouleMech[I])
+                #outDict['MeanHallConductivity'][itime,bb] = numpy.nanmean(tmpHallCond[I])
+                #outDict['MeanPedersenConductivity'][itime,bb] = numpy.nanmean(tmpPedCond[I])
 
-                outDict['ScaleHeight'][itime,bb] = numpy.nanmean(tmpScaleHeight[I])
-
-                outDict['NeFittedRaw'][itime,bb,0:Iend] = tmpNeFitted[I]
-                outDict['SNRRaw'][itime,bb,0:IendRaw] = tmpSNRRaw[IRaw]
+                #outDict['MeanJouleHeatingTotal_Thayer'][itime,bb] = numpy.nanmean(tmpJouleTotal_Thayer[I])
+                #outDict['MeanJouleHeatingMechanical_Thayer'][itime,bb] = numpy.nanmean(tmpJouleMech_Thayer[I])
+                #outDict['MeanEMTransfer_Thayer'][itime,bb] = numpy.nanmean(tmpEMTransfer_Thayer[I])
 
 
+                #outDict['MeanNeFitted'][itime,bb] = numpy.nanmean(tmpNeFitted[I])
+                #outDict['MedianNeFitted'][itime,bb] = numpy.nanmedian(tmpNeFitted[I])
+                #outDict['MeanSNR'][itime,bb] = numpy.nanmean(tmpSNRRaw[IRaw])
+                #outDict['MedianSNR'][itime,bb] = numpy.nanmedian(tmpSNRRaw[IRaw])
+                #outDict['MeanNeRaw'][itime,bb] = numpy.nanmean(tmpNeRaw[IRaw])
+                #outDict['MedianNeRaw'][itime,bb] = numpy.nanmedian(tmpNeRaw[IRaw])
 
-            # now integrate to get
-            tmpAltitude = numpy.nanmean(htout, axis=1)*1000. # convert to m
-            outDict['IntegratedMedianJouleHeatingE'][itime] = trapz(outDict['MedianJouleHeatingE'][itime,:],tmpAltitude)
-            outDict['IntegratedMedianJouleHeatingTotal'][itime] = trapz(outDict['MedianJouleHeatingTotal'][itime,:],tmpAltitude)
-            outDict['IntegratedMedianJouleHeatingMechanical'][itime] = trapz(outDict['MedianJouleHeatingMechanical'][itime,:], tmpAltitude)
-            outDict['MedianHallConductance'][itime] = trapz(outDict['MedianHallConductivity'][itime,:], tmpAltitude)
-            outDict['MedianPedersenConductance'][itime] = trapz(outDict['MedianPedersenConductivity'][itime,:], tmpAltitude)
+                #outDict['ScaleHeight'][itime,bb] = numpy.nanmean(tmpScaleHeight[I])
 
-            outDict['IntegratedMedianJouleHeatingTotal_Thayer'][itime] = trapz(outDict['MedianJouleHeatingTotal_Thayer'][itime,:],tmpAltitude)
-            outDict['IntegratedMedianJouleHeatingMechanical_Thayer'][itime] = trapz(outDict['MedianJouleHeatingMechanical_Thayer'][itime,:],tmpAltitude)
-            outDict['IntegratedMedianEMTransfer_Thayer'][itime] = trapz(outDict['MedianEMTransfer_Thayer'][itime,:],tmpAltitude)
+                #outDict['NeFittedRaw'][itime,bb,0:Iend] = tmpNeFitted[I]
+                #outDict['SNRRaw'][itime,bb,0:IendRaw] = tmpSNRRaw[IRaw]
 
-            outDict['IntegratedMeanJouleHeatingE'][itime] = trapz(outDict['MeanJouleHeatingE'][itime,:],tmpAltitude)
-            outDict['IntegratedMeanJouleHeatingTotal'][itime] = trapz(outDict['MeanJouleHeatingTotal'][itime,:],tmpAltitude)
-            outDict['IntegratedMeanJouleHeatingMechanical'][itime] = trapz(outDict['MeanJouleHeatingMechanical'][itime,:], tmpAltitude)
-            outDict['MeanHallConductance'][itime] = trapz(outDict['MeanHallConductivity'][itime,:], tmpAltitude)
-            outDict['MeanPedersenConductance'][itime] = trapz(outDict['MeanPedersenConductivity'][itime,:], tmpAltitude)
 
-            outDict['IntegratedMeanJouleHeatingTotal_Thayer'][itime] = trapz(outDict['MeanJouleHeatingTotal_Thayer'][itime,:],tmpAltitude)
-            outDict['IntegratedMeanJouleHeatingMechanical_Thayer'][itime] = trapz(outDict['MeanJouleHeatingMechanical_Thayer'][itime,:],tmpAltitude)
-            outDict['IntegratedMeanEMTransfer_Thayer'][itime] = trapz(outDict['MeanEMTransfer_Thayer'][itime,:],tmpAltitude)
+
+            ## now integrate to get
+            #tmpAltitude = numpy.nanmean(htout, axis=1)*1000. # convert to m
+            #outDict['IntegratedMedianJouleHeatingE'][itime] = trapz(outDict['MedianJouleHeatingE'][itime,:],tmpAltitude)
+            #outDict['IntegratedMedianJouleHeatingTotal'][itime] = trapz(outDict['MedianJouleHeatingTotal'][itime,:],tmpAltitude)
+            #outDict['IntegratedMedianJouleHeatingMechanical'][itime] = trapz(outDict['MedianJouleHeatingMechanical'][itime,:], tmpAltitude)
+            #outDict['MedianHallConductance'][itime] = trapz(outDict['MedianHallConductivity'][itime,:], tmpAltitude)
+            #outDict['MedianPedersenConductance'][itime] = trapz(outDict['MedianPedersenConductivity'][itime,:], tmpAltitude)
+
+            #outDict['IntegratedMedianJouleHeatingTotal_Thayer'][itime] = trapz(outDict['MedianJouleHeatingTotal_Thayer'][itime,:],tmpAltitude)
+            #outDict['IntegratedMedianJouleHeatingMechanical_Thayer'][itime] = trapz(outDict['MedianJouleHeatingMechanical_Thayer'][itime,:],tmpAltitude)
+            #outDict['IntegratedMedianEMTransfer_Thayer'][itime] = trapz(outDict['MedianEMTransfer_Thayer'][itime,:],tmpAltitude)
+
+            #outDict['IntegratedMeanJouleHeatingE'][itime] = trapz(outDict['MeanJouleHeatingE'][itime,:],tmpAltitude)
+            #outDict['IntegratedMeanJouleHeatingTotal'][itime] = trapz(outDict['MeanJouleHeatingTotal'][itime,:],tmpAltitude)
+            #outDict['IntegratedMeanJouleHeatingMechanical'][itime] = trapz(outDict['MeanJouleHeatingMechanical'][itime,:], tmpAltitude)
+            #outDict['MeanHallConductance'][itime] = trapz(outDict['MeanHallConductivity'][itime,:], tmpAltitude)
+            #outDict['MeanPedersenConductance'][itime] = trapz(outDict['MeanPedersenConductivity'][itime,:], tmpAltitude)
+
+            #outDict['IntegratedMeanJouleHeatingTotal_Thayer'][itime] = trapz(outDict['MeanJouleHeatingTotal_Thayer'][itime,:],tmpAltitude)
+            #outDict['IntegratedMeanJouleHeatingMechanical_Thayer'][itime] = trapz(outDict['MeanJouleHeatingMechanical_Thayer'][itime,:],tmpAltitude)
+            #outDict['IntegratedMeanEMTransfer_Thayer'][itime] = trapz(outDict['MeanEMTransfer_Thayer'][itime,:],tmpAltitude)
 
             outDict['nuinScaler'][itime] = acDict['nuinScaler'][itime]
                 # fill status
