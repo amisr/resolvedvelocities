@@ -563,7 +563,7 @@ class ProcessEregionNeutralWinds:
             '''
             try:
                 (htout,EstimatedWinds,\
-                CovEstimatedWind,LosVelEstimated,Iout,\
+                CovEstimatedWinds,LosVelEstimated,Iout,\
                 VlosOut,dVlosOut,AllAltitudeOut) = self.winds.invertwinds(\
                                                         htout,AllAltitude,AllVlos,\
                                                         AlldVlos,Allk,Allmob,Allkappa,\
@@ -584,10 +584,14 @@ class ProcessEregionNeutralWinds:
             # first 3 elements are the electric field
             # remaining elements are the wind components on the htout grid
             # should be 3+htout.shape[0] elements long
-            outDict['Efield'][itime,:] = numpy.transpose(EstimatedWinds[0:3])
-            outDict['errEfield'][itime,:] = numpy.sqrt(numpy.diag(EstimatedWinds)[0:3]) # grab the diagonal elements
+            print('EstimatedWinds', EstimatedWinds.shape, outDict['Efield'].shape)
+            print('CovEstimatedWinds', CovEstimatedWinds.shape, outDict['covEfield'].shape)
+            outDict['Efield'][itime] = numpy.transpose(EstimatedWinds[0:3])
+            outDict['covEfield'][itime] = numpy.transpose(CovEstimatedWinds[0:3,0:3])
+            outDict['errEfield'][itime] = numpy.sqrt(numpy.diag(CovEstimatedWinds)[0:3]) # grab the diagonal elements
             tempWind = EstimatedWinds[3:]
-            tempErrWind = numpy.sqrt(numpy.diag(CovEstimatedWind)[3:])
+            tempCovWind = CovEstimatedWinds[3:,3:]
+            tempErrWind = numpy.sqrt(numpy.diag(CovEstimatedWinds)[3:])
 
             # print 'tempWind.shape', tempWind.shape
             # print 'tempWindErr Shape', tempErrWind.shape
@@ -627,13 +631,21 @@ class ProcessEregionNeutralWinds:
             #    outDict['dVlosAltGrid'][itime,iiht,0:NN] = numpy.ravel(AlldVlos[qalt])
 
             #perp east, north, up
-            outDict['WindGmag'][itime,:,0] = tempWind[0::3][numpy.newaxis,:,0]
-            outDict['WindGmag'][itime,:,1] = tempWind[1::3][numpy.newaxis,:,0]
-            outDict['WindGmag'][itime,:,2] = tempWind[2::3][numpy.newaxis,:,0]
-            outDict['errWindGmag'][itime,:,0] = tempErrWind[0::3]
-            outDict['errWindGmag'][itime,:,1] = tempErrWind[1::3]
-            outDict['errWindGmag'][itime,:,2] = tempErrWind[2::3]
+            outDict['WindGmag'][itime] = tempWind.reshape((htout.shape[0],3))
+            # extract block diagonals
+            # LL - should check if the off-block diagonal terms of covariance matrix are actually near zero
+            outDict['covWindGmag'][itime] = numpy.array([tempCovWind[i*3:(i+1)*3, i*3:(i+1)*3] for i in range(htout.shape[0])])
+            outDict['errWindGmag'][itime] = tempErrWind.reshape((htout.shape[0],3))
 
+                                              #outDict['WindGmag'][itime,:,0] = tempWind[0::3][numpy.newaxis,:,0]
+                                              #outDict['WindGmag'][itime,:,1] = tempWind[1::3][numpy.newaxis,:,0]
+                                              #outDict['WindGmag'][itime,:,2] = tempWind[2::3][numpy.newaxis,:,0]
+                                              #outDict['errWindGmag'][itime,:,0] = tempErrWind[0::3]
+                                              #outDict['errWindGmag'][itime,:,1] = tempErrWind[1::3]
+                                              #outDict['errWindGmag'][itime,:,2] = tempErrWind[2::3]
+
+
+            # LL - This gmag -> geo conversion is almost definitely not done rigerously; redo with apex coordinates
             WindGmag = outDict['WindGmag']
             for ii in range(htout.shape[0]):
                 outDict['WindGeo'][itime,ii,:] = numpy.squeeze(self.winds.gmag2geo(\
@@ -642,7 +654,7 @@ class ProcessEregionNeutralWinds:
                                                 [WindGmag[itime,ii,2]]]),\
                                                 numpy.deg2rad(decAltGrid[ii]),\
                                                 numpy.deg2rad(dipAltGrid[ii])))
-            terrgeo = self.winds.gmag2geo_covar(CovEstimatedWind[3:,3:],\
+            terrgeo = self.winds.gmag2geo_covar(CovEstimatedWinds[3:,3:],\
                                             numpy.deg2rad(decAltGrid),\
                                             numpy.deg2rad(dipAltGrid))
             tempErrWindGeo = numpy.sqrt(numpy.diag(terrgeo))
@@ -1135,13 +1147,14 @@ class ProcessEregionNeutralWinds:
 
             #vels = self.Velocity[start_ind:end_ind,:]
             #covvels = self.VelocityCovariance[start_ind:end_ind,:]
-            winds = outDict['WindGeo'][start_ind:end_ind,:]*1000.
+            winds = outDict['WindGmag'][start_ind:end_ind,:]
             #covwinds = self.ElectricFieldCovariance[start_ind:end_ind,:]*1000.*1000.
-            covwinds = numpy.ones(outDict['WindGeo'].shape+(3,))
+            covwinds = outDict['covWindGmag'][start_ind:end_ind,:,:]
+            #covwinds = numpy.ones(outDict['WindGeo'].shape+(3,))
 
             summary_plots.plot_components(times, outDict['Altitude'], winds, covwinds,
                             titles=['UE (m/s)','UN (m/s)','UU (m/s)'],
-                            ylabel='Alt', clim=[[-150.,150.], [0.,35.]],
+                            ylabel='Alt', clim=[[-500.,500.], [0.,100.]],
                             cmap=['coolwarm', 'turbo'],
                             filename=os.path.join('temp_plots',wcom_fname), scale_factors=[1,1,10])
 

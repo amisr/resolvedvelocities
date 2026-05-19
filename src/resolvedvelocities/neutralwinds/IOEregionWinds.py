@@ -15,8 +15,8 @@ class IOEregionWinds:
          # set for now will need to change
 
         self.DictList = {}
-        self.DictList['Winds'] = ['WindGmag', 'errWindGmag', 'WindGeo', 'errWindGeo','Altitude']
-        self.DictList['VectorVels'] = ['VestGmag','VestGeo','errVestGeo','errVestGmag','Altitude', 'Angle']
+        self.DictList['Winds'] = ['WindGmag', 'covWindGmag', 'errWindGmag', 'WindGeo', 'covWindGeo', 'errWindGeo','Altitude']
+        self.DictList['VectorVels'] = ['VestGmag','VestGeo','errVestGeo','errVestGmag','covVestGmag','covVestGeo','Altitude', 'Angle']
         self.DictList['Fregion'] = ['VestGmag_300km','errVestGmag_300km']
         #self.DictList['Ne'] = ['MeanSNR', 'MedianSNR', 'MeanNeRaw', 'MedianNeRaw', \
         #                        'MeanNeFitted', 'MedianNeFitted', 'Altitude', \
@@ -24,7 +24,7 @@ class IOEregionWinds:
         #                        'VerticalBeamNe', 'errVerticalBeamNe']
         self.DictList['Time'] = ['UnixTime', 'UTDecHrs','LocalDecHrs','MLTDecHrs', 'MeanUnixTimeMe','nuinScaler']
         self.DictList['GeophysicalParameters'] = ['KP','AP','SymH','F107','AE','AL','AU','KPsum','AEmean', 'F107A', 'F107Raw']
-        self.DictList['ElectricFields'] = ['Efield','errEfield']
+        self.DictList['ElectricFields'] = ['Efield','covEfield','errEfield']
         #self.DictList['Ground_Mag'] = ['GroundMag_UnixTime', 'GroundMag_D', 'GroundMag_Z', 'GroundMag_H']
         self.DictList['Status'] = ['Status']
         #self.DictList['Forces'] = ['Coriolis', 'Centrifugal', 'Lorentz', 'HallDrag', 'PedersenDrag']
@@ -676,6 +676,12 @@ class IOEregionWinds:
         for ii in Timeby3List:
             outDict[ii] = copy.copy(Timeby3)
 
+        Timeby3by3 = numpy.zeros((inDict['UnixTime'].shape[0],3,3), dtype='float64')*numpy.nan
+        #Timeby3List = ['Efield', 'errEfield', 'VestGmag_300km','errVestGmag_300km']
+        Timeby3by3List = ['covEfield']
+        for ii in Timeby3by3List:
+            outDict[ii] = copy.copy(Timeby3by3)
+
         # time x altitude x 3 - NW grid
         TimebyAltitudeby3 = numpy.zeros((inDict['UnixTime'].shape[0],AltitudeArr.shape[0],3),\
                             dtype='float64')*numpy.nan
@@ -683,9 +689,18 @@ class IOEregionWinds:
         #                        'VestGmag', 'errVestGmag','VestGeo','errVestGeo', \
         #                        'Coriolis', 'Centrifugal', 'Lorentz']
         TimebyAltitudeby3List = ['WindGmag', 'errWindGmag', 'WindGeo', 'errWindGeo', \
-                                'VestGmag', 'errVestGmag','VestGeo','errVestGeo']
+                                 'VestGmag', 'errVestGmag', 'VestGeo', 'errVestGeo']
         for ii in TimebyAltitudeby3List:
             outDict[ii] = copy.copy(TimebyAltitudeby3)
+
+
+        # time x altitude x 3 x 3 - NW covariance grid
+        TimebyAltitudeby3by3 = numpy.zeros((inDict['UnixTime'].shape[0],AltitudeArr.shape[0],3,3),\
+                            dtype='float64')*numpy.nan
+        TimebyAltitudeby3by3List = ['covWindGmag', 'covWindGeo', \
+                                 'covVestGmag', 'covVestGeo']
+        for ii in TimebyAltitudeby3by3List:
+            outDict[ii] = copy.copy(TimebyAltitudeby3by3)
 
 
         #NeShape2 = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1],inDict['Ne'].shape[2],2), \
