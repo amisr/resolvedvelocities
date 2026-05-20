@@ -189,6 +189,8 @@ class ProcessEregionNeutralWinds:
 
         self.DataExclude = ['Chi2Max','Chi2Min','FitCodeMax','FitCodeMin']
 
+        self.PlottingMaster = ['PLOTSAVEDIR','PLOTPREFIX']
+
         self.configFile = configFile
         if configFile:
             #if os.path.isfile(configFile):
@@ -248,6 +250,8 @@ class ProcessEregionNeutralWinds:
                 elif ikey in self.Default:
                     print('ikey pass:', ikey)
                 elif ikey in self.DataExclude:
+                    print('ikey pass:', ikey)
+                elif ikey in self.PlottingMaster:
                     print('ikey pass:', ikey)
                 else:
                     raise ValueError('%s -- Required Key not in Config File'%ikey)
@@ -1121,7 +1125,7 @@ class ProcessEregionNeutralWinds:
 
     def create_plots(self, outDict):
 
-        self.plotprefix='temp_'
+        #self.plotprefix='temp_'
         #os.makedirs(os.path.abspath(self.plotsavedir),exist_ok=True)
         os.makedirs('temp_plots',exist_ok=True)
 
@@ -1147,14 +1151,14 @@ class ProcessEregionNeutralWinds:
             # 'byDay' in the plot file names
             if (num_chunks == 1):
                 #vcom_fname = '{}vvelsnw_vel_comp.png'.format(self.plotprefix)
-                wcom_fname = '{}vvelsnw_winds_comp.png'.format(self.plotprefix)
+                wcom_fname = '{}vvelsnw_winds_comp.png'.format(self.config['PLOTTING']['PLOTPREFIX'])
                 #vmag_fname = '{}vvelsnw_vel_mag.png'.format(self.plotprefix)
-                wmag_fname = '{}vvelsnw_winds_mag.png'.format(self.plotprefix)
+                wmag_fname = '{}vvelsnw_winds_mag.png'.format(self.config['PLOTTING']['PLOTPREFIX'])
             else:
                 #vcom_fname = '{}vvelsnw_vel_comp_{}.png'.format(self.plotprefix, t)
-                wcom_fname = '{}vvelsnw_winds_comp_{}.png'.format(self.plotprefix, t)
+                wcom_fname = '{}vvelsnw_winds_comp_{}.png'.format(self.config['PLOTTING']['PLOTPREFIX'], t)
                 #vmag_fname = '{}vvelsnw_vel_mag_{}.png'.format(self.plotprefix, t)
-                wmag_fname = '{}vvelsnw_winds_mag_{}.png'.format(self.plotprefix, t)
+                wmag_fname = '{}vvelsnw_winds_mag_{}.png'.format(self.config['PLOTTING']['PLOTPREFIX'], t)
 
             # make vector plots
             times = outDict['UnixTime'][start_ind:end_ind,:]
@@ -1170,7 +1174,7 @@ class ProcessEregionNeutralWinds:
                             titles=['UE (m/s)','UN (m/s)','UU (m/s)'],
                             ylabel='Alt (km)', clim=[[-500.,500.], [0.,100.]],
                             cmap=['coolwarm', 'turbo'],
-                            filename=os.path.join('temp_plots',wcom_fname), scale_factors=[1,1,10])
+                            filename=os.path.join(self.config['PLOTTING']['PLOTSAVEDIR'],wcom_fname), scale_factors=[1,1,10])
 
 #            summary_plots.plot_components(times, self.bin_mlat, efs, covefs,
 #                            titles=['Ed1 (mV/m)','Ed2 (mV/m)','Ed3 (mV/m)'],
@@ -1201,7 +1205,7 @@ class ProcessEregionNeutralWinds:
             summary_plots.plot_magnitude(times, outDict['Altitude'], vmag, dvmag, vdir, dvdir, chi2,
                             err_thres=100., mag_thres=100., titles=titles,
                             ylabel='Alt (km)', clim=clim, cmap=cmap,
-                            filename=os.path.join('temp_plots',wmag_fname))
+                            filename=os.path.join(self.config['PLOTTING']['PLOTSAVEDIR'],wmag_fname))
 
             #titles = ['E mag. (mV/m)', 'E mag err (mV/m)', 'E dir (deg)', 'E dir err (deg)', '']
             #clim = [[0.,75.],[0., 15.],[-180., 180.],[0., 35.]]
