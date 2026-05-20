@@ -135,6 +135,7 @@ from scipy.interpolate import interp1d
 from scipy.constants import elementary_charge
 from .tools.loggerinit.LoggerInit import *
 from .tools.configreader.ConfigReader import *
+from .tools.utils import *
 from . import summary_plots
 import os
 import sys
@@ -313,8 +314,7 @@ class ProcessEregionNeutralWinds:
 
         print('htout', htout)
 
-        # LL - This creates all the empty arrays - would save a lot of space to skip...
-        # make the output dictionary
+        # LL - This creates all the empty arrays.  Maybe change to make all this attributes of the class?
         outDict = self.io.MakeOutputDictionary(acDict,htout)
         #outDict = dict()
 
@@ -645,7 +645,6 @@ class ProcessEregionNeutralWinds:
                                               #outDict['errWindGmag'][itime,:,2] = tempErrWind[2::3]
 
 
-            # LL - This gmag -> geo conversion is almost definitely not done rigerously; redo with apex coordinates
             WindGmag = outDict['WindGmag']
             for ii in range(htout.shape[0]):
                 outDict['WindGeo'][itime,ii,:] = numpy.squeeze(self.winds.gmag2geo(\
@@ -657,16 +656,23 @@ class ProcessEregionNeutralWinds:
             terrgeo = self.winds.gmag2geo_covar(CovEstimatedWinds[3:,3:],\
                                             numpy.deg2rad(decAltGrid),\
                                             numpy.deg2rad(dipAltGrid))
+            #print('TERRGEO', terrgeo.shape)
+            outDict['covWindGeo'][itime] = numpy.array([terrgeo[i*3:(i+1)*3, i*3:(i+1)*3] for i in range(htout.shape[0])])
             tempErrWindGeo = numpy.sqrt(numpy.diag(terrgeo))
-            outDict['errWindGeo'][itime,:,0] = tempErrWindGeo[0::3]
-            outDict['errWindGeo'][itime,:,1] = tempErrWindGeo[1::3]
-            outDict['errWindGeo'][itime,:,2] = tempErrWindGeo[2::3]
+            outDict['errWindGeo'][itime] = tempErrWindGeo.reshape((htout.shape[0],3))
+            #outDict['errWindGeo'][itime,:,0] = tempErrWindGeo[0::3]
+            #outDict['errWindGeo'][itime,:,1] = tempErrWindGeo[1::3]
+            #outDict['errWindGeo'][itime,:,2] = tempErrWindGeo[2::3]
 
             # diagnostic print statements
             # print 'Winds 0 component geomag', outDict['WindGmag'][itime,:,0]
             # print 'Winds 0 component geographic', outDict['WindGeo'][itime,:,0]
             # print '-------------------------'
             # print '\n\n'
+
+
+
+
 
             # now need to calculate the velocities in the E-region
             # need this to calculate Joule Heating and currents
@@ -1064,6 +1070,14 @@ class ProcessEregionNeutralWinds:
 
         # sys.exit()
 
+
+        # LL - Need to calculate vector magnitude and direction at this point???
+        # calculate vector magnitude and direction
+        outDict['Wind_mag'], outDict['errWind_mag'], outDict['Wind_dir'], outDict['errWind_dir'] = magnitude_direction(outDict['WindGeo'], outDict['covWindGeo'], np.array([0,1,0]))
+            
+
+
+
         # filling the output geophysical array
         UnixTimeMean = numpy.mean(acDict['UnixTime'], axis=1)
 
@@ -1147,14 +1161,14 @@ class ProcessEregionNeutralWinds:
 
             #vels = self.Velocity[start_ind:end_ind,:]
             #covvels = self.VelocityCovariance[start_ind:end_ind,:]
-            winds = outDict['WindGmag'][start_ind:end_ind,:]
+            winds = outDict['WindGeo'][start_ind:end_ind,:]
             #covwinds = self.ElectricFieldCovariance[start_ind:end_ind,:]*1000.*1000.
-            covwinds = outDict['covWindGmag'][start_ind:end_ind,:,:]
+            covwinds = outDict['covWindGeo'][start_ind:end_ind,:,:]
             #covwinds = numpy.ones(outDict['WindGeo'].shape+(3,))
 
             summary_plots.plot_components(times, outDict['Altitude'], winds, covwinds,
                             titles=['UE (m/s)','UN (m/s)','UU (m/s)'],
-                            ylabel='Alt', clim=[[-500.,500.], [0.,100.]],
+                            ylabel='Alt (km)', clim=[[-500.,500.], [0.,100.]],
                             cmap=['coolwarm', 'turbo'],
                             filename=os.path.join('temp_plots',wcom_fname), scale_factors=[1,1,10])
 
@@ -1166,27 +1180,28 @@ class ProcessEregionNeutralWinds:
 
 
 
-            ## make magnitude plots
-            ## find index of altitude bin that is closest to alt
+            # make magnitude plots
+            # find index of altitude bin that is closest to alt
             #i = np.argmin(np.abs(self.bin_galt[:,0]-alt))
-            #vmag = self.Vgd_mag[start_ind:end_ind,i,:]
-            #dvmag = self.Vgd_mag_err[start_ind:end_ind,i,:]
-            #vdir = self.Vgd_dir[start_ind:end_ind,i,:]
-            #dvdir = self.Vgd_dir_err[start_ind:end_ind,i,:]
+            vmag = outDict['Wind_mag'][start_ind:end_ind,:]
+            dvmag = outDict['errWind_mag'][start_ind:end_ind,:]
+            vdir = outDict['Wind_dir'][start_ind:end_ind,:]
+            dvdir = outDict['errWind_dir'][start_ind:end_ind,:]
             #emag = self.Egd_mag[start_ind:end_ind,i,:]*1000.
             #demag = self.Egd_mag_err[start_ind:end_ind,i,:]*1000.
             #edir = self.Egd_dir[start_ind:end_ind,i,:]
             #dedir = self.Egd_dir_err[start_ind:end_ind,i,:]
             #chi2 = self.ChiSquared[start_ind:end_ind,:]
+            chi2 = np.full(vmag.shape, 0.5)
 
-            #titles = ['V mag. (m/s)', 'V mag. err. (m/s)', 'V dir. (deg)', 'V dir. err. (deg)', '']
-            #clim = [[0.,1500.],[0., 350.],[-180., 180.],[0., 35.]]
-            #cmap = ['viridis', 'turbo', 'twilight', 'turbo']
+            titles = ['U mag. (m/s)', 'U mag. err. (m/s)', 'U dir. (deg)', 'U dir. err. (deg)', '']
+            clim = [[0.,500.],[0., 100.],[-180., 180.],[0., 35.]]
+            cmap = ['viridis', 'turbo', 'twilight', 'turbo']
 
-            #summary_plots.plot_magnitude(times, self.bin_mlat, vmag, dvmag, vdir, dvdir, chi2,
-            #                err_thres=100., mag_thres=100., titles=titles,
-            #                ylabel='Apex MLAT', clim=clim, cmap=cmap,
-            #                filename=os.path.join(self.plotsavedir,vmag_fname))
+            summary_plots.plot_magnitude(times, outDict['Altitude'], vmag, dvmag, vdir, dvdir, chi2,
+                            err_thres=100., mag_thres=100., titles=titles,
+                            ylabel='Alt (km)', clim=clim, cmap=cmap,
+                            filename=os.path.join('temp_plots',wmag_fname))
 
             #titles = ['E mag. (mV/m)', 'E mag err (mV/m)', 'E dir (deg)', 'E dir err (deg)', '']
             #clim = [[0.,75.],[0., 15.],[-180., 180.],[0., 35.]]

@@ -741,7 +741,8 @@ class IOEregionWinds:
                                 'MeanIonNeutralCollisionFrequency', 'StdIonNeutralCollisionFrequency', \
                                 'Vertical_nuin', 'Vertical_nuin_Brekke',\
                                 'VerticalTi', 'VerticaldTi', 'VerticalTn', 'VerticalBeamNe', 'errVerticalBeamNe', \
-                                'PedersenDrag', 'HallDrag', 'Angle']
+                                'PedersenDrag', 'HallDrag', 'Angle',\
+                                'Wind_mag', 'errWind_mag', 'Wind_dir', 'errWind_dir']
         for ii in TimebyAltitudeList:
             outDict[ii] = copy.copy(TimebyAltitude)
 
