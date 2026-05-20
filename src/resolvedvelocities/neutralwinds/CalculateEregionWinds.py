@@ -2,6 +2,7 @@ import numpy
 import numpy.linalg
 
 class CalculateEregionWinds:
+    # LL - Is there any need for this to be a class?  Looks like a bunch of independent functions.
 
     '''
     Overarching class used to calculate the neutral winds and with helper parameters
@@ -191,6 +192,7 @@ class CalculateEregionWinds:
     def compute_velvec2(self,PLAT,AllVlos,AlldVlos,Allk,AllPlat,AllPlong,Allht,htmin=150.0*1000,htmax=400.0*1000,\
         covar=[1000.*1000.,1000.*1000.,5.*5.],FracErrorOffset = 200.0, FracErrorThreshold=0.5, AbsoluteErrorThreshold=100.0, \
         p = None ):
+        # LL - Is this used?  If so, should be replaced with main vvels code
         '''
         This is a direct copy of vvels.py and copied from Mike's code directly
     	I cleaned up and made this into numpy functions.

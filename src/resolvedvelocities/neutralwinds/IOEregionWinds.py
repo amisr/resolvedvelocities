@@ -15,50 +15,50 @@ class IOEregionWinds:
          # set for now will need to change
 
         self.DictList = {}
-        self.DictList['Winds'] = ['WindGmag', 'errWindGmag', 'WindGeo', 'errWindGeo','Altitude']
-        self.DictList['VectorVels'] = ['VestGmag','VestGeo','errVestGeo','errVestGmag','Altitude', 'Angle']
+        self.DictList['Winds'] = ['WindGmag', 'covWindGmag', 'errWindGmag', 'WindGeo', 'covWindGeo', 'errWindGeo','Altitude']
+        self.DictList['VectorVels'] = ['VestGmag','VestGeo','errVestGeo','errVestGmag','covVestGmag','covVestGeo','Altitude', 'Angle']
         self.DictList['Fregion'] = ['VestGmag_300km','errVestGmag_300km']
-        self.DictList['Ne'] = ['MeanSNR', 'MedianSNR', 'MeanNeRaw', 'MedianNeRaw', \
-                                'MeanNeFitted', 'MedianNeFitted', 'Altitude', \
-                                'NeFittedRaw', 'SNRRaw', 'Kappa', \
-                                'VerticalBeamNe', 'errVerticalBeamNe']
+        #self.DictList['Ne'] = ['MeanSNR', 'MedianSNR', 'MeanNeRaw', 'MedianNeRaw', \
+        #                        'MeanNeFitted', 'MedianNeFitted', 'Altitude', \
+        #                        'NeFittedRaw', 'SNRRaw', 'Kappa', \
+        #                        'VerticalBeamNe', 'errVerticalBeamNe']
         self.DictList['Time'] = ['UnixTime', 'UTDecHrs','LocalDecHrs','MLTDecHrs', 'MeanUnixTimeMe','nuinScaler']
         self.DictList['GeophysicalParameters'] = ['KP','AP','SymH','F107','AE','AL','AU','KPsum','AEmean', 'F107A', 'F107Raw']
-        self.DictList['ElectricFields'] = ['Efield','errEfield']
-        self.DictList['Ground_Mag'] = ['GroundMag_UnixTime', 'GroundMag_D', 'GroundMag_Z', 'GroundMag_H']
+        self.DictList['ElectricFields'] = ['Efield','covEfield','errEfield']
+        #self.DictList['Ground_Mag'] = ['GroundMag_UnixTime', 'GroundMag_D', 'GroundMag_Z', 'GroundMag_H']
         self.DictList['Status'] = ['Status']
-        self.DictList['Forces'] = ['Coriolis', 'Centrifugal', 'Lorentz', 'HallDrag', 'PedersenDrag']
+        #self.DictList['Forces'] = ['Coriolis', 'Centrifugal', 'Lorentz', 'HallDrag', 'PedersenDrag']
         self.DictList['Information'] = ['Version', 'FileCreationDateTime','ExperimentName','LongPulseFile', \
                                         'AlternatingCodeFile', 'ConfigFile', 'ExperimentDirectory']
-        self.DictList['JouleHeating'] = ['VerticalBeamJouleHeatingE', 'VerticalBeamJouleHeatingTotal', \
-                                        'MedianJouleHeatingE', 'MedianJouleHeatingTotal', \
-                                        'MeanJouleHeatingE', 'MeanJouleHeatingTotal','AltitudeJH', \
-                                        'IntegratedMeanJouleHeatingE','IntegratedMeanJouleHeatingTotal',  \
-                                        'IntegratedMedianJouleHeatingE','IntegratedMedianJouleHeatingTotal', \
-                                        'VerticalBeamJouleHeatingMechanical', \
-                                        'IntegratedMeanJouleHeatingMechanical','IntegratedMedianJouleHeatingMechanical', \
-                                        'MedianJouleHeatingMechanical', 'MeanJouleHeatingMechanical', \
-                                        ]
-        self.DictList['JouleHeating_Full'] = ['AltitudeFull', 'JouleHeatingEFull', \
-                                                'PedersenConductivtityFull', \
-                                                'IntegratedJouleHeatingEFull',\
-                                                'PedersenConductanceFull']
-        self.DictList['JouleHeating_Thayer'] = ['AltitudeJH', \
-                                                'VerticalBeamJouleHeatingTotal_Thayer', \
-                                                'VerticalBeamJouleHeatingMechanical_Thayer', \
-                                                'VerticalBeamEMTranfer_Thayer', \
-                                                'MedianJouleHeatingTotal_Thayer', \
-                                                'MeanJouleHeatingTotal_Thayer', \
-                                                'MedianJouleHeatingMechanical_Thayer',\
-                                                'MeanJouleHeatingMechanical_Thayer', \
-                                                'MeanEMTransfer_Thayer', 'MedianEMTransfer_Thayer', \
-                                                'IntegratedMedianJouleHeatingTotal_Thayer',
-                                                'IntegratedMeanJouleHeatingTotal_Thayer',
-                                                'IntegratedMeanJouleHeatingMechanical_Thayer', \
-                                                'IntegratedMedianJouleHeatingMechanical_Thayer', \
-                                                'IntegratedMeanEMTransfer_Thayer', \
-                                                'IntegratedMedianEMTransfer_Thayer'
-                                                ]
+        #self.DictList['JouleHeating'] = ['VerticalBeamJouleHeatingE', 'VerticalBeamJouleHeatingTotal', \
+        #                                'MedianJouleHeatingE', 'MedianJouleHeatingTotal', \
+        #                                'MeanJouleHeatingE', 'MeanJouleHeatingTotal','AltitudeJH', \
+        #                                'IntegratedMeanJouleHeatingE','IntegratedMeanJouleHeatingTotal',  \
+        #                                'IntegratedMedianJouleHeatingE','IntegratedMedianJouleHeatingTotal', \
+        #                                'VerticalBeamJouleHeatingMechanical', \
+        #                                'IntegratedMeanJouleHeatingMechanical','IntegratedMedianJouleHeatingMechanical', \
+        #                                'MedianJouleHeatingMechanical', 'MeanJouleHeatingMechanical', \
+        #                                ]
+        #self.DictList['JouleHeating_Full'] = ['AltitudeFull', 'JouleHeatingEFull', \
+        #                                        'PedersenConductivtityFull', \
+        #                                        'IntegratedJouleHeatingEFull',\
+        #                                        'PedersenConductanceFull']
+        #self.DictList['JouleHeating_Thayer'] = ['AltitudeJH', \
+        #                                        'VerticalBeamJouleHeatingTotal_Thayer', \
+        #                                        'VerticalBeamJouleHeatingMechanical_Thayer', \
+        #                                        'VerticalBeamEMTranfer_Thayer', \
+        #                                        'MedianJouleHeatingTotal_Thayer', \
+        #                                        'MeanJouleHeatingTotal_Thayer', \
+        #                                        'MedianJouleHeatingMechanical_Thayer',\
+        #                                        'MeanJouleHeatingMechanical_Thayer', \
+        #                                        'MeanEMTransfer_Thayer', 'MedianEMTransfer_Thayer', \
+        #                                        'IntegratedMedianJouleHeatingTotal_Thayer',
+        #                                        'IntegratedMeanJouleHeatingTotal_Thayer',
+        #                                        'IntegratedMeanJouleHeatingMechanical_Thayer', \
+        #                                        'IntegratedMedianJouleHeatingMechanical_Thayer', \
+        #                                        'IntegratedMeanEMTransfer_Thayer', \
+        #                                        'IntegratedMedianEMTransfer_Thayer'
+        #                                        ]
                                                 # 'MedianJouleHeatingTotal_Thayer', 'MedianJouleHeatingMechanical_Thayer', \
                                                 # 'MeanJouleHeatingTotal_Thayer', 'MeanJouleHeatingMechanical_Thayer', \
                                                 # 'MeanEMTransfer_Thayer', 'MedianEMTransfer_Thayer', \
@@ -70,15 +70,15 @@ class IOEregionWinds:
                                                 #
                                                 # ]
 
-        self.DictList['Conductivity'] = ['MedianHallConductance', 'MeanHallConductance', \
-                                        'MedianPedersenConductance','MeanPedersenConductance', \
-                                        'MeanPedersenConductivity', 'MedianPedersenConductivity',
-                                        'MeanHallConductivity','MedianHallConductivity', \
-                                        'VerticalBeamHallConductivity','VerticalBeamPedersenConductivity', \
-                                        'AltitudeJHBeam', 'ScaleHeight', \
-                                        'Vertical_nuin', 'Vertical_nuin_Brekke',\
-                                        'VerticalTi', 'VerticaldTi', 'VerticalTn']
-        self.DictList['ChiSquareTest'] = ['Vlos','dVlos','VlosEst', 'VlosAltGrid', 'dVlosAltGrid']
+        #self.DictList['Conductivity'] = ['MedianHallConductance', 'MeanHallConductance', \
+        #                                'MedianPedersenConductance','MeanPedersenConductance', \
+        #                                'MeanPedersenConductivity', 'MedianPedersenConductivity',
+        #                                'MeanHallConductivity','MedianHallConductivity', \
+        #                                'VerticalBeamHallConductivity','VerticalBeamPedersenConductivity', \
+        #                                'AltitudeJHBeam', 'ScaleHeight', \
+        #                                'Vertical_nuin', 'Vertical_nuin_Brekke',\
+        #                                'VerticalTi', 'VerticaldTi', 'VerticalTn']
+        #self.DictList['ChiSquareTest'] = ['Vlos','dVlos','VlosEst', 'VlosAltGrid', 'dVlosAltGrid']
 
         return
 
@@ -642,147 +642,174 @@ class IOEregionWinds:
         outDict = {}
 
         TimeOnly = numpy.zeros((inDict['UnixTime'].shape[0]), dtype='float64')*numpy.nan
-        TimeOnlyList = ['IntegratedVerticalBeamJouleHeatingE', \
-                        'IntegratedVerticalBeamJouleHeatingTotal', \
-                        'IntegratedMedianJouleHeatingE', \
-                        'IntegratedMedianJouleHeatingTotal', \
-                        'IntegratedMeanJouleHeatingE', \
-                        'IntegratedMeanJouleHeatingTotal', \
-                        'IntegratedMeanJouleHeatingMechanical', \
-                        'IntegratedMedianJouleHeatingMechanical', \
-                        'IntegratedVerticalBeamJouleHeatingMechanical', \
-                        'MedianHallConductance', 'MeanHallConductance', \
+        #TimeOnlyList = ['IntegratedVerticalBeamJouleHeatingE', \
+        #                'IntegratedVerticalBeamJouleHeatingTotal', \
+        #                'IntegratedMedianJouleHeatingE', \
+        #                'IntegratedMedianJouleHeatingTotal', \
+        #                'IntegratedMeanJouleHeatingE', \
+        #                'IntegratedMeanJouleHeatingTotal', \
+        #                'IntegratedMeanJouleHeatingMechanical', \
+        #                'IntegratedMedianJouleHeatingMechanical', \
+        #                'IntegratedVerticalBeamJouleHeatingMechanical', \
+        #                'MedianHallConductance', 'MeanHallConductance', \
+        #                'MedianPedersenConductance','MeanPedersenConductance',\
+        #                'nuinScaler', 'F107A', 'F107Raw', \
+        #                'IntegratedMedianJouleHeatingTotal_Thayer',
+        #                'IntegratedMeanJouleHeatingTotal_Thayer',
+        #                'IntegratedMeanJouleHeatingMechanical_Thayer', \
+        #                'IntegratedMedianJouleHeatingMechanical_Thayer', \
+        #                'IntegratedMeanEMTransfer_Thayer', \
+        #                'IntegratedMedianEMTransfer_Thayer', \
+        #                'IntegratedJouleHeatingEFull',\
+        #                'PedersenConductanceFull']
+        TimeOnlyList = ['MedianHallConductance', 'MeanHallConductance', \
                         'MedianPedersenConductance','MeanPedersenConductance',\
                         'nuinScaler', 'F107A', 'F107Raw', \
-                        'IntegratedMedianJouleHeatingTotal_Thayer',
-                        'IntegratedMeanJouleHeatingTotal_Thayer',
-                        'IntegratedMeanJouleHeatingMechanical_Thayer', \
-                        'IntegratedMedianJouleHeatingMechanical_Thayer', \
-                        'IntegratedMeanEMTransfer_Thayer', \
-                        'IntegratedMedianEMTransfer_Thayer', \
-                        'IntegratedJouleHeatingEFull',\
                         'PedersenConductanceFull']
         for ii in TimeOnlyList:
             outDict[ii] = copy.copy(TimeOnly)
 
 
         Timeby3 = numpy.zeros((inDict['UnixTime'].shape[0],3), dtype='float64')*numpy.nan
-        Timeby3List = ['Efield', 'errEfield', 'VestGmag_300km','errVestGmag_300km']
+        #Timeby3List = ['Efield', 'errEfield', 'VestGmag_300km','errVestGmag_300km']
+        Timeby3List = ['Efield', 'errEfield']
         for ii in Timeby3List:
             outDict[ii] = copy.copy(Timeby3)
+
+        Timeby3by3 = numpy.zeros((inDict['UnixTime'].shape[0],3,3), dtype='float64')*numpy.nan
+        #Timeby3List = ['Efield', 'errEfield', 'VestGmag_300km','errVestGmag_300km']
+        Timeby3by3List = ['covEfield']
+        for ii in Timeby3by3List:
+            outDict[ii] = copy.copy(Timeby3by3)
 
         # time x altitude x 3 - NW grid
         TimebyAltitudeby3 = numpy.zeros((inDict['UnixTime'].shape[0],AltitudeArr.shape[0],3),\
                             dtype='float64')*numpy.nan
+        #TimebyAltitudeby3List = ['WindGmag', 'errWindGmag', 'WindGeo', 'errWindGeo', \
+        #                        'VestGmag', 'errVestGmag','VestGeo','errVestGeo', \
+        #                        'Coriolis', 'Centrifugal', 'Lorentz']
         TimebyAltitudeby3List = ['WindGmag', 'errWindGmag', 'WindGeo', 'errWindGeo', \
-                                'VestGmag', 'errVestGmag','VestGeo','errVestGeo', \
-                                'Coriolis', 'Centrifugal', 'Lorentz']
+                                 'VestGmag', 'errVestGmag', 'VestGeo', 'errVestGeo']
         for ii in TimebyAltitudeby3List:
             outDict[ii] = copy.copy(TimebyAltitudeby3)
 
 
-        NeShape2 = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1],inDict['Ne'].shape[2],2), \
-                    dtype='float64')*numpy.nan
-        NeShape2List = ['CurrentGmag', 'errCurrentGmag']
+        # time x altitude x 3 x 3 - NW covariance grid
+        TimebyAltitudeby3by3 = numpy.zeros((inDict['UnixTime'].shape[0],AltitudeArr.shape[0],3,3),\
+                            dtype='float64')*numpy.nan
+        TimebyAltitudeby3by3List = ['covWindGmag', 'covWindGeo', \
+                                 'covVestGmag', 'covVestGeo']
+        for ii in TimebyAltitudeby3by3List:
+            outDict[ii] = copy.copy(TimebyAltitudeby3by3)
 
-        for ii in NeShape2List:
-            outDict[ii] = copy.copy(NeShape2)
+
+        #NeShape2 = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1],inDict['Ne'].shape[2],2), \
+        #            dtype='float64')*numpy.nan
+        #NeShape2List = ['CurrentGmag', 'errCurrentGmag']
+
+        #for ii in NeShape2List:
+        #    outDict[ii] = copy.copy(NeShape2)
 
 
         # time x altitude - NeutralWind grid
         # wanted to put Joule altitude on same grid
         TimebyAltitude = numpy.zeros((inDict['UnixTime'].shape[0],AltitudeArr.shape[0]),\
                             dtype='float64')*numpy.nan
-        TimebyAltitudeList = ['MedianJouleHeatingE', 'MedianJouleHeatingTotal', \
-                                'MeanJouleHeatingE', 'MeanJouleHeatingTotal', \
-                                'MeanSNR', 'MedianSNR', 'MeanNeRaw', 'MedianNeRaw', \
-                                'MeanNeFitted', 'MedianNeFitted', 'VerticalBeamJouleHeatingE', \
-                                'VerticalBeamJouleHeatingTotal','ScaleHeight', 'Kappa', \
-                                'MedianJouleHeatingMechanical', 'MeanJouleHeatingMechanical', \
-                                'VerticalBeamJouleHeatingMechanical', 'MeanPedersenConductivity', \
-                                'MedianPedersenConductivity', 'MeanHallConductivity','MedianHallConductivity', \
+        #TimebyAltitudeList = ['MedianJouleHeatingE', 'MedianJouleHeatingTotal', \
+        #                        'MeanJouleHeatingE', 'MeanJouleHeatingTotal', \
+        #                        'MeanSNR', 'MedianSNR', 'MeanNeRaw', 'MedianNeRaw', \
+        #                        'MeanNeFitted', 'MedianNeFitted', 'VerticalBeamJouleHeatingE', \
+        #                        'VerticalBeamJouleHeatingTotal','ScaleHeight', 'Kappa', \
+        #                        'MedianJouleHeatingMechanical', 'MeanJouleHeatingMechanical', \
+        #                        'VerticalBeamJouleHeatingMechanical', 'MeanPedersenConductivity', \
+        #                        'MedianPedersenConductivity', 'MeanHallConductivity','MedianHallConductivity', \
+        #                        'VerticalBeamHallConductivity','VerticalBeamPedersenConductivity', \
+        #                        'MeanIonNeutralCollisionFrequency', 'StdIonNeutralCollisionFrequency', \
+        #                        'Vertical_nuin', 'Vertical_nuin_Brekke',\
+        #                        'VerticalTi', 'VerticaldTi', 'VerticalTn', 'VerticalBeamNe', 'errVerticalBeamNe', \
+        #                        'PedersenDrag', 'HallDrag', 'Angle', \
+        #                        'VerticalBeamJouleHeatingTotal_Thayer','VerticalBeamJouleHeatingMechanical_Thayer', \
+        #                        'VerticalBeamEMTranfer_Thayer' , 'MedianJouleHeatingTotal_Thayer', \
+        #                        'MeanJouleHeatingTotal_Thayer', \
+        #                        'MedianJouleHeatingMechanical_Thayer',\
+        #                        'MeanJouleHeatingMechanical_Thayer', \
+        #                        'MeanEMTransfer_Thayer', 'MedianEMTransfer_Thayer']
+        #                        #                 'VerticalBeamJouleHeatingTotal', 'VerticalBeamerrJouleHeatingTotal']]
+        TimebyAltitudeList = ['ScaleHeight', 'Kappa', \
+                              'MedianPedersenConductivity', 'MeanHallConductivity','MedianHallConductivity', \
                                 'VerticalBeamHallConductivity','VerticalBeamPedersenConductivity', \
                                 'MeanIonNeutralCollisionFrequency', 'StdIonNeutralCollisionFrequency', \
                                 'Vertical_nuin', 'Vertical_nuin_Brekke',\
                                 'VerticalTi', 'VerticaldTi', 'VerticalTn', 'VerticalBeamNe', 'errVerticalBeamNe', \
-                                'PedersenDrag', 'HallDrag', 'Angle', \
-                                'VerticalBeamJouleHeatingTotal_Thayer','VerticalBeamJouleHeatingMechanical_Thayer', \
-                                'VerticalBeamEMTranfer_Thayer' , 'MedianJouleHeatingTotal_Thayer', \
-                                'MeanJouleHeatingTotal_Thayer', \
-                                'MedianJouleHeatingMechanical_Thayer',\
-                                'MeanJouleHeatingMechanical_Thayer', \
-                                'MeanEMTransfer_Thayer', 'MedianEMTransfer_Thayer']
-                                #                 'VerticalBeamJouleHeatingTotal', 'VerticalBeamerrJouleHeatingTotal']]
+                                'PedersenDrag', 'HallDrag', 'Angle',\
+                                'Wind_mag', 'errWind_mag', 'Wind_dir', 'errWind_dir']
         for ii in TimebyAltitudeList:
             outDict[ii] = copy.copy(TimebyAltitude)
 
-        # time x altitude x 1000 - Raw Ne/Joule Heating Grid
-        # added 09/08/2018
-
-        TimebyAltitude = numpy.zeros((inDict['UnixTime'].shape[0],AltitudeArr.shape[0],300),\
-                            dtype='float64')*numpy.nan
-        TimebyAltitudeList = ['NeFittedRaw', 'SNRRaw','VlosAltGrid', 'dVlosAltGrid']
-        for ii in TimebyAltitudeList:
-            outDict[ii] = copy.copy(TimebyAltitude)
-
-        # time by 250
-        Timeby250 = numpy.zeros((inDict['UnixTime'].shape[0],500),\
-                            dtype='float64')*numpy.nan
-        Timeby250List = ['Vlos','dVlos','VlosEst']
-        for ii in Timeby250List:
-            outDict[ii] = copy.copy(Timeby250)
-
-
-
-        # time x beam x altitude x 2 - Ne grid
-        NeShape2 = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1],inDict['Ne'].shape[2],2), \
-                    dtype='float64')*numpy.nan
-        NeShape2List = ['CurrentGmag', 'errCurrentGmag']
-        for ii in NeShape2List:
-            outDict[ii] = copy.copy(NeShape2)
+#        # time x altitude x 1000 - Raw Ne/Joule Heating Grid
+#        # added 09/08/2018
+#
+#        TimebyAltitude = numpy.zeros((inDict['UnixTime'].shape[0],AltitudeArr.shape[0],300),\
+#                            dtype='float64')*numpy.nan
+#        TimebyAltitudeList = ['NeFittedRaw', 'SNRRaw','VlosAltGrid', 'dVlosAltGrid']
+#        for ii in TimebyAltitudeList:
+#            outDict[ii] = copy.copy(TimebyAltitude)
+#
+#        # time by 250
+#        Timeby250 = numpy.zeros((inDict['UnixTime'].shape[0],500),\
+#                            dtype='float64')*numpy.nan
+#        Timeby250List = ['Vlos','dVlos','VlosEst']
+#        for ii in Timeby250List:
+#            outDict[ii] = copy.copy(Timeby250)
 
 
-        # time x altitude x beam - Ne grid
 
-        NeShape = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1],inDict['Ne'].shape[2]), \
-                  dtype='float64')*numpy.nan
-        NeShapeList = ['JouleHeatingE', 'errJouleHeatingE', \
-                        'JouleHeatingTotal', 'errJouleHeatingTotal', \
-                        'PedersenConductivity', 'HallConductivity', \
-                        'JouleHeatingMechanical', 'JouleHeatingTotalThayer', \
-                        'JouleHeatingMechanicalThayer', 'EMTransferRateThayer']
+#        # time x beam x altitude x 2 - Ne grid
+#        NeShape2 = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1],inDict['Ne'].shape[2],2), \
+#                    dtype='float64')*numpy.nan
+#        NeShape2List = ['CurrentGmag', 'errCurrentGmag']
+#        for ii in NeShape2List:
+#            outDict[ii] = copy.copy(NeShape2)
+#
+#
+#        # time x altitude x beam - Ne grid
+#
+#        NeShape = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1],inDict['Ne'].shape[2]), \
+#                  dtype='float64')*numpy.nan
+#        NeShapeList = ['PedersenConductivity', 'HallConductivity', \
+#                       ]
+#
+#        for ii in NeShapeList:
+#            outDict[ii] = copy.copy(NeShape)
+#
+#
+#        # time x altitude - Ne grid
+#        NeShape = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[2]), \
+#                  dtype='float64')*numpy.nan
+#        # NeShapeList = ['VerticalBeamJouleHeatingE', 'VerticalBeamerrJouleHeatingE', \
+#        #                 'VerticalBeamJouleHeatingTotal', 'VerticalBeamerrJouleHeatingTotal']
+#        #                 # can add weighted mean once I have proper uncertainty
+#        # for ii in NeShapeList:
+#        #     outDict[ii] = copy.copy(NeShape)
 
-        for ii in NeShapeList:
-            outDict[ii] = copy.copy(NeShape)
+#        # time x beam
+#        NeShape = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1]), \
+#                  dtype='float64')*numpy.nan
+#        NeShapeList = ['IntegratedJouleHeatingE', 'IntegratedJouleHeatingTotal',\
+#                        'IntegratedJouleHeatingMechanical']
+#
+#        for ii in NeShapeList:
+#            outDict[ii] = copy.copy(NeShape)
 
-
-        # time x altitude - Ne grid
-        NeShape = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[2]), \
-                  dtype='float64')*numpy.nan
-        # NeShapeList = ['VerticalBeamJouleHeatingE', 'VerticalBeamerrJouleHeatingE', \
-        #                 'VerticalBeamJouleHeatingTotal', 'VerticalBeamerrJouleHeatingTotal']
-        #                 # can add weighted mean once I have proper uncertainty
-        # for ii in NeShapeList:
-        #     outDict[ii] = copy.copy(NeShape)
-
-        # time x beam
-        NeShape = numpy.zeros((inDict['Ne'].shape[0],inDict['Ne'].shape[1]), \
-                  dtype='float64')*numpy.nan
-        NeShapeList = ['IntegratedJouleHeatingE', 'IntegratedJouleHeatingTotal',\
-                        'IntegratedJouleHeatingMechanical']
-
-        for ii in NeShapeList:
-            outDict[ii] = copy.copy(NeShape)
-
-        # added on 5/3/2022
-        # time x interpolated beam
-        tmpxx = numpy.arange(90.,255.,5.)
-        NeShape = numpy.zeros((inDict['Ne'].shape[0],tmpxx.shape[0]), \
-                  dtype='float64')*numpy.nan
-        NeShapeList = ['JouleHeatingEFull', 'PedersenConductivtityFull']
-
-        for ii in NeShapeList:
-            outDict[ii] = copy.copy(NeShape)
+#        # added on 5/3/2022
+#        # time x interpolated beam
+#        tmpxx = numpy.arange(90.,255.,5.)
+#        NeShape = numpy.zeros((inDict['Ne'].shape[0],tmpxx.shape[0]), \
+#                  dtype='float64')*numpy.nan
+#        NeShapeList = ['JouleHeatingEFull', 'PedersenConductivtityFull']
+#
+#        for ii in NeShapeList:
+#            outDict[ii] = copy.copy(NeShape)
 
 
 
